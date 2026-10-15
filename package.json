@@ -9,11 +9,14 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:smoke": "node scripts/smoke.mjs",
+    "format": "prettier --write src tests scripts README.md package.json next.config.ts drizzle.config.ts vitest.config.ts",
+    "format:check": "prettier --check src tests scripts README.md package.json next.config.ts drizzle.config.ts vitest.config.ts",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "import:data": "tsx --env-file-if-exists=.env.local scripts/import-data.ts"
   },
   "dependencies": {
+    "@fontsource/poppins": "^5.3.0",
     "@neondatabase/serverless": "^1.0.2",
     "@radix-ui/react-dialog": "^1.1.15",
     "class-variance-authority": "^0.7.1",
@@ -35,10 +38,13 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "drizzle-kit": "^0.31.5",
+    "prettier": "^3.9.10",
     "tailwindcss": "^4.1.16",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   },
-  "engines": { "node": ">=22.0.0" }
+  "engines": {
+    "node": ">=22.0.0"
+  }
 }

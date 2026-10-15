@@ -1,14 +1,17 @@
-import { z } from "zod";
 import { queue } from "@/domain/analytics";
+import { sessionDataset } from "@/domain/cases";
 import { failure, json, session } from "@/server/http";
 import { getDataset } from "@/server/store";
-const weight = z.coerce.number().finite().min(0).max(100);
+import { parseWeights } from "@/server/weights";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
-    await session(); const p = new URL(request.url).searchParams;
-    const weights = { value: weight.parse(p.get("value") ?? 45), urgency: weight.parse(p.get("urgency") ?? 35), relationship: weight.parse(p.get("relationship") ?? 20) };
-    if (Object.values(weights).every(v => v === 0)) return json({ error: "Ao menos um peso deve ser positivo." }, 400);
-    return json(queue(await getDataset(), weights));
-  } catch (e) { return failure(e); }
+    const { state } = await session();
+    const p = new URL(request.url).searchParams;
+    return json(
+      queue(sessionDataset(await getDataset(), state), parseWeights(p)),
+    );
+  } catch (e) {
+    return failure(e);
+  }
 }
