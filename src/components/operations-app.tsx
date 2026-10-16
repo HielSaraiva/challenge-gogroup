@@ -326,9 +326,9 @@ export function OperationsApp() {
           className={menu ? "menu-open" : ""}
           aria-label="Navegação principal"
         >
-          {nav.map(([id, label], i) => (
+          {nav.map(([id, label]) => (
             <button
-              className={`nav-item ${tab === id ? "active" : ""} ${i === 4 ? "nav-support" : ""}`}
+              className={`nav-item ${tab === id ? "active" : ""}`}
               aria-current={tab === id ? "page" : undefined}
               key={id}
               onClick={() => navigate(id)}

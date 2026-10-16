@@ -273,10 +273,6 @@ summary:focus-visible,
   width: 18px;
   height: 18px;
 }
-.nav-support {
-  border-left: 1px solid var(--line);
-  margin-left: 8px;
-}
 .results-workspace,
 .reset-panel {
   margin-top: 24px;
@@ -304,11 +300,6 @@ main > .panel {
   .guided-form textarea,
   .guided-form select {
     font-size: 16px;
-  }
-  .nav-support {
-    border-left: 0;
-    margin-left: 0;
-    border-top: 1px solid var(--line);
   }
 }
 .page-heading h1:focus {
