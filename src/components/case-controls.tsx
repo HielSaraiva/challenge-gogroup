@@ -20,13 +20,20 @@ export function CaseControls({
   const [choice, setChoice] = useState(order.sourceStatuses[0]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [financialEnabled, setFinancialEnabled] = useState(false);
+  const [financialType, setFinancialType] = useState("retained");
+  const [financialAmount, setFinancialAmount] = useState("0");
+  const [financialCost, setFinancialCost] = useState("0");
+  const [financialEvidence, setFinancialEvidence] = useState("");
   const needsReview = order.status === "status_divergente";
   const action = order.resolution
     ? "reopen"
     : needsReview
       ? "review_status"
       : "resolve";
-  const related = tasks.filter((t) => t.orderId === order.id);
+  const related = tasks.filter(
+    (t) => t.orderId === order.id && t.scope !== "process",
+  );
   const hasPending = related.some((t) =>
     ["aberta", "pendente_aprovacao"].includes(t.status),
   );
@@ -47,6 +54,18 @@ export function CaseControls({
           orderId: order.id,
           note,
           ...(needsReview ? { status: choice } : {}),
+          ...(action === "resolve" && financialEnabled
+            ? {
+                financial: {
+                  retained:
+                    financialType === "retained" ? financialAmount : "0",
+                  refunded:
+                    financialType === "refunded" ? financialAmount : "0",
+                  cost: financialCost,
+                  evidence: financialEvidence,
+                },
+              }
+            : {}),
         }),
       });
       const body = await response.json();
@@ -126,6 +145,86 @@ export function CaseControls({
             rows={3}
           />
         </label>
+        {action === "resolve" && (
+          <fieldset className="financial-entry">
+            <legend>Resultado financeiro</legend>
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={financialEnabled}
+                onChange={(event) => setFinancialEnabled(event.target.checked)}
+              />{" "}
+              Registrar resultado declarado da tratativa
+            </label>
+            <p>
+              Opcional. Sem evidência financeira, encerre apenas o caso. Valores
+              declarados na demonstração ficam separados da recuperação
+              comprovada.
+            </p>
+            {financialEnabled && (
+              <>
+                <div className="financial-entry-grid">
+                  <label>
+                    Resultado
+                    <select
+                      aria-label="Tipo de resultado financeiro"
+                      value={financialType}
+                      onChange={(event) => setFinancialType(event.target.value)}
+                    >
+                      <option value="retained">
+                        Valor do pedido preservado
+                      </option>
+                      <option value="refunded">Reembolso declarado</option>
+                    </select>
+                  </label>
+                  <label>
+                    Valor declarado (R$)
+                    <input
+                      aria-label="Valor financeiro declarado"
+                      type="number"
+                      min="0"
+                      max={order.value}
+                      step="0.01"
+                      required
+                      value={financialAmount}
+                      onChange={(event) =>
+                        setFinancialAmount(event.target.value)
+                      }
+                    />
+                  </label>
+                  <label>
+                    Custo da intervenção (R$)
+                    <input
+                      aria-label="Custo declarado da intervenção"
+                      type="number"
+                      min="0"
+                      max="9999999"
+                      step="0.01"
+                      required
+                      value={financialCost}
+                      onChange={(event) => setFinancialCost(event.target.value)}
+                    />
+                  </label>
+                </div>
+                <label>
+                  Evidência do resultado
+                  <textarea
+                    aria-label="Evidência financeira"
+                    rows={2}
+                    minLength={15}
+                    maxLength={1200}
+                    required
+                    value={financialEvidence}
+                    onChange={(event) =>
+                      setFinancialEvidence(event.target.value)
+                    }
+                    placeholder="Informe o que foi confirmado e a referência da evidência. Não inclua dados pessoais."
+                  />
+                </label>
+              </>
+            )}
+          </fieldset>
+        )}
         {error && (
           <p className="form-error" role="alert">
             {error}

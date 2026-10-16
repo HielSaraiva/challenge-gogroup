@@ -39,13 +39,11 @@ async function main() {
   assert.equal(forbidden.status, 403);
   assert.equal((await read("/api/tasks", second)).length, 0);
   if (process.argv.includes("--agent")) {
-    const patterns = await read("/api/insights", cookie);
-    const pattern = patterns.find((p) =>
-      p.id.startsWith("falha_personalizacao:machine:"),
-    );
+    const order = queue.orders.find((o) => o.status !== "status_divergente");
+    assert.ok(order);
     const input = {
-      type: "pattern",
-      target: pattern.id,
+      type: "order",
+      target: order.id,
       requestId: randomUUID(),
     };
     const response = await fetch(`${base}/api/investigations`, {
@@ -149,8 +147,68 @@ async function main() {
     assert.notEqual(resetCookie, cookie);
     assert.equal((await read("/api/tasks", resetCookie)).length, 0);
     console.log(
-      "Groq real: padrão → consulta de pedido → tarefa → persistência → isolamento → idempotência → conclusão → nova sessão: OK",
+      "Groq real: pedido → tarefa → persistência → isolamento → idempotência → conclusão → nova sessão: OK",
     );
+  }
+  if (
+    ["--strategic", "--plan", "--process"].some((flag) =>
+      process.argv.includes(flag),
+    )
+  ) {
+    async function investigate(type, target) {
+      const response = await fetch(`${base}/api/investigations`, {
+        method: "POST",
+        headers: { cookie, origin: base, "content-type": "application/json" },
+        body: JSON.stringify({ type, target, requestId: randomUUID() }),
+      });
+      assert.equal(response.status, 200);
+      const events = (await response.text()).trim().split("\n").map(JSON.parse);
+      const run = events.findLast(
+        (event) => event.investigation,
+      )?.investigation;
+      assert.equal(
+        run?.status,
+        "completed",
+        `Groq deve concluir ${type}: ${run?.error || run?.summary || "sem resultado"}`,
+      );
+      return run;
+    }
+    if (!process.argv.includes("--process")) {
+      const daily = await investigate("daily", "today");
+      assert.ok(daily.planId);
+      const operations = await read("/api/operations", cookie);
+      const plan = operations.plans.find((p) => p.id === daily.planId);
+      assert.ok(plan);
+      const currentQueue = await read("/api/queue", cookie);
+      assert.deepEqual(
+        [...plan.selectedOrderIds].sort(),
+        currentQueue.orders.map((o) => o.id).sort(),
+      );
+      assert.deepEqual(
+        plan.workstreams.flatMap((s) => s.orderIds).sort(),
+        [...plan.selectedOrderIds].sort(),
+      );
+      assert.equal((await read("/api/operations", second)).plans.length, 0);
+      console.log("Groq real: plano completo persistido e isolado: OK");
+    }
+    if (!process.argv.includes("--plan")) {
+      const patterns = await read("/api/insights", cookie);
+      const pattern = patterns.find((p) => p.scope === "process");
+      assert.ok(pattern);
+      const processRun = await investigate("pattern", pattern.id);
+      const tasks = await read("/api/tasks", cookie);
+      const task = tasks.find((t) => processRun.taskIds.includes(t.id));
+      assert.equal(task?.scope, "process");
+      assert.ok(task.affectedOrderIds.length > 1);
+      assert.equal(
+        (await read("/api/operations", cookie)).financial.verifiedRecovery,
+        "0.00",
+      );
+      assert.equal((await read("/api/dashboard", cookie)).resolvedCount, 0);
+      console.log(
+        "Groq real: ação de processo com evidências; nenhuma recuperação automática: OK",
+      );
+    }
   }
   console.log(
     "HTTP: dashboard, fila, validação de pesos, origem e isolamento: OK",

@@ -122,18 +122,46 @@ export function profile(orders: RankedOrder[]) {
 }
 export function queue(data: Dataset, weights = DEFAULT_WEIGHTS) {
   const ranked = rankOrders(data, weights).filter((order) => !order.resolution);
-  const prioritized = ranked.slice(0, CAPACITY);
-  const fifo = [...ranked]
-    .sort(
-      (a, b) =>
-        a.openedAt.localeCompare(b.openedAt) || a.id.localeCompare(b.id),
-    )
-    .slice(0, CAPACITY);
+  const usedCapacity = data.orders.reduce(
+    (total, order) =>
+      total +
+      (order.caseHistory?.filter((event) => event.action === "resolve")
+        .length || 0),
+    0,
+  );
+  const availableCapacity = Math.max(0, CAPACITY - usedCapacity);
+  const chronological = [...ranked].sort(
+    (a, b) => a.openedAt.localeCompare(b.openedAt) || a.id.localeCompare(b.id),
+  );
+  const reserved = chronological.slice(
+    0,
+    Math.min(Math.ceil(availableCapacity * 0.2), ranked.length),
+  );
+  const reservedIds = new Set(reserved.map((order) => order.id));
+  const selected = [
+    ...reserved,
+    ...ranked
+      .filter((order) => !reservedIds.has(order.id))
+      .slice(0, Math.max(0, availableCapacity - reserved.length)),
+  ];
+  const selectedIds = new Set(selected.map((order) => order.id));
+  const prioritized = ranked
+    .filter((order) => selectedIds.has(order.id))
+    .map((order) => ({
+      ...order,
+      selectionReason: reservedIds.has(order.id)
+        ? "Reserva para os casos mais antigos"
+        : "Prioridade por valor, urgência e relacionamento",
+    }));
+  const fifo = chronological.slice(0, availableCapacity);
   return {
     orders: prioritized,
     prioritized: profile(prioritized),
     fifo: profile(fifo),
     capacity: CAPACITY,
+    availableCapacity,
+    usedCapacity,
+    oldestReserved: reserved.length,
     weights,
   };
 }
@@ -172,26 +200,78 @@ export function insights(data: Dataset): Insight[] {
     "machine_shift_dc",
   ] as const;
   const result: Insight[] = [];
+  function groupFor(o: Dataset["orders"][number], dimension: string) {
+    return dimension === "carrier_state"
+      ? `${o.carrier} / ${o.state}`
+      : dimension === "machine_shift_dc"
+        ? o.machine
+          ? `${o.machine} / ${o.shift} / ${o.dc}`
+          : ""
+        : String(o[dimension as keyof typeof o] ?? "");
+  }
   for (const exception of new Set(data.orders.map((o) => o.exception))) {
     const subset = data.orders.filter((o) => o.exception === exception);
+    // Curadoria operacional: coincidências em campos sem relação com a etapa
+    // não devem virar recomendações de processo (ex.: pagamento × transportadora).
+    const relevant = logistic.has(exception)
+      ? ["carrier", "state", "carrier_state"]
+      : (
+          {
+            falha_personalizacao: [
+              "machine",
+              "shift",
+              "dc",
+              "machine_shift_dc",
+            ],
+            item_faltante: ["dc", "shift", "gift"],
+            vazamento_produto: ["lot", "dc"],
+            ruptura_pos_venda: ["dc"],
+            endereco_divergente: ["state"],
+          } as Record<string, string[]>
+        )[exception] || [];
     for (const dimension of dimensions) {
+      if (!relevant.includes(dimension)) continue;
       const groups = new Map<string, string[]>();
       for (const o of subset) {
-        const group =
-          dimension === "carrier_state"
-            ? `${o.carrier} / ${o.state}`
-            : dimension === "machine_shift_dc"
-              ? o.machine
-                ? `${o.machine} / ${o.shift} / ${o.dc}`
-                : ""
-              : String(o[dimension]);
+        const group = groupFor(o, dimension);
         if (group) groups.set(group, [...(groups.get(group) || []), o.id]);
       }
-      if (groups.size < 2) continue;
-      const [group, evidenceIds] = [...groups.entries()].sort(
-        (a, b) => b[1].length - a[1].length,
+      if (!groups.size) continue;
+      const eligible = data.orders.filter((order) =>
+        Boolean(groupFor(order, dimension)),
+      );
+      const dimensionalTotal = subset.filter((order) =>
+        Boolean(groupFor(order, dimension)),
+      ).length;
+      const baseline = new Map<string, number>();
+      for (const order of eligible) {
+        const key = groupFor(order, dimension);
+        baseline.set(key, (baseline.get(key) || 0) + 1);
+      }
+      if (baseline.size < 2) continue;
+      const candidates = [...groups.entries()].filter(
+        ([, ids]) => ids.length >= 10,
+      );
+      if (!candidates.length) continue;
+      const lift = (group: string, ids: string[]) =>
+        ids.length /
+        dimensionalTotal /
+        ((baseline.get(group) || 1) / eligible.length);
+      const [group, evidenceIds] = candidates.sort(
+        (a, b) =>
+          lift(b[0], b[1]) * Math.sqrt(b[1].length) -
+          lift(a[0], a[1]) * Math.sqrt(a[1].length),
       )[0];
       if (evidenceIds.length < 10) continue;
+      const processSignal =
+        lift(group, evidenceIds) >= 1.5 &&
+        evidenceIds.length / dimensionalTotal >= 0.15;
+      const groupLabel =
+        group === "true"
+          ? "pedidos com brinde"
+          : group === "false"
+            ? "pedidos sem brinde"
+            : group;
       result.push({
         id: `${exception}:${dimension}:${group}`,
         title: `${exceptionLabels[exception]} · ${group === "true" ? "Com brinde" : group === "false" ? "Sem brinde" : group}`,
@@ -199,13 +279,43 @@ export function insights(data: Dataset): Insight[] {
         dimension,
         group,
         count: evidenceIds.length,
-        total: subset.length,
-        share: evidenceIds.length / subset.length,
+        total: dimensionalTotal,
+        share: evidenceIds.length / dimensionalTotal,
         evidenceIds,
-        hypothesis:
-          "Concentração entre pedidos com exceção. Investigar o processo; sem a base de todos os pedidos, não é possível estimar taxa de falha ou provar causalidade.",
+        hypothesis: `${processSignal ? "Sinal para investigar o processo" : "Sinal exploratório para validar em casos individuais"}. Sem a base de todos os pedidos, não é possível estimar taxa de falha ou provar causalidade.`,
+        baselineShare: (baseline.get(group) || 0) / eligible.length,
+        enrichment: lift(group, evidenceIds),
+        scope: processSignal ? "process" : "case",
+        investigationQuestion: `Comparar ${groupLabel} com os demais grupos da mesma dimensão e verificar se há mudança de procedimento, campanha, lote ou capacidade. Validar com todos os pedidos expedidos antes de concluir causa.`,
       });
     }
   }
-  return result.sort((a, b) => b.share - a.share || b.count - a.count);
+  const mismatches = data.orders.filter((order) =>
+    order.issues.some((issue) => issue.code === "PROMISE_MISMATCH"),
+  );
+  if (mismatches.length)
+    result.push({
+      id: "prazo:regra:checkout",
+      title: "Promessa de entrega fora da regra contratual",
+      exception: "divergencia_prazo",
+      dimension: "promise_rule",
+      group: "Cálculo de prazo",
+      count: mismatches.length,
+      total: data.orders.length,
+      share: mismatches.length / data.orders.length,
+      evidenceIds: mismatches.map((order) => order.id),
+      hypothesis:
+        "A divergência de datas está nos registros. Auditar calendário, separação e SLA no cálculo do checkout. Isso não prova que a regra de prazo causou falhas físicas de entrega ou produção.",
+      baselineShare: 0,
+      enrichment: 0,
+      scope: "process",
+      investigationQuestion:
+        "Reproduzir o cálculo de dias úteis e comparar com a promessa gravada; verificar calendário, SLA da rota e configuração do checkout.",
+    });
+  return result.sort(
+    (a, b) =>
+      Number(b.scope === "process") - Number(a.scope === "process") ||
+      b.enrichment * Math.sqrt(b.count) - a.enrichment * Math.sqrt(a.count) ||
+      b.count - a.count,
+  );
 }

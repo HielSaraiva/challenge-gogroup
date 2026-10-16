@@ -7,6 +7,7 @@ import path from "node:path";
 import * as schema from "./schema";
 import type {
   CaseRecord,
+  DailyPlan,
   Dataset,
   Investigation,
   SessionState,
@@ -36,7 +37,13 @@ function localAllowed() {
       503,
     );
 }
-const localPath = (name: string) => path.join(process.cwd(), ".local", name);
+const localPath = (name: string) =>
+  path.join(
+    process.env.NODE_ENV === "test" && process.env.OPERATIONS_TEST_DIRECTORY
+      ? process.env.OPERATIONS_TEST_DIRECTORY
+      : path.join(process.cwd(), ".local"),
+    name,
+  );
 async function readLocal<T>(name: string, fallback?: T): Promise<T> {
   localAllowed();
   try {
@@ -133,10 +140,15 @@ export async function getSession(id: string): Promise<SessionState | null> {
     .select()
     .from(schema.caseRecords)
     .where(eq(schema.caseRecords.sessionId, id));
+  const plans = await db()
+    .select()
+    .from(schema.dailyPlans)
+    .where(eq(schema.dailyPlans.sessionId, id));
   return {
     ...row.payload,
     tasks: tasks.map((t) => t.payload),
     cases: Object.fromEntries(cases.map((c) => [c.orderId, c.payload])),
+    plans: plans.map((plan) => plan.payload),
   };
 }
 export async function saveInvestigation(sessionId: string, run: Investigation) {
@@ -289,6 +301,38 @@ export async function saveCase(sessionId: string, record: CaseRecord) {
     .returning();
   if (!result.length)
     throw new AppError("O pedido foi alterado. Atualize os dados.", 409);
+}
+export async function upsertDailyPlan(
+  sessionId: string,
+  plan: DailyPlan,
+): Promise<DailyPlan> {
+  if (!process.env.DATABASE_URL)
+    return locked(async () => {
+      const state = await getSession(sessionId);
+      if (!state) throw new AppError("Sessão expirada.", 401);
+      const existing = state.plans?.find(
+        (previous) => previous.idempotencyKey === plan.idempotencyKey,
+      );
+      if (existing) return existing;
+      state.plans = [...(state.plans || []), plan];
+      await writeLocal(`session-${sessionId}.json`, state);
+      return plan;
+    });
+  const database = db();
+  await database
+    .insert(schema.dailyPlans)
+    .values({ sessionId, key: plan.idempotencyKey, payload: plan })
+    .onConflictDoNothing();
+  const [row] = await database
+    .select()
+    .from(schema.dailyPlans)
+    .where(
+      and(
+        eq(schema.dailyPlans.sessionId, sessionId),
+        eq(schema.dailyPlans.key, plan.idempotencyKey),
+      ),
+    );
+  return row.payload;
 }
 export async function acquireAgentLease(
   sessionId: string,

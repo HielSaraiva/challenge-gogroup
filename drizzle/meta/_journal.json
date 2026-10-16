@@ -15,6 +15,13 @@
       "when": 1792108195003,
       "tag": "0001_clear_jack_power",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792109520740,
+      "tag": "0002_soft_turbo",
+      "breakpoints": true
     }
   ]
 }

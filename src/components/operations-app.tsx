@@ -28,9 +28,14 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import Decimal from "decimal.js";
 import { Button } from "./ui/button";
 import { CaseControls } from "./case-controls";
+import {
+  OperationsSummary,
+  isPlanCurrent,
+  type OperationsReport,
+} from "./operations-summary";
+import { FinancialImpact } from "./financial-impact";
 import {
   Dialog,
   DialogContent,
@@ -51,12 +56,13 @@ import { money, shortDate, statusLabel } from "@/lib/utils";
 import type { dashboard, queue } from "@/domain/analytics";
 type Dashboard = ReturnType<typeof dashboard>;
 type Queue = ReturnType<typeof queue>;
-type Tab = "overview" | "queue" | "insights" | "agent" | "method";
+type Tab = "overview" | "queue" | "insights" | "agent" | "impact" | "method";
 const navigation = [
-  { id: "overview", title: "Visão geral", icon: LayoutDashboard },
+  { id: "overview", title: "Operação hoje", icon: LayoutDashboard },
   { id: "queue", title: "Fila do dia", icon: Layers3 },
-  { id: "insights", title: "Investigações", icon: Search },
+  { id: "insights", title: "Causas e processos", icon: Search },
   { id: "agent", title: "Agente e tarefas", icon: Sparkles },
+  { id: "impact", title: "Impacto financeiro", icon: BarChart3 },
   { id: "method", title: "Metodologia", icon: FileText },
 ] as const;
 async function get<T>(url: string): Promise<T> {
@@ -114,6 +120,9 @@ export function OperationsApp() {
   const [patterns, setPatterns] = useState<Insight[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [runs, setRuns] = useState<Investigation[]>([]);
+  const [operations, setOperations] = useState<OperationsReport>();
+  const [frontIds, setFrontIds] = useState<string[]>();
+  const [taskScope, setTaskScope] = useState("all");
   const [weights, setWeights] = useState<Weights>(DEFAULT_WEIGHTS);
   const [draftWeights, setDraftWeights] = useState<Weights>(DEFAULT_WEIGHTS);
   const [query, setQuery] = useState("");
@@ -129,12 +138,16 @@ export function OperationsApp() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [events, setEvents] = useState<ToolEvent[]>([]);
-  const [efficacy, setEfficacy] = useState(25);
   const [resetting, setResetting] = useState(false);
   const [taskPending, setTaskPending] = useState<string>();
   const [patternQuery, setPatternQuery] = useState("");
   const [patternDimension, setPatternDimension] = useState("");
   const [patternType, setPatternType] = useState("");
+  const [patternLimit, setPatternLimit] = useState(6);
+  useEffect(
+    () => setPatternLimit(6),
+    [patternQuery, patternDimension, patternType],
+  );
   const visiblePatterns = patterns.filter(
     (p) =>
       (!patternDimension || p.dimension === patternDimension) &&
@@ -144,12 +157,14 @@ export function OperationsApp() {
         .includes(patternQuery.toLocaleLowerCase("pt-BR")),
   );
   const refreshActivity = useCallback(async () => {
-    const [t, r] = await Promise.all([
+    const [t, r, op] = await Promise.all([
       get<Task[]>("/api/tasks"),
       get<Investigation[]>("/api/investigations"),
+      get<OperationsReport>("/api/operations"),
     ]);
     setTasks(t);
     setRuns(r);
+    setOperations(op);
   }, []);
   const load = useCallback(async () => {
     setLoading(true);
@@ -194,14 +209,21 @@ export function OperationsApp() {
           (!type || o.exception === type) &&
           (!brand || o.brand === brand) &&
           (!status || o.status === status) &&
+          (!frontIds || frontIds.includes(o.id)) &&
           `${o.id} ${o.brand} ${o.product} ${o.city}`
             .toLocaleLowerCase("pt-BR")
             .includes(query.toLocaleLowerCase("pt-BR")),
       ),
-    [allOrders, dayQueue, showAll, type, brand, status, query],
+    [allOrders, dayQueue, showAll, type, brand, status, query, frontIds],
   );
   const openTasks = tasks.filter(
     (t) => t.status === "aberta" || t.status === "pendente_aprovacao",
+  );
+  const currentPlan = isPlanCurrent(
+    operations?.plans[0],
+    dayQueue?.orders || [],
+    weights,
+    operations?.usedCapacity || 0,
   );
   async function refreshWorkspace(nextWeights = weights) {
     const query = new URLSearchParams(
@@ -234,7 +256,10 @@ export function OperationsApp() {
       setError((e as Error).message);
     }
   }
-  async function startInvestigation(target: string, kind: "order" | "pattern") {
+  async function startInvestigation(
+    target: string,
+    kind: Investigation["type"],
+  ) {
     if (busy) return;
     setBusy(true);
     setEvents([]);
@@ -249,6 +274,7 @@ export function OperationsApp() {
           type: kind,
           target,
           requestId: crypto.randomUUID(),
+          ...(kind === "daily" ? { weights } : {}),
         }),
       });
       if (!response.ok) {
@@ -274,6 +300,8 @@ export function OperationsApp() {
             setEvents((previous) => [...previous, payload.event]);
           if (payload.investigation?.status === "failed")
             setNotice(payload.investigation.summary);
+          if (kind === "daily" && payload.investigation?.status === "completed")
+            setTab("overview");
         }
         if (done) break;
       }
@@ -284,8 +312,18 @@ export function OperationsApp() {
       );
     } finally {
       setBusy(false);
-      await refreshActivity().catch(() => {});
+      await refreshWorkspace().catch(() => {});
     }
+  }
+  function openQueue(ids?: string[]) {
+    setFrontIds(ids);
+    setQuery("");
+    setType("");
+    setBrand("");
+    setStatus("");
+    setShowAll(false);
+    setPage(1);
+    setTab("queue");
   }
   async function changeTask(task: Task, nextStatus: string) {
     if (taskPending) return;
@@ -396,6 +434,11 @@ export function OperationsApp() {
                     {o.priority.score.toFixed(1)}
                     <small>/100</small>
                   </div>
+                  {o.selectionReason && (
+                    <small className="selection-reason">
+                      {o.selectionReason}
+                    </small>
+                  )}
                 </td>
                 <td>
                   <ChevronRight size={16} className="muted" />
@@ -442,7 +485,11 @@ export function OperationsApp() {
             >
               <n.icon size={18} />
               {n.title}
-              {n.id === "queue" && <span className="nav-count">150</span>}
+              {n.id === "queue" && (
+                <span className="nav-count">
+                  {dayQueue?.orders.length ?? "—"}
+                </span>
+              )}
               {n.id === "agent" && openTasks.length > 0 && (
                 <span className="nav-count">{openTasks.length}</span>
               )}
@@ -490,25 +537,29 @@ export function OperationsApp() {
               </div>
               <h1>
                 {tab === "overview"
-                  ? "Cada exceção, um próximo passo."
+                  ? "Operação de hoje"
                   : tab === "queue"
-                    ? "O que tratar hoje."
+                    ? "Fila priorizada"
                     : tab === "insights"
-                      ? "Encontre o padrão por trás da exceção."
+                      ? "Causas e melhorias de processo"
                       : tab === "agent"
-                        ? "Da investigação à ação."
-                        : "Decisões que você pode explicar."}
+                        ? "Ações e investigações do agente"
+                        : tab === "impact"
+                          ? "Risco e resultado financeiro"
+                          : "Decisões que você pode explicar."}
               </h1>
               <p>
                 {tab === "overview"
-                  ? "Priorize o que importa. Investigue com evidências. Coloque a operação em movimento."
+                  ? "Prepare o plano com o agente, distribua as frentes e acompanhe as tratativas."
                   : tab === "queue"
                     ? "Uma fila transparente, construída para a capacidade real do seu time."
                     : tab === "insights"
-                      ? "Concentrações que ajudam a direcionar investigações e melhorias de processo."
+                      ? "Diferencie o atendimento individual dos sinais que exigem investigar o processo."
                       : tab === "agent"
-                        ? "Acompanhe as ferramentas do agente e os encaminhamentos registrados na sua sessão."
-                        : "Conheça as regras, os cálculos e os limites desta demonstração."}
+                        ? "Planos e encaminhamentos criados com ferramentas, evidências e histórico."
+                        : tab === "impact"
+                          ? "Exposição, cenários e resultados declarados, apresentados separadamente."
+                          : "Conheça as regras, os cálculos e os limites desta demonstração."}
               </p>
             </div>
             <div className="date-chip">
@@ -578,6 +629,18 @@ export function OperationsApp() {
               </div>
               {tab === "overview" && (
                 <>
+                  {operations && (
+                    <OperationsSummary
+                      report={operations}
+                      selection={dayQueue?.orders || []}
+                      weights={weights}
+                      busy={busy}
+                      onPrepare={() => startInvestigation("day", "daily")}
+                      onQueue={openQueue}
+                      onInsights={() => setTab("insights")}
+                      onImpact={() => setTab("impact")}
+                    />
+                  )}
                   <section
                     className="metrics"
                     aria-label="Indicadores da carteira"
@@ -603,37 +666,11 @@ export function OperationsApp() {
                     />
                     <Metric
                       icon={Target}
-                      label="Capacidade de hoje"
-                      value="150"
-                      detail="tratativas · 30 horas de esforço do time"
+                      label="Casos encerrados"
+                      value={String(summary.resolvedCount)}
+                      detail={`${dayQueue.usedCapacity} tratativas consumidas na sessão`}
                       tone="green"
                     />
-                  </section>
-                  <section className="action-banner">
-                    <div className="banner-icon">
-                      <Sparkles size={26} />
-                    </div>
-                    <div className="banner-text">
-                      <Label tone="green">MENOS FILA. MAIS DIREÇÃO.</Label>
-                      <h2>
-                        O próximo passo da operação
-                        <br />
-                        começa com uma boa decisão.
-                      </h2>
-                      <p>
-                        Sua seleção de {dayQueue.orders.length} pedidos
-                        priorizados cobre{" "}
-                        <strong>{money(dayQueue.prioritized.value)}</strong> em
-                        valor de carteira.
-                        <br />
-                        Investigue com IA. Registre a ação. Acompanhe o
-                        resultado.
-                      </p>
-                    </div>
-                    <Button onClick={() => setTab("queue")}>
-                      Explorar fila do dia <ArrowRight size={16} />
-                    </Button>
-                    <div className="banner-orbit" />
                   </section>
                   <div className="overview-grid">
                     <section className="panel distribution">
@@ -792,6 +829,26 @@ export function OperationsApp() {
               )}
               {tab === "queue" && (
                 <>
+                  <div className="queue-explanation">
+                    <p>
+                      <b>
+                        {dayQueue.orders.length} pedidos selecionados para{" "}
+                        {dayQueue.availableCapacity} vagas restantes.
+                      </b>{" "}
+                      Reserva de {dayQueue.oldestReserved} vagas para os casos
+                      mais antigos; demais por valor, urgência e relacionamento.
+                      Cada encerramento consome uma vaga.
+                    </p>
+                    {frontIds && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setFrontIds(undefined)}
+                      >
+                        Remover filtro da frente
+                      </Button>
+                    )}
+                  </div>
                   <div className="comparison-grid">
                     <Compare
                       title="Fila priorizada"
@@ -810,8 +867,9 @@ export function OperationsApp() {
                         Uma escolha explicável.
                       </h3>
                       <p>
-                        Comparação de 150 vagas em cada fila. Maior valor
-                        coberto não comprova maior recuperação financeira.
+                        Comparação de {dayQueue.orders.length} vagas em cada
+                        fila. Maior valor coberto não comprova maior recuperação
+                        financeira.
                       </p>
                     </div>
                   </div>
@@ -821,7 +879,12 @@ export function OperationsApp() {
                         <h2>
                           Fila de trabalho{" "}
                           <span className="muted">
-                            / {showAll ? "toda a carteira" : "150 prioridades"}
+                            /{" "}
+                            {frontIds
+                              ? `${filtered.length} pedidos no recorte da frente`
+                              : showAll
+                                ? "toda a carteira"
+                                : `${dayQueue.orders.length} prioridades`}
                           </span>
                         </h2>
                         <p>
@@ -955,44 +1018,31 @@ export function OperationsApp() {
                       </div>
                     </div>
                   </section>
-                  <section className="panel simulation">
-                    <div>
-                      <h2>Benefício hipotético de intervenção</h2>
-                      <p>
-                        Da exposição elegível da fila, qual fração você supõe
-                        evitar? Não é recuperação observada.
-                      </p>
-                    </div>
-                    <label>
-                      Eficácia assumida: <b>{efficacy}%</b>
-                      <input
-                        aria-label="Eficácia assumida"
-                        type="range"
-                        min="0"
-                        max="100"
-                        step="5"
-                        value={efficacy}
-                        onChange={(e) => setEfficacy(Number(e.target.value))}
-                      />
-                    </label>
-                    <div>
-                      <strong>
-                        {money(
-                          new Decimal(dayQueue.prioritized.risk)
-                            .times(efficacy)
-                            .div(100)
-                            .toFixed(2),
-                        )}
-                      </strong>
-                      <small>
-                        exposição potencialmente evitada, antes dos custos
-                      </small>
-                    </div>
-                  </section>
+                  <Button variant="outline" onClick={() => setTab("impact")}>
+                    Avaliar risco, custos e cenário financeiro{" "}
+                    <ArrowRight size={14} />
+                  </Button>
                 </>
               )}
               {tab === "insights" && (
                 <>
+                  <div className="scope-guide">
+                    <div>
+                      <b>Caso a caso</b>
+                      <p>
+                        Verificar endereço, pagamento, estoque ou a tratativa de
+                        um pedido com o cliente.
+                      </p>
+                    </div>
+                    <div>
+                      <b>Investigar processo</b>
+                      <p>
+                        Recorrência ou divergência de regra exige uma ação para
+                        o grupo, com responsável e hipótese de validação. Não
+                        prova causa.
+                      </p>
+                    </div>
+                  </div>
                   <div className="alert alert-info">
                     <CircleHelp size={18} />
                     <span>
@@ -1028,6 +1078,7 @@ export function OperationsApp() {
                           gift: "Brinde",
                           carrier_state: "Transportadora / UF",
                           machine_shift_dc: "Máquina / turno / CD",
+                          promise_rule: "Regra de prazo",
                         }).map(([key, label]) => (
                           <option key={key} value={key}>
                             {label}
@@ -1040,7 +1091,10 @@ export function OperationsApp() {
                         onChange={(e) => setPatternType(e.target.value)}
                       >
                         <option value="">Todas as exceções</option>
-                        {Object.entries(exceptionLabels).map(([key, label]) => (
+                        {Object.entries({
+                          ...exceptionLabels,
+                          divergencia_prazo: "Divergência de prazo",
+                        }).map(([key, label]) => (
                           <option key={key} value={key}>
                             {label}
                           </option>
@@ -1057,7 +1111,7 @@ export function OperationsApp() {
                     </Empty>
                   )}
                   <div className="insight-grid">
-                    {visiblePatterns.map((p) => (
+                    {visiblePatterns.slice(0, patternLimit).map((p) => (
                       <section className="panel insight-card" key={p.id}>
                         <div className="insight-top">
                           <span className="icon-box">
@@ -1076,12 +1130,20 @@ export function OperationsApp() {
                                   gift: "Brinde",
                                   carrier_state: "Transportadora / UF",
                                   machine_shift_dc: "Máquina / turno / CD",
+                                  promise_rule: "Regra de prazo",
                                 } as Record<string, string>
                               )[p.dimension]
                             }
                           </Label>
                         </div>
                         <h2>{p.title}</h2>
+                        <Label
+                          tone={p.scope === "process" ? "purple" : "neutral"}
+                        >
+                          {p.scope === "process"
+                            ? "Investigar processo"
+                            : "Validar caso a caso"}
+                        </Label>
                         <div className="insight-number">
                           {(p.share * 100).toFixed(1)}
                           <span>%</span>
@@ -1091,9 +1153,21 @@ export function OperationsApp() {
                           <b>
                             {p.count} de {p.total}
                           </b>{" "}
-                          pedidos desta exceção na carteira consolidada.
+                          registros elegíveis com esta dimensão disponível.
                         </p>
+                        {p.dimension !== "promise_rule" && (
+                          <p className="association-note">
+                            Na base de exceções:{" "}
+                            {(p.baselineShare * 100).toFixed(1)}%. Associação
+                            relativa: <b>{p.enrichment.toFixed(2)}×</b>. Não é
+                            taxa de falha das vendas.
+                          </p>
+                        )}
                         <small>{p.hypothesis}</small>
+                        <p className="validation-question">
+                          <b>Como validar</b>
+                          {p.investigationQuestion}
+                        </p>
                         <div className="evidence-links">
                           {p.evidenceIds.slice(0, 3).map((id) => (
                             <button
@@ -1114,34 +1188,52 @@ export function OperationsApp() {
                           disabled={busy}
                           onClick={() => startInvestigation(p.id, "pattern")}
                         >
-                          <Sparkles size={15} /> Investigar padrão{" "}
+                          <Sparkles size={15} />{" "}
+                          {p.scope === "process"
+                            ? "Criar ação de processo com IA"
+                            : "Investigar caso com IA"}{" "}
                           <ArrowUpRight size={15} />
                         </Button>
                       </section>
                     ))}
                   </div>
+                  {visiblePatterns.length > patternLimit && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setPatternLimit((limit) => limit + 6)}
+                    >
+                      Mostrar próximos sinais (
+                      {visiblePatterns.length - patternLimit} restantes)
+                    </Button>
+                  )}
                 </>
               )}
               {tab === "agent" && (
                 <>
-                  <div className="agent-intro">
-                    <span className="agent-orb">
-                      <Bot size={30} />
-                    </span>
-                    <div>
-                      <Label tone="purple">AGENTE DE OPERAÇÕES</Label>
-                      <h2>Consulta. Investiga. Registra.</h2>
-                      <p>
-                        Groq usa ferramentas da aplicação para criar
-                        encaminhamentos úteis, com evidências e histórico.
-                      </p>
+                  {operations && (
+                    <div className="agent-start">
+                      <div>
+                        <h2>Comece pelo plano do dia</h2>
+                        <p>
+                          O agente organiza a seleção inteira por área. Use a
+                          investigação individual para aprofundar um caso.
+                        </p>
+                      </div>
+                      <Button
+                        disabled={busy || !dayQueue.orders.length}
+                        onClick={() =>
+                          currentPlan
+                            ? setTab("overview")
+                            : startInvestigation("day", "daily")
+                        }
+                      >
+                        <Sparkles size={16} />{" "}
+                        {currentPlan
+                          ? "Abrir plano do dia"
+                          : "Preparar plano do dia"}
+                      </Button>
                     </div>
-                    <Label tone={summary.modelConfigured ? "green" : "orange"}>
-                      {summary.modelConfigured
-                        ? "Groq configurado"
-                        : "Configurar chave Groq"}
-                    </Label>
-                  </div>
+                  )}
                   {(busy || events.length > 0) && (
                     <section className="panel execution">
                       <div className="panel-heading">
@@ -1195,6 +1287,37 @@ export function OperationsApp() {
                       pagamento real
                     </p>
                   </div>
+                  <div
+                    className="task-scope-filter"
+                    role="group"
+                    aria-label="Filtrar escopo das ações"
+                  >
+                    {[
+                      ["all", "Todas as ações"],
+                      ["case", "Casos individuais"],
+                      ["process", "Melhorias de processo"],
+                    ].map(([scope, label]) => (
+                      <button
+                        key={scope}
+                        aria-pressed={taskScope === scope}
+                        onClick={() => setTaskScope(scope)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {tasks.length > 0 &&
+                    !tasks.some(
+                      (task) =>
+                        taskScope === "all" ||
+                        (task.scope === "process" ? "process" : "case") ===
+                          taskScope,
+                    ) && (
+                      <Empty title="Nenhuma ação neste escopo">
+                        Selecione outro filtro ou solicite uma investigação ao
+                        agente.
+                      </Empty>
+                    )}
                   {!tasks.length ? (
                     <section className="panel">
                       <Empty title="A primeira ação começa com uma investigação">
@@ -1209,108 +1332,144 @@ export function OperationsApp() {
                     </section>
                   ) : (
                     <div className="task-grid">
-                      {[...tasks].reverse().map((t) => (
-                        <section className="panel task-card" key={t.id}>
-                          <div className="task-top">
-                            <Label
-                              tone={
-                                t.status === "pendente_aprovacao"
-                                  ? "orange"
-                                  : ["concluida", "aprovada"].includes(t.status)
-                                    ? "green"
-                                    : "purple"
-                              }
-                            >
-                              {t.status.replaceAll("_", " ")}
-                            </Label>
-                            <small>
-                              {t.kind.startsWith("proposta")
-                                ? "Proposta · sem execução externa"
-                                : "Tarefa interna"}
-                            </small>
-                          </div>
-                          <h3>{t.title}</h3>
-                          <p>{t.justification}</p>
-                          {t.facts && (
-                            <div className="verified-facts">
-                              <b>Fatos verificados pelo sistema</b>
-                              {t.facts.map((fact) => (
-                                <small key={fact}>{fact}</small>
-                              ))}
-                            </div>
-                          )}
-                          <div className="task-meta">
-                            <span>
-                              <Package size={13} />
-                              {t.orderId}
-                            </span>
-                            <span>
-                              <ClipboardList size={13} />
-                              {t.area}
-                            </span>
-                            <span>
-                              <CalendarDays size={13} />
-                              {shortDate(t.dueAt)} · data do caso
-                            </span>
-                          </div>
-                          <div className="evidence-links">
-                            {t.evidenceIds.map((id) => (
-                              <button
-                                key={id}
-                                onClick={() =>
-                                  setSelected(
-                                    allOrders.find((o) => o.id === id),
-                                  )
+                      {[...tasks]
+                        .filter(
+                          (t) =>
+                            taskScope === "all" ||
+                            (t.scope === "process" ? "process" : "case") ===
+                              taskScope,
+                        )
+                        .reverse()
+                        .map((t) => (
+                          <section className="panel task-card" key={t.id}>
+                            <div className="task-top">
+                              <Label
+                                tone={
+                                  t.status === "pendente_aprovacao"
+                                    ? "orange"
+                                    : ["concluida", "aprovada"].includes(
+                                          t.status,
+                                        )
+                                      ? "green"
+                                      : "purple"
                                 }
                               >
-                                {id}
-                              </button>
-                            ))}
-                          </div>
-                          <div className="task-actions">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                setSelected(
-                                  allOrders.find((o) => o.id === t.orderId),
-                                )
-                              }
-                            >
-                              Ver pedido <ArrowUpRight size={14} />
-                            </Button>
-                            {t.status === "aberta" && (
+                                {statusLabel(t.status)}
+                              </Label>
+                              <small>
+                                {t.scope === "process"
+                                  ? "Ação de processo"
+                                  : t.kind.startsWith("proposta")
+                                    ? "Proposta · sem execução externa"
+                                    : "Tarefa interna"}
+                              </small>
+                            </div>
+                            <h3>{t.title}</h3>
+                            <p>{t.justification}</p>
+                            {t.scope === "process" && (
+                              <div className="process-next-step">
+                                <b>Próximo passo de validação</b>
+                                <p>{t.nextStep}</p>
+                                <small>
+                                  {t.affectedOrderIds?.length || 0} pedidos
+                                  relacionados. Esta ação não encerra esses
+                                  casos e exige dimensionamento de esforço.
+                                </small>
+                                <button
+                                  className="plain-link"
+                                  onClick={() => {
+                                    openQueue(t.affectedOrderIds);
+                                    setShowAll(true);
+                                  }}
+                                >
+                                  Ver pedidos relacionados{" "}
+                                  <ArrowRight size={13} />
+                                </button>
+                              </div>
+                            )}
+                            {t.facts && (
+                              <div className="verified-facts">
+                                <b>Fatos verificados pelo sistema</b>
+                                {t.facts.map((fact) => (
+                                  <small key={fact}>{fact}</small>
+                                ))}
+                              </div>
+                            )}
+                            <div className="task-meta">
+                              <span>
+                                <Package size={13} />
+                                {t.orderId}
+                              </span>
+                              <span>
+                                <ClipboardList size={13} />
+                                {t.area}
+                              </span>
+                              <span>
+                                <CalendarDays size={13} />
+                                {shortDate(t.dueAt)} · data do caso
+                              </span>
+                            </div>
+                            <div className="evidence-links">
+                              {t.evidenceIds.map((id) => (
+                                <button
+                                  key={id}
+                                  onClick={() =>
+                                    setSelected(
+                                      allOrders.find((o) => o.id === id),
+                                    )
+                                  }
+                                >
+                                  {id}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="task-actions">
                               <Button
                                 size="sm"
                                 variant="outline"
-                                disabled={Boolean(taskPending) || busy}
-                                onClick={() => changeTask(t, "concluida")}
+                                onClick={() =>
+                                  setSelected(
+                                    allOrders.find((o) => o.id === t.orderId),
+                                  )
+                                }
                               >
-                                <Check size={14} /> Concluir tarefa
+                                Ver pedido <ArrowUpRight size={14} />
                               </Button>
-                            )}
-                            {t.status === "pendente_aprovacao" && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  disabled={Boolean(taskPending) || busy}
-                                  onClick={() => changeTask(t, "aprovada")}
-                                >
-                                  Aprovar proposta na demo
-                                </Button>
+                              {t.status === "aberta" && (
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   disabled={Boolean(taskPending) || busy}
-                                  onClick={() => changeTask(t, "rejeitada")}
+                                  onClick={() => changeTask(t, "concluida")}
                                 >
-                                  Rejeitar
+                                  <Check size={14} />{" "}
+                                  {t.scope === "process"
+                                    ? "Concluir ação de processo"
+                                    : "Concluir tarefa"}
                                 </Button>
-                              </>
-                            )}
-                          </div>
-                        </section>
-                      ))}
+                              )}
+                              {t.status === "pendente_aprovacao" && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    disabled={Boolean(taskPending) || busy}
+                                    onClick={() => changeTask(t, "aprovada")}
+                                  >
+                                    Aprovar proposta na demo
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={Boolean(taskPending) || busy}
+                                    onClick={() => changeTask(t, "rejeitada")}
+                                  >
+                                    Rejeitar
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </section>
+                        ))}
                     </div>
                   )}
                   <div className="section-title">
@@ -1334,8 +1493,12 @@ export function OperationsApp() {
                             )}
                           </span>
                           <b>
-                            {r.type === "order" ? "Pedido" : "Padrão"} ·{" "}
-                            {r.target}
+                            {r.type === "daily"
+                              ? "Plano do dia"
+                              : r.type === "order"
+                                ? "Pedido"
+                                : "Padrão"}{" "}
+                            · {r.target}
                           </b>
                           <Label
                             tone={r.status === "completed" ? "green" : "orange"}
@@ -1372,6 +1535,13 @@ export function OperationsApp() {
                     ))
                   )}
                 </>
+              )}
+              {tab === "impact" && operations && (
+                <FinancialImpact
+                  report={operations}
+                  selected={dayQueue.orders}
+                  onQueue={() => openQueue()}
+                />
               )}
               {tab === "method" && (
                 <Methodology
@@ -1557,7 +1727,7 @@ export function OperationsApp() {
                   <div className="detail-task" key={t.id}>
                     <CheckCircle2 size={16} />
                     <span>{t.title}</span>
-                    <Label>{t.status.replaceAll("_", " ")}</Label>
+                    <Label>{statusLabel(t.status)}</Label>
                   </div>
                 ))}
               {!tasks.some((t) => t.orderId === selected.id) && (
@@ -1683,9 +1853,16 @@ function Methodology({
         <Label tone="green">TRANSPARÊNCIA POR PADRÃO</Label>
         <h2>Uma pontuação explicável, não uma promessa de retorno.</h2>
         <p>
-          A fila combina valor (45%), urgência (35%) e relacionamento (20%). Os
-          pesos podem ser alterados e são normalizados pela soma. Empates seguem
-          a abertura mais antiga e depois o ID.
+          A pontuação combina valor (45%), urgência (35%) e relacionamento
+          (20%). Os pesos podem ser alterados e são normalizados pela soma.
+          Empates seguem a abertura mais antiga e depois o ID.
+        </p>
+        <p>
+          A seleção reserva 20% das vagas restantes aos casos mais antigos. As
+          demais vagas seguem a pontuação. Cada encerramento consome uma
+          tratativa do dia; reabrir não devolve o esforço já realizado. A
+          reserva é uma política do protótipo e precisa ser avaliada pela
+          equipe.
         </p>
         <h3>Como cada componente é calculado</h3>
         <p>
@@ -1727,9 +1904,9 @@ function Methodology({
         </p>
         <p>
           A simulação de benefício multiplica a exposição elegível pela eficácia
-          assumida. Não desconta custos de intervenção; não comprova
-          recuperação. Tarefas criadas ou concluídas não geram receita
-          recuperada.
+          assumida. Custos são descontados do cenário apenas quando informados;
+          não comprova recuperação. Tarefas criadas ou concluídas não geram
+          receita recuperada.
         </p>
       </section>
       <div className="method-side">
@@ -1737,7 +1914,8 @@ function Methodology({
           <h2>Qualidade e limites da base</h2>
           <p>
             <b>
-              {summary.sourceRows} registros → {summary.count} pedidos únicos.
+              {summary.sourceRows} registros → {summary.totalCount} pedidos
+              únicos na origem.
             </b>{" "}
             Existem {summary.conflicts} conflitos apenas de status, sem
             timestamp para definir o mais recente. O agente solicita revisão
@@ -1753,19 +1931,29 @@ function Methodology({
             pedidos expedidos, não há taxa de falha por máquina, transportadora
             ou CD, nem comprovação de causa.
           </p>
+          <p>
+            As dimensões são selecionadas conforme a etapa operacional. Sinais
+            estatísticos exigem ao menos dez casos no grupo; sugerimos
+            investigar o processo quando a participação na exceção alcança 15% e
+            a associação relativa é de pelo menos 1,5 vez a participação na base
+            elegível. São limiares de triagem, sem teste de significância. A
+            divergência de prazo é uma verificação da regra contratual e segue
+            critério próprio.
+          </p>
         </section>
         <section className="panel prose">
           <h2>O agente dentro da operação</h2>
           <p>
             Groq consulta ferramentas controladas pelo servidor: pedido,
-            padrões, simulação e criação de tarefa. Cada tarefa exige consulta
-            prévia e IDs válidos de evidência. Há limite de seis rodadas, doze
-            ferramentas e duas tarefas por investigação.
+            padrões, planos diários, simulação e ações de processo. Cada ação
+            exige consulta prévia e IDs válidos de evidência. Há limite de seis
+            rodadas, doze ferramentas e duas tarefas por investigação.
           </p>
           <p>
-            As tarefas têm área responsável, justificativa e prazo de um dia
-            útil após a referência do caso. Aprovar uma proposta só altera o
-            estado na demonstração.
+            Tarefas individuais têm prazo de um dia útil; ações de processo, de
+            dois dias úteis após a referência. O esforço de processo precisa ser
+            dimensionado antes de incluído na agenda. Aprovar uma proposta só
+            altera o estado na demonstração.
           </p>
           <p>
             Histórico é persistido por sete dias, isolado por cookie seguro de

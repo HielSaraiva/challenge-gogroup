@@ -1,5 +1,15 @@
 import { z } from "zod";
+import Decimal from "decimal.js";
 import type { CaseRecord, Dataset, Order, SessionState, Task } from "./types";
+const amount = z.string().regex(/^\d{1,7}(\.\d{1,2})?$/);
+const financialSchema = z
+  .object({
+    retained: amount,
+    refunded: amount,
+    cost: amount,
+    evidence: z.string().trim().min(15).max(1200),
+  })
+  .strict();
 export const caseActionSchema = z.discriminatedUnion("action", [
   z
     .object({
@@ -14,6 +24,7 @@ export const caseActionSchema = z.discriminatedUnion("action", [
       action: z.literal("resolve"),
       orderId: z.string().min(1).max(50),
       note: z.string().trim().min(10).max(1200),
+      financial: financialSchema.optional(),
     })
     .strict(),
   z
@@ -75,7 +86,9 @@ export function transitionCase(
       throw new Error(
         "Revise o conflito de status antes de encerrar a exceção.",
       );
-    const related = tasks.filter((t) => t.orderId === order.id);
+    const related = tasks.filter(
+      (t) => t.orderId === order.id && t.scope !== "process",
+    );
     if (!related.some((t) => ["concluida", "aprovada"].includes(t.status)))
       throw new Error(
         "Conclua uma tarefa ou aprove uma proposta antes de encerrar a exceção.",
@@ -86,7 +99,29 @@ export function transitionCase(
       throw new Error(
         "Existem tarefas ou propostas pendentes para este pedido.",
       );
-    next.resolution = { note: action.note, resolvedAt: now };
+    if (action.financial) {
+      if (
+        new Decimal(action.financial.retained).gt(order.value) ||
+        new Decimal(action.financial.refunded).gt(order.value)
+      )
+        throw new Error(
+          "Valor preservado ou reembolsado não pode exceder o valor do pedido.",
+        );
+      if (
+        new Decimal(action.financial.retained).gt(0) &&
+        new Decimal(action.financial.refunded).gt(0)
+      )
+        throw new Error(
+          "Registre valor preservado ou reembolso, sem contar os dois no mesmo encerramento.",
+        );
+    }
+    next.resolution = {
+      note: action.note,
+      resolvedAt: now,
+      ...(action.financial
+        ? { financial: { ...action.financial, source: "operator_demo" } }
+        : {}),
+    };
   } else {
     if (!next.resolution) throw new Error("Esta exceção já está aberta.");
     delete next.resolution;
@@ -97,6 +132,9 @@ export function transitionCase(
     note: action.note,
     at: now,
     ...(action.action === "review_status" ? { status: action.status } : {}),
+    ...(action.action === "resolve" && next.resolution?.financial
+      ? { financial: next.resolution.financial }
+      : {}),
   });
   return next;
 }

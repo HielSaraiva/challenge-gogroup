@@ -6,11 +6,28 @@ import {
   integer,
   primaryKey,
 } from "drizzle-orm/pg-core";
-import type { CaseRecord, Dataset, SessionState, Task } from "@/domain/types";
+import type {
+  CaseRecord,
+  DailyPlan,
+  Dataset,
+  SessionState,
+  Task,
+} from "@/domain/types";
 export const datasets = pgTable("datasets", {
   id: text("id").primaryKey(),
   payload: jsonb("payload").$type<Dataset>().notNull(),
 });
+export const dailyPlans = pgTable(
+  "demo_daily_plans",
+  {
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    payload: jsonb("payload").$type<DailyPlan>().notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.sessionId, table.key] })],
+);
 export const sessions = pgTable("demo_sessions", {
   id: text("id").primaryKey(),
   payload: jsonb("payload").$type<SessionState>().notNull(),

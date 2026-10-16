@@ -2,21 +2,23 @@
 
 **Uma central de operações que transforma exceções em encaminhamentos rastreáveis.**
 
-Go Operations combina priorização explicável, investigação assistida por IA e acompanhamento de tratativas. O agente consulta evidências e usa ferramentas do servidor para registrar tarefas. Cada visitante recebe uma demonstração independente, sem login.
+Go Operations responde quais pedidos tratar hoje, como encaminhá-los e quais sinais exigem investigar o processo. O agente consulta evidências e usa ferramentas do servidor para registrar um plano diário, tarefas individuais e ações de melhoria. Cada visitante recebe uma demonstração independente, sem login.
 
 Projeto demonstrativo desenvolvido para um desafio técnico, com identidade visual inspirada no [site público do Gogroup](https://estagiogogroup.com.br/). Este repositório contém a aplicação e testes sintéticos; materiais, registros e resultados da base privada não são distribuídos nesta documentação.
 
 ## Capacidades
 
-| Área             | Funcionalidade                                                                                         |
-| ---------------- | ------------------------------------------------------------------------------------------------------ |
-| Visão geral      | Indicadores da carteira pendente e progresso da sessão                                                 |
-| Fila de trabalho | Priorização por valor, urgência e relacionamento, pesos ajustáveis e comparação com FIFO               |
-| Dossiê do pedido | Evidências, explicação da prioridade, prazos e custos indicativos                                      |
-| Investigações    | Concentrações operacionais com amostra e referências verificáveis                                      |
-| Agente de IA     | Consulta de fatos, simulação de alternativas e criação persistente de tarefas                          |
-| Tratativas       | Revisão de status conflitante, conclusão de tarefas, avaliação de propostas, encerramento e reabertura |
-| Auditoria        | Histórico de decisões e isolamento das alterações por visitante                                        |
+| Área               | Funcionalidade                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------------ |
+| Visão geral        | Indicadores da carteira pendente e progresso da sessão                                                 |
+| Operação diária    | Plano persistido pelo agente, orientações por área e capacidade restante                               |
+| Fila de trabalho   | Priorização por valor, urgência e relacionamento, pesos ajustáveis e comparação com FIFO               |
+| Dossiê do pedido   | Evidências, explicação da prioridade, prazos e custos indicativos                                      |
+| Investigações      | Concentrações operacionais com amostra e referências verificáveis                                      |
+| Agente de IA       | Consulta de fatos, simulação de alternativas e criação persistente de tarefas                          |
+| Tratativas         | Revisão de status conflitante, conclusão de tarefas, avaliação de propostas, encerramento e reabertura |
+| Auditoria          | Histórico de decisões e isolamento das alterações por visitante                                        |
+| Impacto financeiro | Exposição elegível, registros declarados com evidência e cenários com custos explícitos                |
 
 ## Arquitetura
 
@@ -110,14 +112,19 @@ Sem banco ou importação, a interface informa que a configuração está penden
 
 O modelo recebe ferramentas restritas conforme a etapa:
 
-| Ferramenta          | Resultado                                                                 |
-| ------------------- | ------------------------------------------------------------------------- |
-| `consultar_pedido`  | Fatos, indicadores calculados, ações admitidas e IDs válidos de evidência |
-| `consultar_padroes` | Concentração observada e amostra de pedidos relacionados                  |
-| `simular_tratativa` | Custo indicativo de uma alternativa, sem execução financeira              |
-| `criar_tarefa`      | Tarefa persistida com justificativa, evidências, responsável e prazo      |
+| Ferramenta            | Resultado                                                                 |
+| --------------------- | ------------------------------------------------------------------------- |
+| `consultar_pedido`    | Fatos, indicadores calculados, ações admitidas e IDs válidos de evidência |
+| `consultar_padroes`   | Concentração observada e amostra de pedidos relacionados                  |
+| `simular_tratativa`   | Custo indicativo de uma alternativa, sem execução financeira              |
+| `criar_tarefa`        | Tarefa persistida com justificativa, evidências, responsável e prazo      |
+| `consultar_fila`      | Seleção calculada, capacidade, comparação com FIFO e frentes de trabalho  |
+| `registrar_plano_dia` | Plano persistido com orientação para cada área da seleção calculada       |
+| `criar_acao_processo` | Investigação de melhoria vinculada a um padrão e a evidências consultadas |
 
 Consultar o pedido é obrigatório antes de criar uma tarefa. Propostas financeiras exigem simulação prévia e avaliação humana. Um conflito de status bloqueia outras tratativas até uma revisão explícita. A justificativa é identificada como hipótese do agente; fatos e números verificados aparecem separadamente.
+
+O plano exige consulta prévia e cobertura de todas as áreas; sua seleção e métricas vêm do servidor. Ações de processo exigem um padrão consultado e evidências distintas. Elas não encerram o conjunto de pedidos. Uma resposta textual sem plano ou tarefa persistida não conclui uma investigação.
 
 As execuções têm orçamento de tempo, limite de chamadas e controle de concorrência. Falhas do provedor preservam o histórico e efeitos já registrados. A idempotência evita duplicar uma mesma ação na sessão.
 
@@ -132,9 +139,11 @@ As execuções têm orçamento de tempo, limite de chamadas e controle de concor
 
 ## Critérios e limites
 
-A prioridade combina componentes normalizados de valor, urgência e relacionamento. Os pesos são ajustáveis e os empates seguem critérios determinísticos. A metodologia detalhada fica na aplicação, junto ao contexto da base autorizada.
+A pontuação combina componentes normalizados de valor, urgência e relacionamento. A seleção reserva parte da capacidade para os casos mais antigos e preenche as demais vagas por pontuação, para reduzir o adiamento contínuo de pedidos de menor valor. Os pesos são ajustáveis e os empates seguem critérios determinísticos. Cada encerramento consome capacidade da data de referência da demonstração; reabrir preserva o esforço consumido. O esforço de melhoria de processo requer dimensionamento próprio. A metodologia detalhada fica na aplicação.
 
 Valor de carteira, exposição estimada, custo de intervenção e benefício simulado são conceitos distintos. Tarefas concluídas não representam receita recuperada. Concentrações em uma base de exceções não demonstram causalidade ou taxa de falha da operação completa.
+
+Resultados declarados pelo operador exigem evidência, respeitam o valor do pedido e aparecem separados de recuperação comprovada. A demonstração não possui confirmação externa de pagamentos ou retenção. O simulador exige eficácia e custo assumidos para apresentar benefício líquido estimado.
 
 Encerrar um caso atualiza a demonstração. Aprovar uma proposta registra uma decisão. Não existem integrações de envio a clientes, pagamento, reembolso, transportadora ou estoque.
 
@@ -154,11 +163,20 @@ pnpm test:smoke
 
 # Opcional: consome a cota da API Groq
 pnpm test:smoke --agent
+
+# Plano diário e ação de processo com Groq real
+pnpm test:smoke --strategic
+
+# Execuções separadas para contas com cota reduzida
+pnpm test:smoke --plan
+pnpm test:smoke --process
 ```
 
 A suíte cobre calendário, precisão monetária, elegibilidade de risco, ranking, importação, ferramentas, idempotência, isolamento, conflitos e ciclo de encerramento. Testes públicos utilizam dados fictícios próprios. Verificações adicionais da base privada são opcionais e não publicam seus resultados.
 
 Testes locais não substituem a validação do fluxo real na Vercel e da persistência no banco remoto.
+
+Veja a [avaliação de utilidade e o roteiro de validação operacional](docs/OPERATIONS_VALIDATION.md) para critérios de aceite, limitações e desenho de um piloto.
 
 ## Recursos visuais
 

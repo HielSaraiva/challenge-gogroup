@@ -40,7 +40,11 @@ export type Order = {
   openedAt: string;
   issues: DataIssue[];
   statusReview?: { status: string; note: string; reviewedAt: string };
-  resolution?: { note: string; resolvedAt: string };
+  resolution?: {
+    note: string;
+    resolvedAt: string;
+    financial?: FinancialOutcome;
+  };
   caseHistory?: CaseEvent[];
 };
 export type CaseEvent = {
@@ -49,6 +53,14 @@ export type CaseEvent = {
   note: string;
   at: string;
   status?: string;
+  financial?: FinancialOutcome;
+};
+export type FinancialOutcome = {
+  retained: string;
+  refunded: string;
+  cost: string;
+  evidence: string;
+  source: "operator_demo";
 };
 export type CaseRecord = {
   orderId: string;
@@ -82,6 +94,7 @@ export type PriorityBreakdown = {
 export type RankedOrder = Order & {
   priority: PriorityBreakdown;
   customer?: Customer;
+  selectionReason?: string;
 };
 export type Insight = {
   id: string;
@@ -94,6 +107,10 @@ export type Insight = {
   share: number;
   evidenceIds: string[];
   hypothesis: string;
+  baselineShare: number;
+  enrichment: number;
+  scope: "case" | "process";
+  investigationQuestion: string;
 };
 export const TASK_KINDS = [
   "revisao_cadastral",
@@ -106,6 +123,7 @@ export const TASK_KINDS = [
   "revisao_estoque",
   "proposta_reenvio",
   "proposta_reembolso",
+  "melhoria_processo",
 ] as const;
 export type TaskKind = (typeof TASK_KINDS)[number];
 export type Task = {
@@ -124,6 +142,10 @@ export type Task = {
   updatedAt: string;
   idempotencyKey: string;
   facts?: string[];
+  scope?: "case" | "process";
+  insightId?: string;
+  affectedOrderIds?: string[];
+  nextStep?: string;
 };
 export type ActionProposal = Task & {
   kind: "proposta_reenvio" | "proposta_reembolso";
@@ -137,19 +159,43 @@ export type ToolEvent = {
 export type Investigation = {
   id: string;
   target: string;
-  type: "order" | "pattern";
+  type: "order" | "pattern" | "daily";
   status: "running" | "completed" | "failed";
   summary: string;
   events: ToolEvent[];
   taskIds: string[];
   createdAt: string;
   updatedAt: string;
+  planId?: string;
+};
+export type Workstream = {
+  area: string;
+  orderIds: string[];
+  value: string;
+  risk: string;
+  nextStep: string;
+};
+export type DailyPlan = {
+  id: string;
+  idempotencyKey: string;
+  investigationId: string;
+  reference: string;
+  createdAt: string;
+  selectedOrderIds: string[];
+  capacity: number;
+  usedCapacity: number;
+  weights: Weights;
+  priorityAreas: string[];
+  briefing: string;
+  workstreams: Workstream[];
+  fingerprint: string;
 };
 export type SessionState = {
   tasks: Task[];
   investigations: Investigation[];
   expiresAt: string;
   cases?: Record<string, CaseRecord>;
+  plans?: DailyPlan[];
 };
 export const REFERENCE_DATE = "2026-09-30";
 export const DEFAULT_WEIGHTS: Weights = {
