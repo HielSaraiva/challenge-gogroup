@@ -99,6 +99,7 @@ export function OperationsApp() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [resetting, setResetting] = useState(false);
+  const [confirmNewPlan, setConfirmNewPlan] = useState(false);
   const [query, setQuery] = useState("");
   const [all, setAll] = useState(false);
   const [page, setPage] = useState(1);
@@ -494,7 +495,10 @@ export function OperationsApp() {
                           !day?.availableCapacity ||
                           !summary.count
                         }
-                        onClick={() => void investigate("day", "daily")}
+                        onClick={() => {
+                          if (day?.plan) setConfirmNewPlan(true);
+                          else void investigate("day", "daily");
+                        }}
                       >
                         {busy
                           ? "Preparando…"
@@ -1061,6 +1065,41 @@ export function OperationsApp() {
               />
             </>
           )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={confirmNewPlan} onOpenChange={setConfirmNewPlan}>
+        <DialogContent>
+          <DialogTitle>Gerar um novo plano com IA?</DialogTitle>
+          <DialogDescription>
+            Você já tem um plano disponível. A IA analisará novamente a carteira
+            e poderá selecionar outros pedidos ou mudar a estratégia. Quando o
+            novo plano for salvo, ele passará a ser o plano ativo. O anterior
+            continuará no histórico, e as tratativas já registradas serão
+            preservadas. Se a geração falhar, o plano atual será mantido.
+          </DialogDescription>
+          <div className="task-actions">
+            <Button
+              variant="outline"
+              autoFocus
+              onClick={() => setConfirmNewPlan(false)}
+            >
+              Manter plano atual
+            </Button>
+            <Button
+              disabled={
+                busy ||
+                day?.status === "preparing" ||
+                !day?.availableCapacity ||
+                !summary?.count
+              }
+              onClick={() => {
+                setConfirmNewPlan(false);
+                void investigate("day", "daily");
+              }}
+            >
+              Gerar novo plano
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
       <Dialog open={resetting} onOpenChange={setResetting}>
