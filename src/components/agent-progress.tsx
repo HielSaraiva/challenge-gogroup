@@ -157,52 +157,55 @@ export function AgentProgress({
       {!busy && <p role={failed ? "alert" : undefined}>{run?.summary}</p>}
       <details>
         <summary>Detalhes técnicos da execução</summary>
-        <p>
-          Histórico das chamadas do agente, da mais recente para a mais antiga.
-          Tentativas não concluídas ficam registradas mesmo quando o agente
-          corrige o conteúdo e consegue concluir a etapa depois.
-        </p>
-        {recovered.size > 0 && (
+        <div className="agent-technical-content">
           <p>
-            O agente corrigiu uma tentativa anterior e concluiu a etapa em
-            seguida. O resultado válido é o registro concluído mais recente.
+            Histórico das chamadas do agente, da mais recente para a mais
+            antiga. Tentativas não concluídas ficam registradas mesmo quando o
+            agente corrige o conteúdo e consegue concluir a etapa depois.
           </p>
-        )}
-        {calls
-          .reverse()
-          .sort(([, a], [, b]) => Date.parse(b.at) - Date.parse(a.at))
-          .map(([id, e]) => (
-            <article className="agent-event" key={id}>
-              <header className="agent-event-header">
-                <b>
-                  {toolDescriptions[e.tool]?.[0] || e.tool.replaceAll("_", " ")}{" "}
-                  ·{" "}
-                  {e.state === "ok"
-                    ? "Concluída"
-                    : e.state === "error"
-                      ? recovered.has(id)
-                        ? "Tentativa corrigida depois"
-                        : e.tool === "agente" && failed
-                          ? "Análise interrompida"
-                          : "Tentativa não concluída"
-                      : "Em andamento"}
-                </b>
-                <time dateTime={e.at}>
-                  {new Date(e.at).toLocaleTimeString("pt-BR")}
-                </time>
-              </header>
-              <p>{eventDescription(e)}</p>
-              {recovered.has(id) && (
-                <p>
-                  Depois dessa rejeição, o agente fez uma nova tentativa da
-                  mesma etapa e conseguiu concluí-la.
-                </p>
-              )}
-              {!e.operationId && (
-                <small>Registro legado: sem identificador de chamada.</small>
-              )}
-            </article>
-          ))}
+          {recovered.size > 0 && (
+            <p>
+              O agente corrigiu uma tentativa anterior e concluiu a etapa em
+              seguida. O resultado válido é o registro concluído mais recente.
+            </p>
+          )}
+          {calls
+            .reverse()
+            .sort(([, a], [, b]) => Date.parse(b.at) - Date.parse(a.at))
+            .map(([id, e]) => (
+              <article className="agent-event" key={id}>
+                <header className="agent-event-header">
+                  <b>
+                    {toolDescriptions[e.tool]?.[0] ||
+                      e.tool.replaceAll("_", " ")}{" "}
+                    ·{" "}
+                    {e.state === "ok"
+                      ? "Concluída"
+                      : e.state === "error"
+                        ? recovered.has(id)
+                          ? "Tentativa corrigida depois"
+                          : e.tool === "agente" && failed
+                            ? "Análise interrompida"
+                            : "Tentativa não concluída"
+                        : "Em andamento"}
+                  </b>
+                  <time dateTime={e.at}>
+                    {new Date(e.at).toLocaleTimeString("pt-BR")}
+                  </time>
+                </header>
+                <p>{eventDescription(e)}</p>
+                {recovered.has(id) && (
+                  <p>
+                    Depois dessa rejeição, o agente fez uma nova tentativa da
+                    mesma etapa e conseguiu concluí-la.
+                  </p>
+                )}
+                {!e.operationId && (
+                  <small>Registro legado: sem identificador de chamada.</small>
+                )}
+              </article>
+            ))}
+        </div>
       </details>
     </section>
   );

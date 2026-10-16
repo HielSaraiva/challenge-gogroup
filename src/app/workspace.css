@@ -216,6 +216,12 @@ summary:focus-visible,
   display: grid;
   gap: 14px;
 }
+.agent-technical-content {
+  margin: 16px clamp(12px, 2.5vw, 32px) 0;
+  padding-left: clamp(12px, 2vw, 24px);
+  border-left: 2px solid var(--line);
+  min-width: 0;
+}
 .agent-event {
   padding-block: 16px;
   border-bottom: 1px solid var(--line);
