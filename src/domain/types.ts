@@ -44,6 +44,7 @@ export type Order = {
     note: string;
     resolvedAt: string;
     financial?: FinancialOutcome;
+    outcome?: ResolutionOutcome;
   };
   caseHistory?: CaseEvent[];
 };
@@ -54,6 +55,7 @@ export type CaseEvent = {
   at: string;
   status?: string;
   financial?: FinancialOutcome;
+  outcome?: ResolutionOutcome;
 };
 export type FinancialOutcome = {
   retained: string;
@@ -142,15 +144,38 @@ export type Task = {
   updatedAt: string;
   idempotencyKey: string;
   facts?: string[];
+  execution?: TaskExecution;
+  conclusion?: ProcessConclusion;
   scope?: "case" | "process";
   insightId?: string;
   affectedOrderIds?: string[];
   nextStep?: string;
 };
+export type ResolutionOutcome = {
+  type:
+    | "endereco_corrigido"
+    | "entrega_confirmada"
+    | "item_reenviado"
+    | "pagamento_regularizado"
+    | "estoque_regularizado"
+    | "reembolso_registrado";
+  evidence: string;
+  refund?: string;
+  cost?: { amount: string; kind: "estimated" | "declared" };
+};
+export type TaskExecution = { note: string; evidence: string; at?: string };
+export type ProcessConclusion = {
+  outcome: "confirmada" | "descartada" | "inconclusiva";
+  observations: string;
+  evidenceIds: string[];
+  nextStep: string;
+  at?: string;
+};
 export type ActionProposal = Task & {
   kind: "proposta_reenvio" | "proposta_reembolso";
 };
 export type ToolEvent = {
+  operationId?: string;
   tool: string;
   state: "running" | "ok" | "error";
   message: string;
@@ -176,7 +201,32 @@ export type Workstream = {
   nextStep: string;
   agentDecision?: { firstOrderId: string; justification: string };
 };
+export const STRATEGIES = {
+  equilibrada: {
+    label: "Equilibrada",
+    weights: { value: 45, urgency: 35, relationship: 20 },
+  },
+  urgencia: {
+    label: "Urgência",
+    weights: { value: 25, urgency: 55, relationship: 20 },
+  },
+  relacionamento: {
+    label: "Relacionamento",
+    weights: { value: 25, urgency: 30, relationship: 45 },
+  },
+} as const;
+export type Strategy = keyof typeof STRATEGIES;
 export type DailyPlan = {
+  policyVersion?: string;
+  strategy?: Strategy;
+  strategyReason?: string;
+  datasetReference?: string;
+  statusSnapshot?: Record<string, string>;
+  comparison?: {
+    prioritized: ReturnType<typeof import("./analytics").profile>;
+    fifo: ReturnType<typeof import("./analytics").profile>;
+  };
+
   id: string;
   idempotencyKey: string;
   investigationId: string;

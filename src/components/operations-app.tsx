@@ -1,146 +1,127 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Activity,
-  ArrowRight,
-  ArrowUpRight,
-  BarChart3,
-  Bot,
-  CalendarDays,
-  Check,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  CircleHelp,
-  ClipboardList,
-  Clock3,
-  FileText,
-  Filter,
-  Layers3,
-  LayoutDashboard,
-  Loader2,
-  Menu,
-  Package,
-  RotateCcw,
-  Search,
-  ShieldCheck,
-  Sparkles,
-  Target,
-  TriangleAlert,
-  X,
-} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Bot, Menu, Search, X } from "lucide-react";
 import { Button } from "./ui/button";
-import { CaseControls } from "./case-controls";
-import {
-  OperationsSummary,
-  isPlanCurrent,
-  type OperationsReport,
-} from "./operations-summary";
-import { Methodology } from "./methodology";
-import { DataImport } from "./data-import";
-import { FinancialImpact } from "./financial-impact";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from "./ui/dialog";
+import { DataImport } from "./data-import";
+import { Methodology } from "./methodology";
+import { OperationsSummary } from "./operations-summary";
+import { FinancialImpact } from "./financial-impact";
+import { CaseControls } from "./case-controls";
+import { TaskResult } from "./task-result";
+import { AgentProgress } from "./agent-progress";
 import {
-  DEFAULT_WEIGHTS,
   exceptionLabels,
+  DEFAULT_WEIGHTS,
   type RankedOrder,
   type Insight,
-  type Investigation,
   type Task,
+  type Investigation,
   type ToolEvent,
-  type Weights,
+  type DailyPlan,
 } from "@/domain/types";
+import type { dashboard } from "@/domain/analytics";
+import type { planQueue } from "@/domain/planning";
+import type { financialReport } from "@/domain/operations";
 import { money, shortDate, statusLabel } from "@/lib/utils";
-import type { dashboard, queue } from "@/domain/analytics";
-type Dashboard = ReturnType<typeof dashboard>;
-type Queue = ReturnType<typeof queue>;
 type Tab =
-  "overview" | "queue" | "insights" | "agent" | "impact" | "method" | "data";
-const navigation = [
-  { id: "overview", title: "Hoje", icon: LayoutDashboard },
-  { id: "queue", title: "Pedidos", icon: Layers3 },
-  { id: "insights", title: "Processos", icon: Search },
-  { id: "agent", title: "Tarefas", icon: Sparkles },
-  { id: "impact", title: "Impacto", icon: BarChart3 },
-  { id: "data", title: "Dados", icon: Package },
-  { id: "method", title: "Metodologia", icon: FileText },
+  "overview" | "queue" | "agent" | "impact" | "insights" | "data" | "method";
+const nav = [
+  ["overview", "Hoje"],
+  ["queue", "Pedidos"],
+  ["agent", "Pendências"],
+  ["impact", "Resultados"],
+  ["insights", "Melhorias"],
+  ["data", "Dados"],
+  ["method", "Metodologia"],
 ] as const;
-async function get<T>(url: string): Promise<T> {
-  const response = await fetch(url, { cache: "no-store" });
-  const data = await response.json();
-  if (!response.ok)
-    throw new Error(data.error || "Não foi possível carregar os dados.");
-  return data;
+function recurrenceQuestion(p: Insight) {
+  if (p.dimension === "promise_rule")
+    return "Por que a promessa difere do contrato?";
+  const problem: Record<string, string> = {
+    vazamento_produto: "há vazamentos",
+    atraso_entrega: "há atrasos",
+    item_faltante: "faltam itens",
+    falha_personalizacao: "a personalização falha",
+    avaria_transporte: "há avarias",
+    extravio: "há extravios",
+    rastreio_parado: "o rastreio fica parado",
+    devolvido_transportadora: "há devoluções",
+  };
+  const group = p.group.replaceAll("|", " / ");
+  const where =
+    (
+      {
+        lot: `no lote ${group}`,
+        machine: `na máquina ${group}`,
+        carrier: `com a transportadora ${group}`,
+        shift: `no turno ${group}`,
+        dc: `no CD ${group}`,
+        gift:
+          p.group === "true"
+            ? "nos pedidos com brinde"
+            : "nos pedidos sem brinde",
+      } as Record<string, string>
+    )[p.dimension] || `no grupo ${group}`;
+  return `Por que ${problem[p.exception] || "este problema se repete"} ${where}?`;
 }
-function Label({
-  children,
-  tone = "neutral",
-}: {
-  children: React.ReactNode;
-  tone?: string;
-}) {
-  return <span className={`badge badge-${tone}`}>{children}</span>;
+async function get<T>(path: string): Promise<T> {
+  const r = await fetch(path, { cache: "no-store" });
+  const b = await r.json();
+  if (!r.ok)
+    throw new Error(b.error || "Não foi possível carregar a operação.");
+  return b;
 }
-function Empty({
-  title,
-  children,
-}: {
-  title: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="empty">
-      <Package size={30} />
-      <h3>{title}</h3>
-      <div className="empty-description">{children}</div>
-    </div>
-  );
-}
-function Meter({ value, label }: { value: number; label?: string }) {
-  return (
-    <div className="meter-wrap">
-      {label && (
-        <div className="meter-caption">
-          <span>{label}</span>
-          <b>{Math.round(value)}%</b>
-        </div>
-      )}
-      <div className="meter">
-        <span style={{ width: `${Math.min(Math.max(value, 0), 100)}%` }} />
-      </div>
-    </div>
-  );
-}
-
 export function OperationsApp() {
-  const [tab, setActiveTab] = useState<Tab>("overview");
+  const [tab, setActive] = useState<Tab>("overview");
+  const [menu, setMenu] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
-  const firstNavigation = useRef(true);
-  useEffect(() => {
-    if (firstNavigation.current) {
-      firstNavigation.current = false;
-      return;
-    }
-    heading.current?.focus({ preventScroll: true });
-  }, [tab]);
-  function setTab(next: Tab) {
-    setActiveTab(next);
+  const [summary, setSummary] = useState<ReturnType<typeof dashboard>>();
+  const [day, setDay] = useState<ReturnType<typeof planQueue>>();
+  const [financial, setFinancial] =
+    useState<ReturnType<typeof financialReport>>();
+  const [orders, setOrders] = useState<RankedOrder[]>([]);
+  const [patterns, setPatterns] = useState<Insight[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [runs, setRuns] = useState<Investigation[]>([]);
+  const [plans, setPlans] = useState<DailyPlan[]>([]);
+  const [selectedId, setSelectedId] = useState<string>();
+  const [processId, setProcessId] = useState<string>();
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [activeRun, setActiveRun] = useState<Investigation>();
+  const [events, setEvents] = useState<ToolEvent[]>([]);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const [query, setQuery] = useState("");
+  const [all, setAll] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(4);
+  const [pendingOnly, setPendingOnly] = useState(true);
+  function navigate(next: Tab) {
+    setActive(next);
+    setMenu(false);
+    setPage(1);
     if (window.location.hash !== `#${next}`)
       window.history.pushState(null, "", `#${next}`);
-    window.scrollTo({ top: 0, behavior: "instant" });
+    window.scrollTo({ top: 0 });
   }
   useEffect(() => {
     const restore = () => {
-      const value = window.location.hash.slice(1);
-      if (!value) setActiveTab("overview");
-      else if (value.startsWith("method-")) setActiveTab("method");
-      else if (navigation.some((item) => item.id === value))
-        setActiveTab(value as Tab);
+      const hash = window.location.hash.slice(1);
+      setActive(
+        hash.startsWith("method-")
+          ? "method"
+          : nav.some(([id]) => id === hash)
+            ? (hash as Tab)
+            : "overview",
+      );
     };
     restore();
     window.addEventListener("popstate", restore);
@@ -150,262 +131,130 @@ export function OperationsApp() {
       window.removeEventListener("hashchange", restore);
     };
   }, []);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [summary, setSummary] = useState<Dashboard>();
-  const [dayQueue, setQueue] = useState<Queue>();
-  const [allOrders, setAllOrders] = useState<RankedOrder[]>([]);
-  const [patterns, setPatterns] = useState<Insight[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [runs, setRuns] = useState<Investigation[]>([]);
-  const [operations, setOperations] = useState<OperationsReport>();
-  const [frontIds, setFrontIds] = useState<string[]>();
-  const [taskScope, setTaskScope] = useState("all");
-  const [taskStatus, setTaskStatus] = useState("pending");
-  const [weights, setWeights] = useState<Weights>(DEFAULT_WEIGHTS);
-  const [draftWeights, setDraftWeights] = useState<Weights>(DEFAULT_WEIGHTS);
-  const [query, setQuery] = useState("");
-  const [type, setType] = useState("");
-  const [brand, setBrand] = useState("");
-  const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
-  const [showAll, setShowAll] = useState(false);
-  const [showWeights, setShowWeights] = useState(false);
-  const [selected, setSelected] = useState<RankedOrder>();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [events, setEvents] = useState<ToolEvent[]>([]);
-  const [resetting, setResetting] = useState(false);
-  const [taskPending, setTaskPending] = useState<string>();
-  const [patternQuery, setPatternQuery] = useState("");
-  const [patternDimension, setPatternDimension] = useState("");
-  const [patternType, setPatternType] = useState("");
-  const [patternLimit, setPatternLimit] = useState(6);
-  useEffect(
-    () => setPatternLimit(6),
-    [patternQuery, patternDimension, patternType],
-  );
-  const visiblePatterns = patterns.filter(
-    (p) =>
-      (!patternDimension || p.dimension === patternDimension) &&
-      (!patternType || p.exception === patternType) &&
-      p.title
-        .toLocaleLowerCase("pt-BR")
-        .includes(patternQuery.toLocaleLowerCase("pt-BR")),
-  );
-  const refreshActivity = useCallback(async () => {
-    const [t, r, op] = await Promise.all([
+  useEffect(() => {
+    heading.current?.focus({ preventScroll: true });
+  }, [tab]);
+  const refresh = useCallback(async () => {
+    await get("/api/session");
+    const [s, q, o, i, t, r, op] = await Promise.all([
+      get<ReturnType<typeof dashboard>>("/api/dashboard"),
+      get<ReturnType<typeof planQueue>>("/api/queue"),
+      get<{ orders: RankedOrder[] }>("/api/orders?limit=10000"),
+      get<Insight[]>("/api/insights"),
       get<Task[]>("/api/tasks"),
       get<Investigation[]>("/api/investigations"),
-      get<OperationsReport>("/api/operations"),
+      get<{
+        financial: ReturnType<typeof financialReport>;
+        plans: DailyPlan[];
+      }>("/api/operations"),
     ]);
+    setSummary(s);
+    setDay(q);
+    setOrders(o.orders);
+    setPatterns(i);
     setTasks(t);
     setRuns(r);
-    setOperations(op);
+    setFinancial(op.financial);
+    setPlans(op.plans);
   }, []);
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      // Estabelecer cookie antes das requisições paralelas evita sessões concorrentes na primeira visita.
-      await get("/api/session");
-      const [s, q, o, i] = await Promise.all([
-        get<Dashboard>("/api/dashboard"),
-        get<Queue>("/api/queue"),
-        get<{ orders: RankedOrder[] }>("/api/orders?limit=10000"),
-        get<Insight[]>("/api/insights"),
-      ]);
-      setSummary(s);
-      setQueue(q);
-      setAllOrders(o.orders);
-      setPatterns(i);
-      await refreshActivity();
+      await refresh();
     } catch (e) {
       setSummary(undefined);
-      setQueue(undefined);
-      setAllOrders([]);
-      setTasks([]);
-      setRuns([]);
-      setOperations(undefined);
-      const message = (e as Error).message;
-      setError(message.startsWith("Base ainda não importada") ? "" : message);
+      setDay(undefined);
+      const m = (e as Error).message;
+      if (!m.startsWith("Base ainda não importada")) setError(m);
     } finally {
       setLoading(false);
     }
-  }, [refreshActivity]);
+  }, [refresh]);
   useEffect(() => {
     void load();
   }, [load]);
   useEffect(() => {
-    if (busy || !runs.some((run) => run.status === "running")) return;
-    const timer = setInterval(() => {
-      void refreshActivity().catch(() => {});
-    }, 2500);
+    if (busy || !runs.some((r) => r.status === "running")) return;
+    const timer = setInterval(() => void refresh().catch(() => {}), 2500);
     return () => clearInterval(timer);
-  }, [runs, busy, refreshActivity]);
-  useEffect(() => {
-    setPage(1);
-  }, [query, type, brand, status, showAll]);
-  const filtered = useMemo(
-    () =>
-      (showAll ? allOrders : dayQueue?.orders || []).filter(
-        (o) =>
-          (!type || o.exception === type) &&
-          (!brand || o.brand === brand) &&
-          (!status || o.status === status) &&
-          (!frontIds || frontIds.includes(o.id)) &&
-          `${o.id} ${o.brand} ${o.product} ${o.city}`
-            .toLocaleLowerCase("pt-BR")
-            .includes(query.toLocaleLowerCase("pt-BR")),
-      ),
-    [allOrders, dayQueue, showAll, type, brand, status, query, frontIds],
-  );
-  const openTasks = tasks.filter((t) =>
-    ["aberta", "pendente_aprovacao", "aprovada"].includes(t.status),
-  );
-  const visibleTasks = tasks.filter(
-    (t) =>
-      (taskScope === "all" ||
-        (t.scope === "process" ? "process" : "case") === taskScope) &&
-      (taskStatus === "all" ||
-        (taskStatus === "pending"
-          ? ["aberta", "pendente_aprovacao", "aprovada"].includes(t.status)
-          : ["concluida", "rejeitada"].includes(t.status))),
-  );
-  const currentPlan = isPlanCurrent(
-    operations?.plans[0],
-    dayQueue?.orders || [],
-    weights,
-    operations?.usedCapacity || 0,
-  );
-  async function refreshWorkspace(nextWeights = weights) {
-    const query = new URLSearchParams(
-      Object.entries(nextWeights).map(([key, value]) => [key, String(value)]),
-    );
-    const [s, q, o] = await Promise.all([
-      get<Dashboard>("/api/dashboard"),
-      get<Queue>(`/api/queue?${query}`),
-      get<{ orders: RankedOrder[] }>(`/api/orders?limit=10000&${query}`),
-    ]);
-    setSummary(s);
-    setQueue(q);
-    setAllOrders(o.orders);
-    setSelected((previous) =>
-      previous ? o.orders.find((order) => order.id === previous.id) : undefined,
-    );
-    await refreshActivity();
-  }
-  async function applyWeights() {
-    try {
-      await refreshWorkspace(draftWeights);
-      setWeights({ ...draftWeights });
-      setShowWeights(false);
-      setShowAll(false);
-      setPage(1);
-      setNotice(
-        "Prioridade recalculada. Os pesos são uma heurística, não uma previsão de perda.",
-      );
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }
-  async function startInvestigation(
-    target: string,
-    kind: Investigation["type"],
-  ) {
+  }, [busy, runs, refresh]);
+  async function investigate(target: string, type: Investigation["type"]) {
     if (busy) return;
     setBusy(true);
     setEvents([]);
+    setNotice("");
+    let completed = false;
+    const requestId = crypto.randomUUID();
+    setActiveRun({
+      id: requestId,
+      type,
+      target,
+      status: "running",
+      summary: "",
+      taskIds: [],
+      events: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
     setError("");
-    if (kind !== "order") {
-      setSelected(undefined);
-      setTab("agent");
-    }
     try {
-      const response = await fetch("/api/investigations", {
+      const r = await fetch("/api/investigations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: kind,
-          target,
-          requestId: crypto.randomUUID(),
-          ...(kind === "daily" ? { weights } : {}),
-        }),
+        body: JSON.stringify({ target, type, requestId }),
       });
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.error);
-      }
-      if (response.headers.get("content-type")?.includes("application/json")) {
-        await refreshActivity();
-        return;
-      }
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        buffer += decoder.decode(value, { stream: !done });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-        for (const line of lines.filter(Boolean)) {
-          const payload = JSON.parse(line);
-          if (payload.error) throw new Error(payload.error);
-          if (payload.event)
-            setEvents((previous) => [...previous, payload.event]);
-          if (payload.investigation?.status === "failed")
-            setNotice(payload.investigation.summary);
-          if (kind === "daily" && payload.investigation?.status === "completed")
-            setTab("overview");
+      if (!r.ok) throw new Error((await r.json()).error);
+      if (r.headers.get("content-type")?.includes("application/json")) {
+        const result = (await r.json()).investigation;
+        setActiveRun(result);
+        completed = result?.status === "completed";
+      } else {
+        const reader = r.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          buffer += decoder.decode(value, { stream: !done });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const line of lines.filter(Boolean)) {
+            const payload = JSON.parse(line);
+            if (payload.error) throw new Error(payload.error);
+            if (payload.event) setEvents((v) => [...v, payload.event]);
+            if (payload.investigation) {
+              setActiveRun(payload.investigation);
+              completed = payload.investigation.status === "completed";
+              if (
+                type === "pattern" &&
+                payload.investigation.status === "completed"
+              )
+                setProcessId(payload.investigation.taskIds[0]);
+            }
+          }
+          if (done) break;
         }
-        if (done) break;
       }
+      await refresh();
+      if (completed && type === "pattern")
+        setNotice(
+          "Encaminhamento registrado. Abra a investigação em Pendências.",
+        );
     } catch (e) {
-      setError(
-        (e as Error).message ||
-          "A conexão foi interrompida. Consulte o histórico.",
+      const message = (e as Error).message;
+      setError(message);
+      setActiveRun((previous) =>
+        previous
+          ? { ...previous, status: "failed", summary: message }
+          : previous,
       );
     } finally {
       setBusy(false);
-      await refreshWorkspace().catch(() => {});
-    }
-  }
-  function openQueue(ids?: string[]) {
-    setFrontIds(ids);
-    setQuery("");
-    setType("");
-    setBrand("");
-    setStatus("");
-    setShowAll(false);
-    setPage(1);
-    setTab("queue");
-  }
-  async function changeTask(task: Task, nextStatus: string) {
-    if (taskPending) return;
-    setTaskPending(task.id);
-    try {
-      const r = await fetch("/api/tasks", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: task.id, status: nextStatus }),
-      });
-      const result = await r.json();
-      if (!r.ok) throw new Error(result.error);
-      await refreshWorkspace();
-      setNotice(
-        nextStatus === "aprovada"
-          ? "Proposta aprovada na demonstração. Nenhum pagamento ou reenvio foi executado."
-          : "Tarefa atualizada.",
-      );
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setTaskPending(undefined);
+      await refresh().catch(() => {});
     }
   }
   async function reset() {
-    setResetting(true);
+    setError("");
     try {
       const r = await fetch("/api/session", {
         method: "POST",
@@ -413,1640 +262,823 @@ export function OperationsApp() {
         body: "{}",
       });
       if (!r.ok) throw new Error("Não foi possível reiniciar.");
-      setEvents([]);
       setResetting(false);
-      setTab("overview");
-      setDraftWeights(DEFAULT_WEIGHTS);
-      setWeights(DEFAULT_WEIGHTS);
+      setEvents([]);
+      setActiveRun(undefined);
+      setSelectedId(undefined);
+      setProcessId(undefined);
       await load();
-      setNotice("Nova demonstração iniciada. A base original foi preservada.");
+      setNotice("Tratativas reiniciadas. A base escolhida foi preservada.");
     } catch (e) {
       setError((e as Error).message);
-      setResetting(false);
     }
   }
-  function orderTable(orders: RankedOrder[], compact = false) {
-    return (
-      <div className="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Pedido / produto</th>
-              <th>Exceção</th>
-              {!compact && <th>Prazo / atraso</th>}
-              <th>Valor</th>
-              <th>
-                Prioridade <CircleHelp size={12} />
-              </th>
-              <th>
-                <span className="sr-only">Detalhes</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((o) => (
-              <tr key={o.id} onClick={() => setSelected(o)}>
-                <td>
-                  <button className="order-link" onClick={() => setSelected(o)}>
-                    {o.id} <span>{o.brand}</span>
-                  </button>
-                  <p className="product-name" title={o.product}>
-                    {o.product}
-                  </p>
-                </td>
-                <td>
-                  <Label
-                    tone={
-                      o.exception === "extravio" ||
-                      o.exception === "falha_personalizacao"
-                        ? "orange"
-                        : "neutral"
-                    }
-                  >
-                    {exceptionLabels[o.exception]}
-                  </Label>
-                  {o.status === "status_divergente" && (
-                    <p className="conflict">Revisão de status necessária</p>
-                  )}
-                </td>
-                {!compact && (
-                  <td>
-                    <span>{shortDate(o.promisedAt)}</span>
-                    <p className={o.priority.delay > 0 ? "delay" : "muted"}>
-                      {o.priority.delay
-                        ? `${o.priority.delay} dias úteis${o.deliveredAt ? " até entrega" : " de atraso"}`
-                        : "Sem atraso"}
-                    </p>
-                  </td>
-                )}
-                <td className="nowrap">{money(o.value)}</td>
-                <td>
-                  <div className="score">
-                    <span
-                      className={
-                        o.priority.score >= 70 ? "score-dot high" : "score-dot"
-                      }
-                    />
-                    {o.priority.score.toFixed(1)}
-                    <small>/100</small>
-                  </div>
-                  {o.selectionReason && (
-                    <small className="selection-reason">
-                      {o.selectionReason}
-                    </small>
-                  )}
-                </td>
-                <td>
-                  <ChevronRight size={16} className="muted" />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!orders.length && (
-          <Empty title="Nenhum pedido encontrado">
-            Ajuste os filtros ou a busca para ver outros pedidos.
-          </Empty>
-        )}
-      </div>
-    );
+  const selected = orders.find((o) => o.id === selectedId);
+  const processTask = tasks.find((t) => t.id === processId);
+  const ready = day?.usable === true;
+  const visible = (
+    all || !ready
+      ? [...orders].sort(
+          (a, b) =>
+            a.openedAt.localeCompare(b.openedAt) || a.id.localeCompare(b.id),
+        )
+      : day?.orders || []
+  ).filter((o) =>
+    `${o.id} ${o.product} ${exceptionLabels[o.exception]} ${o.brand} ${statusLabel(o.status)}`
+      .toLocaleLowerCase("pt-BR")
+      .includes(query.toLocaleLowerCase("pt-BR")),
+  );
+  const latest = activeRun || runs[0];
+  const related = selected
+    ? tasks.filter((t) => t.scope !== "process" && t.orderId === selected.id)
+    : [];
+  function openOrder(id: string) {
+    setProcessId(undefined);
+    setSelectedId(id);
   }
+  const pending = tasks.filter((t) =>
+    ["aberta", "aprovada", "pendente_aprovacao"].includes(t.status),
+  );
   return (
-    <div className="app-shell">
+    <div className="app-layout">
       <header className="sidebar">
-        <a className="logo" href="/" aria-label="Gogroup início">
-          <img src="/gogroup-logo.svg" alt="gogroup" width={159} height={32} />
+        <a
+          className="logo"
+          href="#overview"
+          aria-label="Gogroup início"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate("overview");
+          }}
+        >
+          <img src="/gogroup-logo.svg" alt="Gogroup" width={164} height={38} />
         </a>
-        <span className="brand-product">Go Operations</span>
+        <span className="brand-product">Agente de operações</span>
         <button
           className="mobile-menu-toggle"
-          aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
-          aria-expanded={menuOpen}
-          aria-controls="operation-navigation"
-          onClick={() => setMenuOpen((open) => !open)}
+          aria-label={menu ? "Fechar menu" : "Abrir menu"}
+          aria-expanded={menu}
+          onClick={() => setMenu(!menu)}
         >
-          {menuOpen ? <X size={21} /> : <Menu size={21} />} Menu
+          {menu ? <X /> : <Menu />} Menu
         </button>
         <nav
-          id="operation-navigation"
-          className={menuOpen ? "menu-open" : ""}
+          className={menu ? "menu-open" : ""}
           aria-label="Navegação principal"
         >
-          {navigation.map((n) => (
+          {nav.map(([id, label], i) => (
             <button
-              key={n.id}
-              className={`nav-item ${tab === n.id ? "active" : ""}`}
-              aria-current={tab === n.id ? "page" : undefined}
-              onClick={() => {
-                setTab(n.id);
-                setMenuOpen(false);
-                setPage(1);
-              }}
+              className={`nav-item ${tab === id ? "active" : ""} ${i === 4 ? "nav-support" : ""}`}
+              aria-current={tab === id ? "page" : undefined}
+              key={id}
+              onClick={() => navigate(id)}
             >
-              <n.icon size={18} />
-              {n.title}
-              {n.id === "queue" && (
-                <span className="nav-count">
-                  {dayQueue?.orders.length ?? "—"}
-                </span>
-              )}
-              {n.id === "agent" && openTasks.length > 0 && (
-                <span className="nav-count">{openTasks.length}</span>
+              {label}
+              {id === "agent" && pending.length > 0 && (
+                <span className="nav-count">{pending.length}</span>
               )}
             </button>
           ))}
         </nav>
       </header>
       <div className="main-shell">
-        <header className="topbar">
-          <div className="breadcrumb">
-            <span className="topbar-brand">gogroup</span>{" "}
-            <ChevronRight size={13} />
-            <strong>{navigation.find((n) => n.id === tab)?.title}</strong>
-          </div>
-          <div className="topbar-right">
-            <Label tone="green">
-              <span className="live-dot" /> Demo interativa
-            </Label>
-            <span className="avatar">OP</span>
-          </div>
-        </header>
         <main>
           <div
             className={`page-heading ${tab === "overview" ? "brand-opening" : ""}`}
           >
             <div>
-              {tab === "overview" && (
-                <span className="opening-context">
-                  Central de operações / Go Operations
-                </span>
-              )}
               <h1 ref={heading} tabIndex={-1}>
-                {tab === "overview" ? (
-                  <>Seu dia na operação</>
-                ) : tab === "queue" ? (
-                  "Pedidos para tratar"
-                ) : tab === "insights" ? (
-                  "Melhorias de processo"
-                ) : tab === "agent" ? (
-                  "Tarefas e aprovações"
-                ) : tab === "impact" ? (
-                  "Risco e resultado financeiro"
-                ) : tab === "data" ? (
-                  "Dados da operação"
-                ) : (
-                  "Como funciona e por quê"
-                )}
+                {
+                  {
+                    overview: "Prepare seu dia com o agente",
+                    queue: "Pedidos para acompanhar",
+                    agent: "Pendências da equipe",
+                    impact: "Resultados das tratativas",
+                    insights: "Melhorias para investigar",
+                    data: "Dados da operação",
+                    method: "Como funciona e por quê",
+                  }[tab]
+                }
               </h1>
               <p>
-                {tab === "overview"
-                  ? "Comece pelos pedidos prioritários. Investigue, registre a execução e acompanhe o que falta resolver."
-                  : tab === "queue"
-                    ? "Veja o que tratar primeiro e abra um pedido para acompanhar a tratativa."
-                    : tab === "insights"
-                      ? "Diferencie o atendimento individual dos sinais que exigem investigar o processo."
-                      : tab === "agent"
-                        ? "Planos e encaminhamentos criados com ferramentas, evidências e histórico."
-                        : tab === "impact"
-                          ? "Exposição, cenários e resultados declarados, apresentados separadamente."
-                          : tab === "data"
-                            ? "Valide os arquivos e confira a origem da sua fila."
-                            : "Entenda o fluxo, as escolhas de negócio e os limites do piloto."}
+                {
+                  {
+                    overview:
+                      "A IA compara alternativas, escolhe uma estratégia e registra um plano para a equipe.",
+                    queue:
+                      "Consulte a carteira recebida ou siga o plano preparado pelo agente.",
+                    agent:
+                      "Revise propostas, registre execuções e documente investigações.",
+                    impact:
+                      "Acompanhe o que foi resolvido e os valores realmente registrados.",
+                    insights:
+                      "Investigue problemas que voltam a acontecer e podem afetar vários pedidos.",
+                    data: "Valide os arquivos, confira a origem e gerencie sua demonstração.",
+                    method:
+                      "Entenda o fluxo e os motivos das decisões de negócio e tecnologia.",
+                  }[tab]
+                }
               </p>
             </div>
-            {tab === "overview" && (
-              <div className="brand-seal" aria-hidden="true">
-                <img
-                  className="brand-seal-ring"
-                  src="/gogroup-seal-ring.svg"
-                  alt=""
-                  width={111}
-                  height={111}
-                />
-                <img
-                  className="brand-seal-center"
-                  src="/gogroup-seal-center.svg"
-                  alt=""
-                  width={35}
-                  height={50}
-                />
-              </div>
-            )}
             <div className="date-chip">
-              <CalendarDays size={16} />
-              <div>
-                <small>Data operacional</small>
-                <b>30 set, 2026</b>
-              </div>
+              <span>
+                Referência do piloto
+                <br />
+                <b>30/09/2026</b>
+              </span>
             </div>
           </div>
           {error && (
             <div className="alert alert-error" role="alert">
-              <TriangleAlert size={18} />
-              <span>{error}</span>
+              {error}
               <button aria-label="Dispensar erro" onClick={() => setError("")}>
-                <X size={16} />
+                ×
               </button>
             </div>
           )}
           {notice && (
             <div className="alert alert-info" role="status">
-              <CheckCircle2 size={18} />
-              <span>{notice}</span>
+              {notice}
               <button
                 aria-label="Dispensar aviso"
                 onClick={() => setNotice("")}
               >
-                <X size={16} />
+                ×
               </button>
             </div>
           )}
-          {loading ? (
-            <div className="loading">
-              <Loader2 className="spin" size={28} />
-              <p>Organizando os próximos passos da operação…</p>
-            </div>
-          ) : tab === "data" ? (
-            <DataImport
-              onImported={async () => {
-                await load();
-                setTab("overview");
-                setNotice("Base importada. Sua fila está pronta para começar.");
-              }}
-            />
+          {tab === "data" ? (
+            <>
+              <DataImport
+                onImported={async () => {
+                  await load();
+                  navigate("overview");
+                  setNotice(
+                    "Base importada. Prepare o dia com a IA para gerar seu plano.",
+                  );
+                }}
+              />
+              <section className="panel prose reset-panel">
+                <h2>Reiniciar a demonstração</h2>
+                <p>
+                  Inicie outra avaliação com a mesma base. Planos, tarefas,
+                  investigações e resultados deixarão de aparecer na nova
+                  sessão.
+                </p>
+                <Button
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => setResetting(true)}
+                >
+                  Reiniciar minha demonstração
+                </Button>
+              </section>
+            </>
           ) : tab === "method" ? (
             <Methodology
               summary={summary}
-              weights={weights}
-              onReset={() => setResetting(true)}
+              weights={day?.plan?.weights || DEFAULT_WEIGHTS}
             />
-          ) : !summary || !dayQueue ? (
-            <Empty title="Prepare a base de operações">
+          ) : loading ? (
+            <p role="status">Conferindo a operação…</p>
+          ) : !summary ? (
+            <section className="panel prose">
+              <h2>Comece pela base de operações</h2>
               <p>
-                Carregue os três CSVs em Dados. Você poderá conferir a qualidade
-                antes de importar e começar sua demonstração.
+                Importe os três CSVs e confira a qualidade antes de preparar o
+                trabalho com IA.
               </p>
-              <Button onClick={() => setTab("data")}>
-                Importar base de operações
+              <Button onClick={() => navigate("data")}>
+                Abrir Dados e importar
               </Button>
-            </Empty>
+            </section>
           ) : (
             <>
-              <div
-                className="session-progress"
-                aria-label="Progresso da sua sessão"
-              >
-                <span className="session-progress-title">
-                  <ShieldCheck size={16} /> Sua operação nesta sessão
-                </span>
-                <span>
-                  <b>{summary.resolvedCount}</b> exceções encerradas
-                </span>
-                <span>
-                  <b>{summary.reviewedCount}</b> status revisados
-                </span>
-                <span>
-                  <b>{tasks.filter((t) => t.status === "concluida").length}</b>{" "}
-                  tarefas concluídas
-                </span>
-                <button onClick={() => setTab("agent")}>
-                  Acompanhar ações <ArrowUpRight size={14} />
-                </button>
-              </div>
               {tab === "overview" && (
                 <>
-                  <div
-                    className="workflow-guide"
-                    aria-label="Roteiro de trabalho"
-                  >
-                    <div>
-                      <b>1. Escolha um pedido</b>
-                      <span>A fila já considera as vagas e prioridades.</span>
-                    </div>
-                    <div>
-                      <b>2. Investigue e execute</b>
-                      <span>
-                        Revise a orientação e registre a tarefa realizada.
-                      </span>
-                    </div>
-                    <div>
-                      <b>3. Encerre e acompanhe</b>
-                      <span>
-                        Informe o resultado; o próximo caso entra na fila.
-                      </span>
-                    </div>
-                  </div>
-                  {operations && (
-                    <OperationsSummary
-                      report={operations}
-                      selection={dayQueue?.orders || []}
-                      weights={weights}
-                      busy={busy}
-                      onPrepare={() => startInvestigation("day", "daily")}
-                      onQueue={openQueue}
-                      onInsights={() => setTab("insights")}
-                      onImpact={() => setTab("impact")}
-                      onInvestigate={(id) => startInvestigation(id, "order")}
-                    />
-                  )}
-                  <section
-                    className="metrics"
-                    aria-label="Indicadores da carteira"
-                  >
-                    <Metric
-                      icon={Package}
-                      label="Exceções na sua fila"
-                      value={summary.count.toLocaleString("pt-BR")}
-                      detail={`${summary.totalCount.toLocaleString("pt-BR")} pedidos únicos na base original`}
-                    />
-                    <Metric
-                      icon={BarChart3}
-                      label="Carteira pendente"
-                      value={money(summary.value)}
-                      detail="Valor dos pedidos, não perda estimada"
-                    />
-                    <Metric
-                      icon={TriangleAlert}
-                      label="Exposição a cancelamento"
-                      value={money(summary.risk)}
-                      detail="Probabilidade × valor · logística pendente"
-                      tone="orange"
-                    />
-                    <Metric
-                      icon={Target}
-                      label="Casos encerrados"
-                      value={String(summary.resolvedCount)}
-                      detail={`${dayQueue.usedCapacity} encerramentos na simulação`}
-                      tone="green"
-                    />
-                  </section>
-                  <div className="overview-grid">
-                    <section className="panel distribution">
-                      <div className="panel-heading">
-                        <div>
-                          <h2>Onde estão as exceções</h2>
-                          <p>
-                            Distribuição por tipo · {summary.count} pedidos
-                            únicos
-                          </p>
-                        </div>
-                        <span className="icon-box">
-                          <BarChart3 size={17} />
-                        </span>
-                      </div>
-                      <div className="bars">
-                        {summary.exceptions.slice(0, 6).map((e, i) => (
-                          <button
-                            className="bar-row"
-                            key={e.type}
-                            onClick={() => {
-                              setType(e.type);
-                              setShowAll(true);
-                              setTab("queue");
-                            }}
-                          >
-                            <div className="bar-top">
-                              <span>{e.label}</span>
-                              <b>
-                                {e.count}
-                                <small>
-                                  {((e.count / summary.count) * 100).toFixed(1)}
-                                  %
-                                </small>
-                              </b>
-                            </div>
-                            <div className="bar-track">
-                              <span
-                                className={`bar-color-${i}`}
-                                style={{
-                                  width: `${(e.count / summary.exceptions[0].count) * 100}%`,
-                                }}
-                              />
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                      <button
-                        className="text-link"
-                        onClick={() => {
-                          setShowAll(true);
-                          setType("");
-                          setTab("queue");
-                        }}
+                  <section className="panel prose agent-command">
+                    <span className="badge">
+                      <Bot size={16} aria-hidden="true" /> Agente de operações ·
+                      Groq
+                    </span>
+                    <h2>
+                      {ready
+                        ? "Seu plano está disponível"
+                        : "Qual é o melhor foco para hoje?"}
+                    </h2>
+                    <p>
+                      {summary.count} pedidos pendentes recebidos ·{" "}
+                      {day?.availableCapacity ?? 150} vagas disponíveis no
+                      piloto. A IA compara equilíbrio, urgência e relacionamento
+                      antes de registrar sua escolha.
+                    </p>
+                    {day?.status === "needs_review" && (
+                      <p role="status">
+                        O plano anterior é legado ou a base/status mudou.
+                        Prepare outro plano antes de orientar o trabalho.
+                      </p>
+                    )}
+                    {day?.status === "failed" && (
+                      <p role="alert">
+                        {day.error}{" "}
+                        {day.plan
+                          ? "O plano anterior continua disponível abaixo e no histórico."
+                          : ""}
+                      </p>
+                    )}
+                    <div className="task-actions">
+                      <Button
+                        disabled={
+                          busy ||
+                          day?.status === "preparing" ||
+                          !day?.availableCapacity ||
+                          !summary.count
+                        }
+                        onClick={() => void investigate("day", "daily")}
                       >
-                        Ver todas as exceções <ArrowRight size={14} />
-                      </button>
-                    </section>
-                    <section className="panel patterns-preview">
-                      <div className="panel-heading">
-                        <div>
-                          <h2>Sinais para investigar</h2>
-                          <p>Evidências que merecem um olhar mais próximo</p>
-                        </div>
-                        <Label tone="purple">
-                          <Sparkles size={12} /> Padrões
-                        </Label>
-                      </div>
-                      {[
-                        "falha_personalizacao:machine:",
-                        "item_faltante:dc:",
-                        "vazamento_produto:lot:",
-                      ]
-                        .map((prefix) =>
-                          patterns.find((p) => p.id.startsWith(prefix)),
-                        )
-                        .filter((p): p is Insight => Boolean(p))
-                        .map((p, i) => (
-                          <div className="signal" key={p.id}>
-                            <span className={`signal-icon signal-${i}`}>
-                              {i === 0 ? (
-                                <Activity size={18} />
-                              ) : i === 1 ? (
-                                <Package size={18} />
-                              ) : (
-                                <Layers3 size={18} />
-                              )}
-                            </span>
-                            <div>
-                              <h3>{p.title}</h3>
-                              <p>
-                                <b>
-                                  {p.count} de {p.total}
-                                </b>{" "}
-                                casos desta exceção{" "}
-                                <span>({(p.share * 100).toFixed(0)}%)</span>
-                              </p>
-                              <small>
-                                Concentração observada · hipótese a verificar
-                              </small>
-                            </div>
-                            <button
-                              onClick={() =>
-                                startInvestigation(p.id, "pattern")
-                              }
-                              disabled={busy}
-                              aria-label={`Investigar ${p.title}`}
-                            >
-                              <ArrowUpRight size={18} />
-                            </button>
-                          </div>
-                        ))}
-                      <button
-                        className="text-link"
-                        onClick={() => setTab("insights")}
-                      >
-                        Explorar investigações <ArrowRight size={14} />
-                      </button>
-                    </section>
-                  </div>
-                  <section className="panel">
-                    <div className="panel-heading">
-                      <div>
-                        <div className="heading-inline">
-                          <h2>Sugestão das regras</h2>
-                          <Label tone="orange">Top 5</Label>
-                        </div>
-                        <p>
-                          Valor, urgência e relacionamento. Cada posição tem uma
-                          explicação.
-                        </p>
-                      </div>
+                        {busy
+                          ? "Preparando…"
+                          : ready
+                            ? "Preparar novo plano com IA"
+                            : "Preparar meu dia com IA"}
+                      </Button>
                       <Button
                         variant="outline"
-                        size="sm"
-                        onClick={() => setTab("queue")}
+                        onClick={() => {
+                          setAll(!ready);
+                          navigate("queue");
+                        }}
                       >
-                        Ver fila completa <ArrowRight size={14} />
+                        {ready
+                          ? "Abrir pedidos do plano"
+                          : "Consultar pedidos recebidos"}
                       </Button>
                     </div>
-                    {orderTable(dayQueue.orders.slice(0, 5), true)}
+                    <p className="muted">
+                      O agente registra orientações; a equipe executa ações
+                      externas e documenta o resultado.
+                    </p>
                   </section>
-                  <div className="quality-note">
-                    <ShieldCheck size={17} />
-                    <span>
-                      <b>Qualidade dos dados em evidência.</b>{" "}
-                      {summary.conflicts} conflitos de status e{" "}
-                      {summary.promiseMismatches} promessas divergentes do
-                      contrato preservados para revisão.
-                    </span>
-                    <button onClick={() => setTab("method")}>
-                      Entenda <ArrowRight size={13} />
-                    </button>
-                  </div>
+                  <AgentProgress busy={busy} events={events} run={latest} />
+                  {ready && day.plan && (
+                    <OperationsSummary
+                      plan={day.plan}
+                      completed={day.completed}
+                      pendingIds={day.orders.map((o) => o.id)}
+                      onOrder={openOrder}
+                    />
+                  )}
+                  <section className="panel prose">
+                    <h2>Situação da carteira recebida</h2>
+                    <dl className="result-metrics">
+                      <div>
+                        <dt>Pedidos pendentes</dt>
+                        <dd>{summary.count}</dd>
+                      </div>
+                      <div>
+                        <dt>Valor dos pedidos pendentes</dt>
+                        <dd>{money(summary.value)}</dd>
+                      </div>
+                      <div>
+                        <dt>Conflitos de status para conferir</dt>
+                        <dd>
+                          {
+                            orders.filter(
+                              (o) => o.status === "status_divergente",
+                            ).length
+                          }
+                        </dd>
+                      </div>
+                    </dl>
+                    <p>
+                      Estes são fatos da base importada. A carteira ainda não é
+                      um plano de trabalho da IA.
+                    </p>
+                  </section>
                 </>
               )}
               {tab === "queue" && (
                 <>
-                  <div className="queue-explanation">
-                    <p>
-                      <b>
-                        {dayQueue.orders.length} pedidos selecionados para{" "}
-                        {dayQueue.availableCapacity} vagas restantes.
-                      </b>{" "}
-                      Reserva de {dayQueue.oldestReserved} vagas para os casos
-                      mais antigos; demais por valor, urgência e relacionamento.
-                      Na simulação, um encerramento aproxima uma tratativa
-                      consumida.
-                    </p>
-                    {frontIds && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setFrontIds(undefined)}
-                      >
-                        Remover filtro da frente
+                  {!ready && (
+                    <section className="panel prose">
+                      <h2>O plano do agente ainda não está disponível</h2>
+                      <p>
+                        Você pode consultar os pedidos recebidos. Para gerar a
+                        seleção e as orientações, prepare o dia com a IA.
+                      </p>
+                      <Button onClick={() => navigate("overview")}>
+                        Preparar o dia
                       </Button>
-                    )}
-                  </div>
-                  <details className="queue-comparison">
-                    <summary>
-                      Comparar a seleção com a ordem de chegada (FIFO)
-                    </summary>
-                    <div className="comparison-grid">
-                      <Compare
-                        title="Pedidos para tratar"
-                        data={dayQueue.prioritized}
-                        primary
-                      />
-                      <Compare
-                        title="Ordem de chegada (FIFO)"
-                        data={dayQueue.fifo}
-                      />
-                      <div className="panel comparison-note">
-                        <Target size={22} />
-                        <h3>
-                          A mesma capacidade.
-                          <br />
-                          Uma escolha explicável.
-                        </h3>
-                        <p>
-                          Comparação de {dayQueue.orders.length} vagas em cada
-                          fila. Maior valor coberto não comprova maior
-                          recuperação financeira.
-                        </p>
-                      </div>
-                    </div>
-                  </details>
+                    </section>
+                  )}
                   <section className="panel queue-panel">
                     <div className="panel-heading">
-                      <div>
-                        <h2>
-                          Fila de trabalho{" "}
-                          <span className="muted">
-                            /{" "}
-                            {frontIds
-                              ? `${filtered.length} pedidos no recorte da frente`
-                              : showAll
-                                ? "toda a carteira"
-                                : `${dayQueue.orders.length} prioridades`}
-                          </span>
-                        </h2>
-                        <p>
-                          Pesos ativos: valor {weights.value} · urgência{" "}
-                          {weights.urgency} · relacionamento{" "}
-                          {weights.relationship}
-                        </p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowWeights(!showWeights)}
-                      >
-                        <Filter size={14} /> Ajustar prioridade
-                      </Button>
+                      <h2>
+                        {all || !ready
+                          ? "Pedidos recebidos"
+                          : "Pedidos do plano da IA"}
+                      </h2>
+                      {ready && (
+                        <label className="check-label">
+                          <input
+                            type="checkbox"
+                            checked={all}
+                            onChange={(e) => {
+                              setAll(e.target.checked);
+                              setPage(1);
+                            }}
+                          />
+                          Consultar toda a carteira
+                        </label>
+                      )}
                     </div>
-                    {showWeights && (
-                      <div className="weights">
-                        {(["value", "urgency", "relationship"] as const).map(
-                          (key, i) => (
-                            <label key={key}>
-                              {["Valor", "Urgência", "Relacionamento"][i]}{" "}
-                              <b>{draftWeights[key]}</b>
-                              <input
-                                aria-label={`Peso ${["valor", "urgência", "relacionamento"][i]}`}
-                                type="range"
-                                min="0"
-                                max="100"
-                                value={draftWeights[key]}
-                                onChange={(e) =>
-                                  setDraftWeights((p) => ({
-                                    ...p,
-                                    [key]: Number(e.target.value),
-                                  }))
-                                }
-                              />
-                            </label>
-                          ),
-                        )}
-                        <Button size="sm" onClick={applyWeights}>
-                          Aplicar pesos
-                        </Button>
-                        <small>
-                          Os pesos são normalizados pela soma. A pontuação é uma
-                          heurística.
-                        </small>
-                      </div>
+                    <label className="search-input">
+                      <Search size={16} aria-hidden="true" />
+                      <input
+                        aria-label="Buscar pedidos"
+                        placeholder="Pedido, produto, marca ou tipo de problema"
+                        value={query}
+                        onChange={(e) => {
+                          setQuery(e.target.value);
+                          setPage(1);
+                        }}
+                      />
+                    </label>
+                    <div className="table-scroll">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Pedido / produto</th>
+                            <th>Pendência</th>
+                            <th>Por que conferir</th>
+                            <th>Valor</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {visible
+                            .slice((page - 1) * 15, page * 15)
+                            .map((o) => (
+                              <tr key={o.id}>
+                                <td>
+                                  <button
+                                    className="order-link"
+                                    onClick={() => openOrder(o.id)}
+                                  >
+                                    {o.id} · {o.brand}
+                                  </button>
+                                  <p>{o.product}</p>
+                                </td>
+                                <td>
+                                  {exceptionLabels[o.exception]}
+                                  <p>{statusLabel(o.status)}</p>
+                                </td>
+                                <td>
+                                  {o.priority.age} dias úteis aguardando
+                                  {o.priority.delay > 0 && (
+                                    <p>
+                                      {o.priority.delay} dias úteis{" "}
+                                      {o.deliveredAt
+                                        ? "de atraso até a entrega"
+                                        : "de atraso"}
+                                    </p>
+                                  )}
+                                  {o.status === "status_divergente" && (
+                                    <p>Validar status antes da tratativa</p>
+                                  )}
+                                </td>
+                                <td>{money(o.value)}</td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {!visible.length && (
+                      <p>
+                        Nenhum pedido nesta seleção. Consulte a carteira
+                        completa ou prepare outro plano.
+                      </p>
                     )}
-                    <div className="filters">
-                      <label className="search-input">
-                        <Search size={16} />
-                        <input
-                          aria-label="Buscar pedidos"
-                          placeholder="Buscar pedido, marca ou produto…"
-                          value={query}
-                          onChange={(e) => setQuery(e.target.value)}
-                        />
-                      </label>
-                      <select
-                        aria-label="Filtrar por tipo de exceção"
-                        value={type}
-                        onChange={(e) => setType(e.target.value)}
-                      >
-                        <option value="">Todas as exceções</option>
-                        {Object.entries(exceptionLabels).map(([key, name]) => (
-                          <option value={key} key={key}>
-                            {name}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        aria-label="Filtrar por marca"
-                        value={brand}
-                        onChange={(e) => setBrand(e.target.value)}
-                      >
-                        <option value="">Todas as marcas</option>
-                        {[...new Set(allOrders.map((o) => o.brand))]
-                          .sort()
-                          .map((b) => (
-                            <option key={b}>{b}</option>
-                          ))}
-                      </select>
-                      <select
-                        aria-label="Filtrar por status"
-                        value={status}
-                        onChange={(e) => setStatus(e.target.value)}
-                      >
-                        <option value="">Todos os status</option>
-                        {[...new Set(allOrders.map((o) => o.status))]
-                          .sort()
-                          .map((s) => (
-                            <option key={s} value={s}>
-                              {statusLabel(s)}
-                            </option>
-                          ))}
-                      </select>
-                      <label className="toggle">
-                        <input
-                          type="checkbox"
-                          checked={showAll}
-                          onChange={(e) => setShowAll(e.target.checked)}
-                        />{" "}
-                        Toda a carteira
-                      </label>
-                    </div>
-                    {orderTable(filtered.slice((page - 1) * 15, page * 15))}
                     <div className="pagination">
                       <span>
-                        {filtered.length} pedidos · página {page} de{" "}
-                        {Math.max(1, Math.ceil(filtered.length / 15))}
+                        {visible.length} pedidos · página {page} de{" "}
+                        {Math.max(1, Math.ceil(visible.length / 15))}
                       </span>
                       <div>
                         <Button
-                          size="sm"
                           variant="outline"
-                          disabled={page <= 1}
-                          onClick={() => setPage((p) => p - 1)}
-                          aria-label="Página anterior"
+                          disabled={page === 1}
+                          onClick={() => setPage(page - 1)}
                         >
-                          <ChevronLeft size={15} />
+                          Anterior
                         </Button>
                         <Button
-                          size="sm"
                           variant="outline"
-                          disabled={page * 15 >= filtered.length}
-                          onClick={() => setPage((p) => p + 1)}
-                          aria-label="Próxima página"
+                          disabled={page * 15 >= visible.length}
+                          onClick={() => setPage(page + 1)}
                         >
-                          <ChevronRight size={15} />
+                          Próxima
                         </Button>
                       </div>
                     </div>
                   </section>
-                  <Button variant="outline" onClick={() => setTab("impact")}>
-                    Avaliar risco, custos e cenário financeiro{" "}
-                    <ArrowRight size={14} />
-                  </Button>
-                </>
-              )}
-              {tab === "insights" && (
-                <>
-                  <div className="scope-guide">
-                    <div>
-                      <b>Caso a caso</b>
+                  {ready && day.plan?.comparison && (
+                    <details className="panel prose">
+                      <summary>
+                        Comparação deste plano com a ordem de chegada
+                      </summary>
                       <p>
-                        Verificar endereço, pagamento, estoque ou a tratativa de
-                        um pedido com o cliente.
+                        Retrato salvo em{" "}
+                        {new Date(day.plan.createdAt).toLocaleString("pt-BR")}.
+                        Mesma base e quantidade de vagas; não comprova
+                        recuperação financeira.
                       </p>
-                    </div>
-                    <div>
-                      <b>Investigar processo</b>
-                      <p>
-                        Recorrência ou divergência de regra exige uma ação para
-                        o grupo, com responsável e hipótese de validação. Não
-                        prova causa.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="alert alert-info">
-                    <CircleHelp size={18} />
-                    <span>
-                      A base contém somente exceções. Estes sinais mostram
-                      concentração, não taxa de falha ou causalidade. O agente
-                      cria uma tarefa de investigação a partir de evidências.
-                    </span>
-                  </div>
-                  <div className="panel insight-filters">
-                    <div className="filters">
-                      <label className="search-input">
-                        <Search size={16} />
-                        <input
-                          aria-label="Buscar padrões"
-                          placeholder="Buscar grupo, máquina, CD ou transportadora…"
-                          value={patternQuery}
-                          onChange={(e) => setPatternQuery(e.target.value)}
-                        />
-                      </label>
-                      <select
-                        aria-label="Filtrar dimensão do padrão"
-                        value={patternDimension}
-                        onChange={(e) => setPatternDimension(e.target.value)}
-                      >
-                        <option value="">Todas as dimensões</option>
-                        {Object.entries({
-                          carrier: "Transportadora",
-                          state: "UF",
-                          machine: "Máquina",
-                          shift: "Turno",
-                          dc: "CD",
-                          lot: "Lote",
-                          gift: "Brinde",
-                          carrier_state: "Transportadora / UF",
-                          machine_shift_dc: "Máquina / turno / CD",
-                          promise_rule: "Regra de prazo",
-                        }).map(([key, label]) => (
-                          <option key={key} value={key}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        aria-label="Filtrar exceção do padrão"
-                        value={patternType}
-                        onChange={(e) => setPatternType(e.target.value)}
-                      >
-                        <option value="">Todas as exceções</option>
-                        {Object.entries({
-                          ...exceptionLabels,
-                          divergencia_prazo: "Divergência de prazo",
-                        }).map(([key, label]) => (
-                          <option key={key} value={key}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="pattern-count">
-                        {visiblePatterns.length} sinais encontrados
-                      </span>
-                    </div>
-                  </div>
-                  {!visiblePatterns.length && (
-                    <Empty title="Nenhum sinal com estes filtros">
-                      Ajuste a busca ou selecione outra dimensão.
-                    </Empty>
-                  )}
-                  <div className="insight-grid">
-                    {visiblePatterns.slice(0, patternLimit).map((p) => (
-                      <section className="panel insight-card" key={p.id}>
-                        <div className="insight-top">
-                          <span className="icon-box">
-                            <Search size={18} />
-                          </span>
-                          <Label>
-                            {
-                              (
-                                {
-                                  carrier: "Transportadora",
-                                  state: "UF",
-                                  machine: "Máquina",
-                                  shift: "Turno",
-                                  dc: "Centro de distribuição",
-                                  lot: "Lote",
-                                  gift: "Brinde",
-                                  carrier_state: "Transportadora / UF",
-                                  machine_shift_dc: "Máquina / turno / CD",
-                                  promise_rule: "Regra de prazo",
-                                } as Record<string, string>
-                              )[p.dimension]
-                            }
-                          </Label>
-                        </div>
-                        <h2>{p.title}</h2>
-                        <Label
-                          tone={p.scope === "process" ? "purple" : "neutral"}
-                        >
-                          {p.scope === "process"
-                            ? "Investigar processo"
-                            : "Validar caso a caso"}
-                        </Label>
-                        <div className="insight-number">
-                          {(p.share * 100).toFixed(1)}
-                          <span>%</span>
-                        </div>
-                        <Meter value={p.share * 100} />
-                        <p>
-                          <b>
-                            {p.count} de {p.total}
-                          </b>{" "}
-                          registros elegíveis com esta dimensão disponível.
-                        </p>
-                        {p.dimension !== "promise_rule" && (
-                          <p className="association-note">
-                            Na base de exceções:{" "}
-                            {(p.baselineShare * 100).toFixed(1)}%. Associação
-                            relativa: <b>{p.enrichment.toFixed(2)}×</b>. Não é
-                            taxa de falha das vendas.
-                          </p>
+                      <div className="result-metrics">
+                        {Object.entries(day.plan.comparison).map(
+                          ([name, m]) => (
+                            <article key={name}>
+                              <h3>
+                                {name === "prioritized"
+                                  ? "Plano escolhido pelo agente"
+                                  : "Ordem de chegada (FIFO)"}
+                              </h3>
+                              <p>
+                                {m.count} pedidos · {money(m.value)} em valor de
+                                carteira
+                              </p>
+                              <p>
+                                Espera média: {m.averageAge.toFixed(1)} dias
+                                úteis
+                              </p>
+                              <p>Exposição elegível: {money(m.risk)}</p>
+                            </article>
+                          ),
                         )}
-                        <small>{p.hypothesis}</small>
-                        <p className="validation-question">
-                          <b>Como validar</b>
-                          {p.investigationQuestion}
-                        </p>
-                        <div className="evidence-links">
-                          {p.evidenceIds.slice(0, 3).map((id) => (
-                            <button
-                              key={id}
-                              onClick={() =>
-                                setSelected(allOrders.find((o) => o.id === id))
-                              }
-                            >
-                              {id}
-                            </button>
-                          ))}
-                          <span>
-                            +{Math.max(0, p.evidenceIds.length - 3)} evidências
-                          </span>
-                        </div>
-                        <Button
-                          variant="outline"
-                          disabled={busy}
-                          onClick={() => startInvestigation(p.id, "pattern")}
-                        >
-                          <Sparkles size={15} />{" "}
-                          {p.scope === "process"
-                            ? "Criar ação de processo com IA"
-                            : "Investigar caso com IA"}{" "}
-                          <ArrowUpRight size={15} />
-                        </Button>
-                      </section>
-                    ))}
-                  </div>
-                  {visiblePatterns.length > patternLimit && (
-                    <Button
-                      variant="outline"
-                      onClick={() => setPatternLimit((limit) => limit + 6)}
-                    >
-                      Mostrar próximos sinais (
-                      {visiblePatterns.length - patternLimit} restantes)
-                    </Button>
+                      </div>
+                    </details>
                   )}
                 </>
               )}
               {tab === "agent" && (
                 <>
-                  {operations && (
-                    <div className="agent-start">
-                      <div>
-                        <h2>Transforme a seleção em encaminhamentos</h2>
-                        <p>
-                          A fila é calculada pelas regras. O agente escolhe por
-                          onde começar em cada área, justifica com a amostra
-                          consultada e registra o próximo passo.
-                        </p>
-                      </div>
-                      <Button
-                        disabled={busy || !dayQueue.orders.length}
-                        onClick={() =>
-                          currentPlan
-                            ? setTab("overview")
-                            : startInvestigation("day", "daily")
-                        }
-                      >
-                        <Sparkles size={16} />{" "}
-                        {currentPlan
-                          ? "Ver encaminhamentos do agente"
-                          : "Analisar seleção com o agente"}
-                      </Button>
-                    </div>
-                  )}
-                  {(busy || events.length > 0) && (
-                    <section className="panel execution">
-                      <div className="panel-heading">
-                        <h2>
-                          {busy ? (
-                            <>
-                              <Loader2 size={18} className="spin" />{" "}
-                              Investigação em andamento
-                            </>
-                          ) : (
-                            "Última execução"
-                          )}
-                        </h2>
-                        <Label tone={busy ? "purple" : "neutral"}>
-                          {busy ? "Ao vivo" : "Finalizada"}
-                        </Label>
-                      </div>
-                      <div className="tool-timeline" aria-live="polite">
-                        {events.map((e, i) => (
-                          <div
-                            className={`tool-event event-${e.state}`}
-                            key={i}
-                          >
-                            <span>
-                              {e.state === "ok" ? (
-                                <Check size={14} />
-                              ) : e.state === "error" ? (
-                                <X size={14} />
-                              ) : (
-                                <Clock3 size={14} />
-                              )}
-                            </span>
-                            <div>
-                              <b>{e.tool.replaceAll("_", " ")}</b>
-                              <p>{e.message}</p>
-                            </div>
-                            <small>
-                              {new Date(e.at).toLocaleTimeString("pt-BR")}
-                            </small>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  )}
-                  <div className="section-title">
-                    <h2>
-                      Tarefas e propostas <span>{tasks.length}</span>
-                    </h2>
-                    <p>
-                      Ações restritas à sua demonstração · nenhum envio ou
-                      pagamento real
-                    </p>
-                  </div>
-                  <label className="task-status-label">
-                    Situação das tarefas
-                    <select
-                      value={taskStatus}
-                      onChange={(e) => setTaskStatus(e.target.value)}
-                    >
-                      <option value="pending">
-                        Pendentes e aguardando execução
-                      </option>
-                      <option value="finished">Concluídas e rejeitadas</option>
-                      <option value="all">Todas as situações</option>
-                    </select>
-                  </label>
-                  <div
-                    className="task-scope-filter"
-                    role="group"
-                    aria-label="Filtrar escopo das ações"
-                  >
-                    {[
-                      ["all", "Todas as ações"],
-                      ["case", "Casos individuais"],
-                      ["process", "Melhorias de processo"],
-                    ].map(([scope, label]) => (
-                      <button
-                        key={scope}
-                        aria-pressed={taskScope === scope}
-                        onClick={() => setTaskScope(scope)}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  {tasks.length > 0 && !visibleTasks.length && (
-                    <Empty title="Nenhuma tarefa nesta situação">
-                      Altere os filtros para consultar outras tarefas.
-                    </Empty>
-                  )}
-                  {!tasks.length ? (
-                    <section className="panel">
-                      <Empty title="A primeira ação começa com uma investigação">
-                        Abra um pedido ou escolha um padrão e peça ao agente
-                        para investigá-lo.
-                      </Empty>
-                      <div className="empty-action">
-                        <Button onClick={() => setTab("queue")}>
-                          Escolher pedido <ArrowRight size={16} />
-                        </Button>
-                      </div>
-                    </section>
-                  ) : (
-                    <div className="task-grid">
-                      {[...visibleTasks].reverse().map((t) => (
-                        <section className="panel task-card" key={t.id}>
-                          <div className="task-top">
-                            <Label
-                              tone={
-                                t.status === "pendente_aprovacao"
-                                  ? "orange"
-                                  : ["concluida", "aprovada"].includes(t.status)
-                                    ? "green"
-                                    : "purple"
-                              }
-                            >
-                              {statusLabel(t.status)}
-                            </Label>
-                            <small>
-                              {t.scope === "process"
-                                ? "Ação de processo"
-                                : t.kind.startsWith("proposta")
-                                  ? "Proposta · sem execução externa"
-                                  : "Tarefa interna"}
-                            </small>
-                          </div>
+                  <AgentProgress busy={busy} events={events} run={latest} />
+                  <section className="panel prose">
+                    <h2>O que precisa de acompanhamento?</h2>
+                    <label className="check-label">
+                      <input
+                        type="checkbox"
+                        checked={pendingOnly}
+                        onChange={(e) => setPendingOnly(e.target.checked)}
+                      />
+                      Mostrar somente pendências
+                    </label>
+                    {tasks
+                      .filter(
+                        (t) =>
+                          !pendingOnly ||
+                          ["aberta", "aprovada", "pendente_aprovacao"].includes(
+                            t.status,
+                          ),
+                      )
+                      .map((t) => (
+                        <article key={t.id} className="result-row">
+                          <span className="badge">
+                            {t.scope === "process" ? "Recorrência" : t.area} ·{" "}
+                            {statusLabel(t.status)}
+                          </span>
                           <h3>{t.title}</h3>
                           <p>{t.justification}</p>
-                          {t.scope === "process" && (
-                            <div className="process-next-step">
-                              <b>Próximo passo de validação</b>
-                              <p>{t.nextStep}</p>
-                              <small>
-                                {t.affectedOrderIds?.length || 0} pedidos
-                                relacionados. Esta ação não encerra esses casos
-                                e exige dimensionamento de esforço.
-                              </small>
-                              <button
-                                className="plain-link"
-                                onClick={() => {
-                                  openQueue(t.affectedOrderIds);
-                                  setShowAll(true);
-                                }}
-                              >
-                                Ver pedidos relacionados{" "}
-                                <ArrowRight size={13} />
-                              </button>
-                            </div>
-                          )}
-                          {t.facts && (
-                            <div className="verified-facts">
-                              <b>Fatos verificados pelo sistema</b>
-                              {t.facts.map((fact) => (
-                                <small key={fact}>{fact}</small>
-                              ))}
-                            </div>
-                          )}
-                          <div className="task-meta">
-                            <span>
-                              <Package size={13} />
-                              {t.orderId}
-                            </span>
-                            <span>
-                              <ClipboardList size={13} />
-                              {t.area}
-                            </span>
-                            <span>
-                              <CalendarDays size={13} />
-                              {shortDate(t.dueAt)} · data do caso
-                            </span>
-                          </div>
-                          <div className="evidence-links">
-                            {t.evidenceIds.map((id) => (
-                              <button
-                                key={id}
-                                onClick={() =>
-                                  setSelected(
-                                    allOrders.find((o) => o.id === id),
-                                  )
-                                }
-                              >
-                                {id}
-                              </button>
-                            ))}
-                          </div>
-                          <div className="task-actions">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                setSelected(
-                                  allOrders.find((o) => o.id === t.orderId),
-                                )
-                              }
-                            >
-                              Ver pedido <ArrowUpRight size={14} />
-                            </Button>
-                            {["aberta", "aprovada"].includes(t.status) && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={Boolean(taskPending) || busy}
-                                onClick={() => changeTask(t, "concluida")}
-                              >
-                                <Check size={14} />{" "}
-                                {t.scope === "process"
-                                  ? "Concluir ação de processo"
-                                  : "Registrar execução"}
-                              </Button>
-                            )}
-                            {t.status === "pendente_aprovacao" && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  disabled={Boolean(taskPending) || busy}
-                                  onClick={() => changeTask(t, "aprovada")}
-                                >
-                                  Aprovar proposta na demo
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={Boolean(taskPending) || busy}
-                                  onClick={() => changeTask(t, "rejeitada")}
-                                >
-                                  Rejeitar
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </section>
-                      ))}
-                    </div>
-                  )}
-                  <div className="section-title">
-                    <h2>Histórico de investigações</h2>
-                  </div>
-                  {!runs.length ? (
-                    <p className="muted">
-                      Nenhuma investigação executada nesta sessão.
-                    </p>
-                  ) : (
-                    runs.map((r) => (
-                      <details className="panel run-history" key={r.id}>
-                        <summary>
-                          <span className="history-icon">
-                            {r.status === "completed" ? (
-                              <CheckCircle2 size={18} />
-                            ) : r.status === "running" ? (
-                              <Clock3 size={18} />
-                            ) : (
-                              <TriangleAlert size={18} />
-                            )}
-                          </span>
-                          <b>
-                            {r.type === "daily"
-                              ? "Plano do dia"
-                              : r.type === "order"
-                                ? "Pedido"
-                                : "Padrão"}{" "}
-                            · {r.target}
-                          </b>
-                          <Label
-                            tone={r.status === "completed" ? "green" : "orange"}
-                          >
-                            {r.status === "completed"
-                              ? "Concluída"
-                              : r.status === "failed"
-                                ? "Interrompida"
-                                : "Em andamento"}
-                          </Label>
-                          <span>
-                            {new Date(r.createdAt).toLocaleString("pt-BR")}
-                          </span>
-                        </summary>
-                        <p className="run-summary">
-                          {r.summary || "A execução ainda não foi finalizada."}
-                        </p>
-                        <small>
-                          {r.taskIds.length} tarefas vinculadas ·{" "}
-                          {r.events.filter((e) => e.state === "ok").length}{" "}
-                          etapas concluídas
-                        </small>
-                        {r.status === "failed" && (
                           <Button
-                            size="sm"
                             variant="outline"
-                            disabled={busy}
-                            onClick={() => startInvestigation(r.target, r.type)}
+                            onClick={() =>
+                              t.scope === "process"
+                                ? setProcessId(t.id)
+                                : openOrder(t.orderId)
+                            }
                           >
-                            Tentar novamente
+                            {t.scope === "process"
+                              ? "Abrir investigação"
+                              : "Abrir pedido e acompanhar"}
                           </Button>
-                        )}
-                      </details>
-                    ))
-                  )}
+                        </article>
+                      ))}
+                    {tasks.length > 0 && pendingOnly && !pending.length && (
+                      <p>
+                        Não há pendências. Desmarque o filtro para consultar os
+                        registros concluídos.
+                      </p>
+                    )}
+                    {!tasks.length && (
+                      <p>
+                        O agente ainda não registrou tarefas. Prepare o dia e
+                        investigue um pedido, ou escolha uma recorrência em
+                        Melhorias.
+                      </p>
+                    )}
+                  </section>
+                  <details className="panel prose">
+                    <summary>Histórico de análises e planos</summary>
+                    {plans.map((plan) => (
+                      <article key={plan.id} className="result-row">
+                        <b>
+                          Plano de{" "}
+                          {new Date(plan.createdAt).toLocaleString("pt-BR")} ·{" "}
+                          {plan.strategy || "legado"}
+                        </b>
+                        <p>
+                          {plan.strategyReason ||
+                            "Política anterior, sem comparação de estratégias registrada."}
+                        </p>
+                        <p>{plan.briefing}</p>
+                        <details>
+                          <summary>Consultar orientações salvas</summary>
+                          {plan.workstreams.map((stream) => (
+                            <p key={stream.area}>
+                              <b>{stream.area}:</b> {stream.nextStep}
+                            </p>
+                          ))}
+                        </details>
+                      </article>
+                    ))}
+                    {runs.map((r) => (
+                      <article className="result-row" key={r.id}>
+                        <b>
+                          {r.type === "daily"
+                            ? "Plano do dia"
+                            : r.type === "pattern"
+                              ? "Recorrência"
+                              : "Pedido"}{" "}
+                          · {r.status}
+                        </b>
+                        <p>
+                          {shortDate(r.createdAt.slice(0, 10))} · {r.summary}
+                        </p>
+                      </article>
+                    ))}
+                  </details>
                 </>
               )}
-              {tab === "impact" && operations && (
-                <FinancialImpact
-                  report={operations}
-                  selected={dayQueue.orders}
-                  onQueue={() => openQueue()}
-                />
+              {tab === "impact" && financial && (
+                <FinancialImpact report={financial} onOrder={openOrder} />
               )}
-              <footer>
-                <span>
-                  <ShieldCheck size={13} /> Dados sintéticos · referência fixa
-                  em 30/09/2026
-                </span>
-                <span>gogroup · GO OPERATIONS · projeto demonstrativo</span>
-              </footer>
+              {tab === "insights" && (
+                <>
+                  <section className="panel prose">
+                    <h2>Qual problema pode estar se repetindo?</h2>
+                    <p>
+                      Escolha um sinal. A IA consulta evidências e cria uma
+                      investigação para a equipe conferir a hipótese. Finalizar
+                      esse diagnóstico não resolve os pedidos nem implanta uma
+                      melhoria.
+                    </p>
+                    <p>
+                      Os sinais usam somente a base de exceções; não demonstram
+                      taxa de falha sobre todas as vendas.
+                    </p>
+                    <Button variant="outline" onClick={() => navigate("agent")}>
+                      Acompanhar investigações abertas
+                    </Button>
+                  </section>
+                  <div className="insight-grid">
+                    {patterns
+                      .filter((p) => p.scope === "process")
+                      .slice(0, limit)
+                      .map((p) => (
+                        <article className="panel prose" key={p.id}>
+                          <span className="badge">
+                            {exceptionLabels[p.exception] || "Prazo prometido"}
+                          </span>
+                          <h2>{recurrenceQuestion(p)}</h2>
+                          <p>
+                            <b>Grupo a conferir: {p.group}</b>
+                          </p>
+                          <p>
+                            {p.count} casos relacionados dentro desta análise.
+                          </p>
+                          <p>{p.investigationQuestion}</p>
+                          <details>
+                            <summary>
+                              Por que este sinal merece investigação?
+                            </summary>
+                            <p>
+                              {p.title}. A concentração é um ponto de partida; é
+                              preciso conferir os registros dos pedidos e
+                              validar em campo.
+                            </p>
+                            <p>
+                              Referências:{" "}
+                              {p.evidenceIds.slice(0, 3).join(", ")}
+                            </p>
+                          </details>
+                          <Button
+                            disabled={busy}
+                            onClick={() => void investigate(p.id, "pattern")}
+                          >
+                            Investigar recorrência com IA
+                          </Button>
+                        </article>
+                      ))}
+                  </div>
+                  {!patterns.some((p) => p.scope === "process") && (
+                    <p>
+                      Nenhum sinal suficiente para investigação de recorrência
+                      nesta base. Continue pelas tratativas individuais.
+                    </p>
+                  )}
+                  {patterns.filter((p) => p.scope === "process").length >
+                    limit && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setLimit(limit + 4)}
+                    >
+                      Ver outros sinais
+                    </Button>
+                  )}
+                  <AgentProgress busy={busy} events={events} run={latest} />
+                </>
+              )}
             </>
           )}
+          <footer>
+            <span>
+              Dados sintéticos · demonstração independente por sessão · nenhuma
+              ação externa automática
+            </span>
+          </footer>
         </main>
       </div>
       <Dialog
         open={Boolean(selected)}
         onOpenChange={(open) => {
-          if (!open) setSelected(undefined);
+          if (!open) setSelectedId(undefined);
         }}
       >
         <DialogContent>
           {selected && (
             <>
-              <div className="detail-heading">
-                <Label tone="purple">DOSSIÊ DO PEDIDO</Label>
-                <DialogTitle>{selected.id}</DialogTitle>
-                <DialogDescription>
-                  {selected.brand} · {selected.product}
-                </DialogDescription>
-              </div>
-              <div className="case-next-step" role="status">
-                <b>
+              <DialogTitle>
+                {selected.id} · {exceptionLabels[selected.exception]}
+              </DialogTitle>
+              <DialogDescription>
+                {selected.brand} · {selected.product}
+              </DialogDescription>
+              <p>
+                <b>{statusLabel(selected.status)}</b> · {money(selected.value)}
+              </p>
+              <section className="case-next-step">
+                <h3>
                   {selected.resolution
-                    ? "Caso encerrado"
+                    ? "Resultado registrado"
                     : selected.status === "status_divergente"
-                      ? "Próximo passo: validar o status"
-                      : tasks.some(
-                            (t) =>
-                              t.orderId === selected.id &&
-                              t.scope !== "process" &&
-                              [
-                                "aberta",
-                                "pendente_aprovacao",
-                                "aprovada",
-                              ].includes(t.status),
+                      ? "Primeiro valide o status"
+                      : related.some((t) =>
+                            [
+                              "aberta",
+                              "aprovada",
+                              "pendente_aprovacao",
+                            ].includes(t.status),
                           )
-                        ? "Próximo passo: revisar e executar as tarefas abaixo"
-                        : tasks.some(
-                              (t) =>
-                                t.orderId === selected.id &&
-                                t.scope !== "process" &&
-                                t.status === "concluida",
+                        ? "Revise e execute os encaminhamentos"
+                        : related.some(
+                              (t) => t.execution && t.kind !== "revisao_status",
                             )
-                          ? "Próximo passo: registrar o resultado e encerrar"
-                          : "Próximo passo: investigar este pedido"}
-                </b>
+                          ? "Registre o resultado da tratativa"
+                          : "Peça ao agente um encaminhamento"}
+                </h3>
                 <p>
-                  {selected.deliveredAt
-                    ? "Entrega registrada não significa que a exceção foi resolvida."
-                    : "Confira os fatos antes de executar o encaminhamento."}
+                  {selected.priority.age} dias úteis desde a abertura ·{" "}
+                  {selected.priority.delay} dias úteis de atraso
+                  {selected.deliveredAt ? " até a entrega" : ""}. Entrega
+                  registrada não encerra automaticamente a exceção.
                 </p>
                 {!selected.resolution &&
-                  selected.status !== "status_divergente" &&
-                  !tasks.some(
-                    (t) =>
-                      t.orderId === selected.id &&
-                      t.scope !== "process" &&
-                      t.status !== "rejeitada",
-                  ) && (
+                  selected.status !== "status_divergente" && (
                     <Button
                       disabled={busy}
-                      onClick={() => startInvestigation(selected.id, "order")}
+                      onClick={() => void investigate(selected.id, "order")}
                     >
-                      <Sparkles size={16} />
-                      {busy ? "Investigando…" : "Investigar com IA"}
+                      {busy ? "Investigando…" : "Investigar este pedido com IA"}
                     </Button>
                   )}
-                {busy && (
-                  <p aria-live="polite">
-                    {events.at(-1)?.message ||
-                      "Consultando evidências e preparando a tarefa…"}
+                {selected.status === "status_divergente" && (
+                  <p>
+                    A origem não informa qual status é o mais recente. Confira a
+                    fonte e registre a revisão abaixo.
                   </p>
                 )}
-              </div>
-              <div className="detail-labels">
-                <Label tone="orange">
-                  {exceptionLabels[selected.exception]}
-                </Label>
-                <Label>{statusLabel(selected.status)}</Label>
-                {selected.deliveredAt && (
-                  <Label tone="green">Entrega registrada</Label>
-                )}
-              </div>
-              {selected.issues.map((i) => (
-                <div className="alert alert-info" key={i.code}>
-                  <TriangleAlert size={16} />
-                  <span>
-                    {i.code === "STATUS_CONFLICT" && selected.statusReview
-                      ? "Conflito revisado nesta sessão. O histórico original foi preservado."
-                      : i.detail}
-                    {i.code === "STATUS_CONFLICT" &&
-                      ` Status originais: ${selected.sourceStatuses.join(", ")}.`}
-                  </span>
+              </section>
+              {(busy ||
+                (activeRun?.type === "order" &&
+                  activeRun.target === selected.id)) && (
+                <AgentProgress busy={busy} events={events} run={activeRun} />
+              )}
+              <details className="panel prose">
+                <summary>Conferir fatos, prazos e histórico do cliente</summary>
+                <p>
+                  Pedido: {shortDate(selected.orderedAt)} · Exceção:{" "}
+                  {shortDate(selected.openedAt)}
+                </p>
+                <p>
+                  Promessa original: {shortDate(selected.promisedAt)} ·
+                  Contrato: {shortDate(selected.priority.contractPromise)} ·
+                  Entrega:{" "}
+                  {selected.deliveredAt
+                    ? shortDate(selected.deliveredAt)
+                    : "não registrada"}
+                </p>
+                <p>
+                  {selected.carrier} / {selected.state} · CD {selected.dc} ·
+                  turno {selected.shift} · máquina{" "}
+                  {selected.machine || "não informada"} · lote {selected.lot}
+                </p>
+                <p>
+                  {selected.customer?.orders} pedidos do cliente · histórico de{" "}
+                  {money(selected.customer?.revenue || "0")}
+                </p>
+                {selected.issues.map((i) => (
+                  <p key={i.code}>{i.detail}</p>
+                ))}
+              </details>
+              <h3>Diagnóstico e encaminhamentos do agente</h3>
+              {!related.length && (
+                <p>Nenhuma tarefa registrada para este pedido.</p>
+              )}
+              {related.map((t) => (
+                <div key={t.id}>
+                  {t.kind.startsWith("proposta") && (
+                    <p className="case-next-step">
+                      Custo estimado pelo servidor:{" "}
+                      {money(
+                        t.kind === "proposta_reembolso"
+                          ? selected.value
+                          : selected.priority.resendCost,
+                      )}
+                      . Verifique a viabilidade e os registros externos antes de
+                      executar.
+                    </p>
+                  )}
+                  <TaskResult task={t} orders={orders} onSaved={refresh} />
                 </div>
               ))}
-              <div className="detail-stats">
-                <div>
-                  <small>Valor do pedido</small>
-                  <b>{money(selected.value)}</b>
-                </div>
-                <div>
-                  <small>Reenvio estimado</small>
-                  <b>{money(selected.priority.resendCost)}</b>
-                </div>
-                <div>
-                  <small>Prioridade</small>
-                  <b>
-                    {selected.priority.score.toFixed(1)}
-                    <span>/100</span>
-                  </b>
-                </div>
-              </div>
-              <details className="case-evidence">
-                <summary>Conferir evidências, prazos e prioridade</summary>
-                <h3>Por que este pedido está na fila</h3>
-                <div className="priority-meters">
-                  <Meter
-                    label="Valor normalizado"
-                    value={selected.priority.value * 100}
-                  />
-                  <Meter
-                    label="Urgência normalizada"
-                    value={selected.priority.urgency * 100}
-                  />
-                  <Meter
-                    label="Relacionamento normalizado"
-                    value={selected.priority.relationship * 100}
-                  />
-                </div>
-                <ul className="reasons">
-                  {selected.priority.reasons.map((r) => (
-                    <li key={r}>
-                      <Check size={14} />
-                      {r}
-                    </li>
-                  ))}
-                </ul>
-                <h3>Prazos e operação</h3>
-                <dl className="detail-grid">
-                  <div>
-                    <dt>Pedido em</dt>
-                    <dd>{shortDate(selected.orderedAt)}</dd>
-                  </div>
-                  <div>
-                    <dt>Exceção aberta em</dt>
-                    <dd>{shortDate(selected.openedAt)}</dd>
-                  </div>
-                  <div>
-                    <dt>Promessa original</dt>
-                    <dd>{shortDate(selected.promisedAt)}</dd>
-                  </div>
-                  <div>
-                    <dt>Prazo contratual calculado</dt>
-                    <dd>{shortDate(selected.priority.contractPromise)}</dd>
-                  </div>
-                  <div>
-                    <dt>Entrega registrada</dt>
-                    <dd>
-                      {selected.deliveredAt
-                        ? shortDate(selected.deliveredAt)
-                        : "Não registrada"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Risco de cancelamento elegível</dt>
-                    <dd>
-                      {money(selected.priority.cancellationRisk)} (
-                      {selected.priority.cancellationProbability * 100}%)
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Transportadora / UF</dt>
-                    <dd>
-                      {selected.carrier} / {selected.state}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>CD / turno / máquina</dt>
-                    <dd>
-                      {selected.dc} / {selected.shift} /{" "}
-                      {selected.machine || "—"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Lote / brinde</dt>
-                    <dd>
-                      {selected.lot} / {selected.gift ? "Sim" : "Não"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Cliente</dt>
-                    <dd>{selected.customerId}</dd>
-                  </div>
-                </dl>
-                {selected.customer && (
-                  <>
-                    <h3>Histórico do cliente</h3>
-                    <div className="customer-summary">
-                      <div>
-                        <small>Pedidos realizados</small>
-                        <strong>{selected.customer.orders}</strong>
-                      </div>
-                      <div>
-                        <small>Receita histórica</small>
-                        <strong>{money(selected.customer.revenue)}</strong>
-                      </div>
-                      <div>
-                        <small>Contatos no período</small>
-                        <strong>{selected.customer.contacts}</strong>
-                      </div>
-                      <div>
-                        <small>Cliente desde</small>
-                        <strong>
-                          {shortDate(selected.customer.firstOrder)}
-                        </strong>
-                      </div>
-                    </div>
-                    <p className="customer-caveat">
-                      Histórico agregado do cliente. Não atribuímos todos os
-                      contatos a esta exceção.
-                    </p>
-                  </>
-                )}
-              </details>
-              <h3 id="case-tasks">Tarefas deste pedido</h3>
-              <p className="muted">
-                Aprovar autoriza o encaminhamento. Registre a execução somente
-                depois de realizar a ação fora da demonstração.
-              </p>
-              {tasks
-                .filter(
-                  (t) => t.orderId === selected.id && t.scope !== "process",
-                )
-                .map((t) => (
-                  <div className="detail-task" key={t.id}>
-                    <CheckCircle2 size={16} />
-                    <div>
-                      <b>{t.title}</b>
-                      <p>{t.justification}</p>
-                      <small>
-                        {t.area} · prazo {shortDate(t.dueAt)}
-                      </small>
-                      <Label>{statusLabel(t.status)}</Label>
-                      {t.facts?.map((fact) => (
-                        <p key={fact}>{fact}</p>
-                      ))}
-                      <div className="task-actions">
-                        {["aberta", "aprovada"].includes(t.status) && (
-                          <Button
-                            size="sm"
-                            disabled={busy || Boolean(taskPending)}
-                            onClick={() => changeTask(t, "concluida")}
-                          >
-                            Registrar execução
-                          </Button>
-                        )}
-                        {t.status === "pendente_aprovacao" && (
-                          <>
-                            <Button
-                              size="sm"
-                              disabled={busy || Boolean(taskPending)}
-                              onClick={() => changeTask(t, "aprovada")}
-                            >
-                              Aprovar proposta
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={busy || Boolean(taskPending)}
-                              onClick={() => changeTask(t, "rejeitada")}
-                            >
-                              Rejeitar
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              {!tasks.some((t) => t.orderId === selected.id) && (
-                <p className="muted">
-                  Nenhuma tarefa registrada para este pedido.
-                </p>
-              )}
               <CaseControls
-                key={selected.id}
+                key={selected.id + selected.status}
                 order={selected}
                 tasks={tasks}
-                disabled={busy || Boolean(taskPending)}
-                onSaved={async () => {
-                  await refreshWorkspace();
-                  setNotice(
-                    "Tratativa registrada. Fila e indicadores atualizados nesta sessão.",
-                  );
-                }}
+                disabled={busy}
+                onSaved={refresh}
               />
-              <div className="detail-bottom">
-                <small>
-                  O agente consulta evidências e registra uma tarefa interna.
-                  Nenhuma transação financeira será executada.
-                </small>
-                <Button
-                  disabled={busy || Boolean(selected.resolution)}
-                  onClick={() => startInvestigation(selected.id, "order")}
-                >
-                  <Sparkles size={16} /> Investigar pedido
-                </Button>
-              </div>
+              <details className="panel prose">
+                <summary>Histórico deste caso</summary>
+                {selected.caseHistory?.map((e) => (
+                  <p key={e.id}>
+                    {e.action} · {e.note} ·{" "}
+                    {new Date(e.at).toLocaleString("pt-BR")}
+                  </p>
+                ))}
+              </details>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={Boolean(processTask)}
+        onOpenChange={(open) => {
+          if (!open) setProcessId(undefined);
+        }}
+      >
+        <DialogContent>
+          {processTask && (
+            <>
+              <DialogTitle>Investigação de recorrência</DialogTitle>
+              <DialogDescription>
+                Documente o diagnóstico do grupo. Os pedidos continuam com
+                tratativas independentes.
+              </DialogDescription>
+              <TaskResult
+                key={processTask.id}
+                task={processTask}
+                orders={orders}
+                onSaved={refresh}
+              />
             </>
           )}
         </DialogContent>
       </Dialog>
       <Dialog open={resetting} onOpenChange={setResetting}>
         <DialogContent>
-          <DialogTitle>Reiniciar sua demonstração?</DialogTitle>
+          <DialogTitle>Reiniciar esta demonstração?</DialogTitle>
           <DialogDescription>
-            Você iniciará uma sessão sem tarefas ou investigações. A base
-            original de pedidos será preservada.
+            A nova sessão não terá planos, tarefas, investigações ou resultados.
+            A base escolhida será preservada. Os registros anteriores não são
+            copiados para a nova avaliação.
           </DialogDescription>
-          <div className="confirm-actions">
+          <div className="task-actions">
             <Button variant="outline" onClick={() => setResetting(false)}>
               Cancelar
             </Button>
-            <Button onClick={reset}>Reiniciar demonstração</Button>
+            <Button onClick={() => void reset()}>Confirmar reinício</Button>
           </div>
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-function Metric({
-  icon: Icon,
-  label,
-  value,
-  detail,
-  tone = "neutral",
-}: {
-  icon: typeof Package;
-  label: string;
-  value: string;
-  detail: string;
-  tone?: string;
-}) {
-  return (
-    <div className={`metric metric-${tone}`}>
-      <div className="metric-top">
-        <span>{label}</span>
-        <Icon size={17} />
-      </div>
-      <strong>{value}</strong>
-      <small>{detail}</small>
-    </div>
-  );
-}
-function Compare({
-  title,
-  data,
-  primary,
-}: {
-  title: string;
-  data: Queue["fifo"];
-  primary?: boolean;
-}) {
-  return (
-    <section className={`panel compare ${primary ? "compare-primary" : ""}`}>
-      <div>
-        <h3>{title}</h3>
-        <Label tone={primary ? "green" : "neutral"}>{data.count} pedidos</Label>
-      </div>
-      <strong>{money(data.value)}</strong>
-      <small>valor de carteira coberto</small>
-      <div className="compare-stats">
-        <span>
-          Idade média <b>{data.averageAge.toFixed(1)} dias úteis</b>
-        </span>
-        <span>
-          Exposição elegível <b>{money(data.risk)}</b>
-        </span>
-      </div>
-      <div className="compare-profile">
-        {data.exceptions.slice(0, 3).map((e) => (
-          <span key={e.type}>
-            {e.label}: {e.count}
-          </span>
-        ))}
-      </div>
-    </section>
   );
 }

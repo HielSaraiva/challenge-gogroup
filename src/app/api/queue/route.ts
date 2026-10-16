@@ -1,17 +1,12 @@
-import { queue } from "@/domain/analytics";
-import { sessionDataset } from "@/domain/cases";
+import { planQueue } from "@/domain/planning";
 import { failure, json, session } from "@/server/http";
 import { getDataset } from "@/server/store";
-import { parseWeights } from "@/server/weights";
 export const dynamic = "force-dynamic";
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const { state } = await session();
-    const p = new URL(request.url).searchParams;
-    return json(
-      queue(sessionDataset(await getDataset(state), state), parseWeights(p)),
-    );
-  } catch (e) {
-    return failure(e);
+    return json(planQueue(await getDataset(state), state));
+  } catch (error) {
+    return failure(error);
   }
 }

@@ -1,3 +1,4 @@
+import { completedTask } from "@/domain/task-results";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { and, eq, gt, lt, sql } from "drizzle-orm";
@@ -228,11 +229,17 @@ export async function updateTask(
   sessionId: string,
   id: string,
   status: Task["status"],
+  execution?: import("@/domain/types").TaskExecution,
+  conclusion?: import("@/domain/types").ProcessConclusion,
 ) {
   const allowed = (previous: Task) =>
     previous.status === "pendente_aprovacao"
       ? ["aprovada", "rejeitada"].includes(status)
-      : ["aberta", "aprovada"].includes(previous.status) &&
+      : (["aberta", "aprovada"].includes(previous.status) ||
+          (previous.status === "concluida" &&
+            (previous.scope === "process"
+              ? !previous.conclusion
+              : !previous.execution))) &&
         status === "concluida";
   if (!process.env.DATABASE_URL)
     return locked(async () => {
@@ -241,6 +248,15 @@ export async function updateTask(
       if (!state || !task) throw new AppError("Tarefa não encontrada.", 404);
       if (!allowed(task))
         throw new AppError("Transição de tarefa inválida.", 409);
+      if (status === "concluida") {
+        try {
+          Object.assign(task, completedTask(task, execution, conclusion));
+        } catch {
+          throw new AppError(
+            "Registre a execução e evidência ou a conclusão com dois pedidos relacionados.",
+          );
+        }
+      }
       task.status = status;
       task.updatedAt = new Date().toISOString();
       await writeLocal(`session-${sessionId}.json`, state);
@@ -255,8 +271,19 @@ export async function updateTask(
   if (!record) throw new AppError("Tarefa não encontrada.", 404);
   if (!allowed(record.payload))
     throw new AppError("Transição de tarefa inválida.", 409);
+  let result = {};
+  if (status === "concluida") {
+    try {
+      result = completedTask(record.payload, execution, conclusion);
+    } catch {
+      throw new AppError(
+        "Registre a execução e evidência ou a conclusão com dois pedidos relacionados.",
+      );
+    }
+  }
   const task = {
     ...record.payload,
+    ...result,
     status,
     updatedAt: new Date().toISOString(),
   };

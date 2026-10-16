@@ -1,382 +1,424 @@
 "use client";
-import { Button } from "./ui/button";
-import { DEFAULT_WEIGHTS } from "@/domain/types";
-import type { Weights } from "@/domain/types";
+import { STRATEGIES, type Weights } from "@/domain/types";
 import type { dashboard } from "@/domain/analytics";
-type Props = {
+export function Methodology({
+  summary,
+  weights,
+}: {
   summary?: ReturnType<typeof dashboard>;
   weights: Weights;
-  onReset: () => void;
-};
-export function Methodology({ summary, weights, onReset }: Props) {
-  const total = weights.value + weights.urgency + weights.relationship;
+}) {
   return (
     <div className="methodology">
       <section className="panel prose">
-        <h2>Como trabalhar com o Go Operations</h2>
-        <p>
-          Uma ferramenta de apoio para decidir quais exceções tratar, investigar
-          evidências e acompanhar encaminhamentos. Este ambiente é uma
-          demonstração para validar o fluxo com a equipe; ainda não executa
-          ações nos sistemas da Gogroup.
-        </p>
+        <h2>Do diagnóstico ao resultado</h2>
         <ol className="workflow-steps">
           <li>
-            <b>Prepare a base.</b> Confira a origem e importe os três CSVs em
-            Dados.
+            <b>Dados:</b> importe os três CSVs da mesma extração e confira a
+            prévia.
           </li>
           <li>
-            <b>Comece por Hoje.</b> Confira a capacidade e abra a fila. O plano
-            da IA é um apoio opcional para organizar as áreas.
+            <b>Hoje:</b> peça para a IA preparar o dia. O agente consulta a
+            carteira, compara estratégias e registra um plano com orientações.
           </li>
           <li>
-            <b>Trate um pedido.</b> Revise os fatos, resolva conflitos de status
-            e peça uma investigação à IA.
+            <b>Pedidos:</b> siga a sugestão, confira os fatos e investigue o
+            pedido com IA. A investigação cria uma tarefa persistida.
           </li>
           <li>
-            <b>Registre a execução.</b> Revise a tarefa, aprove propostas quando
-            necessário e confirme o que foi realizado. Só então encerre a
-            exceção com justificativa.
+            <b>Execução:</b> revise propostas, aprove quando necessário e
+            registre a ação e a evidência. Só então informe o resultado do
+            pedido.
           </li>
           <li>
-            <b>Aprenda com a operação.</b> Investigue padrões em Processos e
-            acompanhe os resultados em Impacto.
+            <b>Resultados:</b> acompanhe casos resolvidos, pendências,
+            reembolsos e custos registrados.
+          </li>
+          <li>
+            <b>Melhorias:</b> investigue recorrências separadamente. Uma
+            conclusão sobre o processo não encerra os pedidos relacionados.
           </li>
         </ol>
+        <p>
+          Este piloto usa dados sintéticos e não executa ações externas. A
+          equipe confirma o que realizou; o agente não inventa comprovantes.
+        </p>
       </section>
       <nav className="method-index" aria-label="Nesta metodologia">
+        <a href="#method-agent">Papel da IA</a>
         <a href="#method-priority">Priorização</a>
-        <a href="#method-business">Regras de negócio</a>
-        <a href="#method-agent">IA e decisões humanas</a>
-        <a href="#method-data">Dados e arquitetura</a>
-        <a href="#method-pilot">Validação do piloto</a>
+        <a href="#method-outcomes">Execução e resultados</a>
+        <a href="#method-data">Dados e tecnologia</a>
+        <a href="#method-pilot">Limites e validação</a>
       </nav>
+      <section className="panel prose" id="method-agent">
+        <h2>Por que o agente é parte do trabalho?</h2>
+        <p>
+          A IA compara as alternativas calculadas e escolhe uma estratégia com
+          justificativa. Depois consulta amostras da seleção escolhida e
+          registra por onde começar em cada área, com motivo e próximo passo. O
+          servidor calcula números e verifica os vínculos. Assim, a escolha é do
+          agente, com cálculos reproduzíveis e limites verificáveis.
+        </p>
+        <details open>
+          <summary>O que cada execução produz?</summary>
+          <ul>
+            <li>
+              <b>Plano diário:</b> estratégia, justificativa, pedidos
+              selecionados, comparação com FIFO e orientações para todas as
+              áreas. O agente consulta amostras; não investigou individualmente
+              todos os pedidos.
+            </li>
+            <li>
+              <b>Pedido:</b> encaminhamento interno com evidências, responsável
+              por área e prazo. A proposta de reenvio ou reembolso exige
+              simulação do custo antes de ser registrada.
+            </li>
+            <li>
+              <b>Recorrência:</b> hipótese, evidências de pedidos relacionados e
+              verificação de campo. A equipe registra se a hipótese foi
+              confirmada, descartada ou permanece inconclusiva.
+            </li>
+          </ul>
+        </details>
+        <details>
+          <summary>
+            Por que as ferramentas e os registros são necessários?
+          </summary>
+          <p>
+            Um texto dizendo “plano pronto” não conclui uma execução. É
+            obrigatório consultar o diagnóstico e comparar estratégias antes de
+            registrar o plano. Consultar o pedido é obrigatório antes de criar
+            tarefa. O servidor rejeita IDs, áreas e evidências inválidos.
+          </p>
+          <p>
+            Groq é o provedor de inferência, com credencial apenas no servidor.
+            Evidências selecionadas são enviadas a ele na investigação. Não
+            exibimos raciocínio interno: mostramos fatos consultados, decisões
+            registradas e efeitos persistidos.
+          </p>
+          <p>
+            Há limites de seis rodadas, doze ferramentas e duas tarefas por
+            investigação, além de tempo, uso diário e controle de concorrência.
+            Idempotência evita duplicação. Falha ou erro 429 preserva os efeitos
+            registrados, mostra o problema e não gera uma resposta simulada de
+            sucesso.
+          </p>
+        </details>
+        <details>
+          <summary>Como ler a atividade do agente?</summary>
+          <p>
+            As etapas são numeradas de cima para baixo: conferir a carteira,
+            comparar alternativas, preparar encaminhamentos e salvar o plano. O
+            resultado aparece com o que foi registrado. As chamadas de
+            ferramentas ficam em detalhes técnicos, agrupadas por identificador
+            de chamada; registros antigos sem esse identificador são marcados
+            como legados.
+          </p>
+        </details>
+      </section>
       <section className="panel prose" id="method-priority">
-        <h2>Por que estes pedidos entram na fila?</h2>
+        <h2>Por que estes pedidos foram selecionados?</h2>
         <p>
-          A equipe tem capacidade de referência de 150 tratativas por dia, com
-          12 minutos em média por tratativa. A seleção combina valor do pedido,
-          urgência e relacionamento. Ela pode ser consultada mesmo quando a IA
-          está indisponível.
+          Capacidade fornecida: 150 tratativas por dia para toda a equipe, com
+          12 minutos em média por tratativa. A IA escolhe entre três estratégias
+          iniciais. Os pesos são heurísticas deste projeto; não são política
+          oficial nem uma previsão de recuperação financeira.
         </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Estratégia</th>
+              <th>Valor</th>
+              <th>Urgência</th>
+              <th>Relacionamento</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(STRATEGIES).map(([key, s]) => (
+              <tr key={key}>
+                <td>{s.label}</td>
+                <td>{s.weights.value}%</td>
+                <td>{s.weights.urgency}%</td>
+                <td>{s.weights.relationship}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
         <p>
-          <b>Política escolhida pelo projeto:</b> pesos padrão de{" "}
-          {DEFAULT_WEIGHTS.value}% para valor, {DEFAULT_WEIGHTS.urgency}% para
-          urgência e {DEFAULT_WEIGHTS.relationship}% para relacionamento. Não
-          são uma política oficial da Gogroup nem um modelo de retorno validado.
-          Os pesos ativos são {Math.round((weights.value / total) * 100)}%,{" "}
-          {Math.round((weights.urgency / total) * 100)}% e{" "}
-          {Math.round((weights.relationship / total) * 100)}%, respectivamente.
-        </p>
-        <p>
-          Reservamos 20% das vagas restantes para os pedidos mais antigos,
-          arredondando para cima. As demais vagas seguem a pontuação; empates
-          usam abertura mais antiga e depois identificador. A reserva evita que
-          pedidos de menor valor sejam sempre adiados. Sua proporção precisa ser
-          avaliada no piloto.
+          Pesos do plano ativo: {weights.value}/{weights.urgency}/
+          {weights.relationship}. O operador recebe motivos concretos para agir;
+          não precisa interpretar porcentagens normalizadas para usar a
+          ferramenta.
         </p>
         <details>
-          <summary>Ver fórmula, normalização e exemplo</summary>
+          <summary>Fórmulas e escolha da normalização</summary>
           <p>
-            Pontuação = 100 × (valor normalizado × peso de valor + urgência
-            normalizada × peso de urgência + relacionamento normalizado × peso
-            de relacionamento) ÷ soma dos pesos.
+            Pontuação = 100 × soma de cada componente normalizado multiplicado
+            por seu peso ÷ soma dos pesos. Empates seguem abertura mais antiga e
+            depois identificador. Cada componente fica limitado a 1.
           </p>
           <ul>
             <li>
-              <b>Valor:</b> valor do pedido ÷ percentil 95 dos valores da base,
-              limitado a 1. Isso reduz a influência de valores extremos.
+              <b>Valor:</b> valor do pedido dividido pelo percentil 95 dos
+              valores da base.
             </li>
             <li>
               <b>Urgência:</b> maior número entre dias úteis de atraso e idade
-              da exceção ÷ 10, limitado a 1. Para entregues, o atraso termina na
-              entrega.
+              da exceção, dividido pelo percentil 95 dessa medida na base. O
+              percentil substitui o teto antigo de dez dias, que saturava muitos
+              pedidos e escondia diferenças de espera.
             </li>
             <li>
               <b>Relacionamento:</b> ticket médio histórico × probabilidade de
-              recompra × 50%, normalizado pelo percentil 95 da mesma medida e
-              limitado a 1. Acima de R$ 1.500 de receita acumulada usamos 70%;
-              nos demais, 28%.
+              recompra × 50% de redução por exceção mal resolvida, dividido pelo
+              percentil 95 dessa medida. Usa 70% de recompra para receita
+              acumulada acima de R$ 1.500 e 28% nos demais casos.
             </li>
           </ul>
           <p>
-            Exemplo sintético: componentes 0,8, 0,6 e 0,5, com os pesos padrão,
-            resultam em 67 pontos. A pontuação serve para ordenar; não significa
-            67% de chance de resolver ou de recuperar receita.
-          </p>
-          <p>
-            A medida de relacionamento é uma aproximação por pedido. Não deve
-            ser somada como perda futura da carteira, pois um cliente pode ter
-            várias exceções.
+            É uma aproximação por pedido. Não somamos o componente de
+            relacionamento para alegar perda futura da carteira, pois um cliente
+            pode ter várias exceções.
           </p>
         </details>
         <details>
-          <summary>O que o contador de capacidade realmente mede?</summary>
+          <summary>
+            Reserva para antigos, capacidade e comparação com FIFO
+          </summary>
           <p>
-            Na demonstração, cada encerramento consome uma vaga. Reabrir não
-            devolve o esforço já contabilizado; um novo encerramento consome
-            outra vaga. Isso é uma aproximação, pois investigar e contatar
-            também consome tempo. Ações de processo não entram automaticamente
-            nas 150 vagas. Em produção, será necessário registrar esforço por
-            tratativa e capacidade por especialidade.
+            Reservamos 20% das vagas restantes aos casos mais antigos,
+            arredondando para cima. Isso reduz adiamento contínuo de pedidos de
+            menor valor. As demais vagas seguem a pontuação da estratégia
+            escolhida. A proporção é uma escolha do piloto e precisa ser
+            validada com a equipe.
           </p>
           <p>
-            A comparação com ordem de chegada (FIFO) usa a mesma quantidade de
-            vagas e a mesma carteira pendente. Mais valor coberto não demonstra
-            mais recuperação financeira.
+            Na demonstração, um encerramento consome uma vaga; reabrir não
+            devolve esforço. Este contador não mede contatos, investigações ou
+            tempo real. Ações de melhoria precisam de esforço dimensionado à
+            parte. Produção exige capacidade por especialidade e registro de
+            esforço.
+          </p>
+          <p>
+            O plano e a comparação com FIFO são fotografias salvas da mesma
+            base, na mesma capacidade. Encerrar um caso atualiza o progresso,
+            sem colocar outro pedido silenciosamente. Para outra seleção,
+            prepare novo plano. Mudança da base, revisão de status ou política
+            antiga exige revisão; o histórico é preservado.
+          </p>
+          <p>
+            Maior valor coberto não demonstra recuperação, produtividade nem
+            efeito causal. O agente compara valor, exposição e espera, sem
+            prometer que uma única métrica represente sucesso.
+          </p>
+        </details>
+        <details>
+          <summary>Calendário e promessa ao cliente</summary>
+          <p>
+            A referência é fixa: 30/09/2026. Sábados, domingos e os feriados
+            nacionais de 07/09 e 12/10 não contam como dias úteis. O primeiro
+            dia útil após o pedido é o dia de separação; depois contam-se os
+            dias do SLA da transportadora por UF.
+          </p>
+          <p>
+            A promessa original é preservada para calcular o atraso perante o
+            cliente. O contrato calculado aparece ao lado para verificar
+            divergências. Para entregues, o atraso termina na entrega. Uma
+            entrega não encerra automaticamente exceções como item faltante ou
+            avaria.
           </p>
         </details>
       </section>
-      <section className="panel prose" id="method-business">
-        <h2>Regras de negócio e significado dos números</h2>
+      <section className="panel prose" id="method-outcomes">
+        <h2>Por que aprovação, execução e resultado são separados?</h2>
         <p>
-          Os parâmetros fornecidos são a base dos cálculos. Escolhas adicionais
-          do projeto estão identificadas como aproximações ou heurísticas.
+          Aprovar um reenvio autoriza a ação; não comprova que o item foi
+          enviado. A equipe precisa registrar a execução e sua evidência.
+          Depois, o encerramento exige resultado compatível com a exceção e
+          ausência de tarefas pendentes. Revisar um status, sozinho, não resolve
+          a pendência original.
         </p>
         <details open>
-          <summary>Calendário, promessa e pedidos entregues</summary>
+          <summary>Quando há resultado sem dinheiro?</summary>
           <p>
-            A referência do case é 30/09/2026, e não a data do computador.
-            Finais de semana e os feriados nacionais de 07/09 e 12/10 são
-            excluídos. O primeiro dia útil após o pedido é o dia de separação;
-            depois contam-se os dias úteis do SLA contratado por transportadora
-            e UF.
+            Exemplo sintético: um pedido está bloqueado por endereço divergente.
+            O operador confirma o endereço, registra a referência e encerra essa
+            exceção como “endereço corrigido”. Não houve reembolso, e o efeito
+            financeiro pode não ter sido mensurado. Isso é um resultado
+            operacional útil.
           </p>
           <p>
-            A promessa original continua sendo usada para o atraso perante o
-            cliente. O prazo calculado pelo contrato aparece ao lado para
-            identificar divergências, sem alterar a promessa. Entrega registrada
-            não encerra uma exceção: ainda pode haver item faltante, avaria ou
-            outra pendência.
+            Em reembolso, são obrigatórios valor positivo, limitado ao pedido, e
+            evidência. Custos podem ser estimados ou informados pelo operador.
+            Valor desconhecido permanece “não informado”; não é convertido em
+            zero.
           </p>
         </details>
         <details>
-          <summary>Carteira, exposição, custos e resultado</summary>
+          <summary>Significado de cada valor</summary>
           <ul>
             <li>
-              <b>Carteira:</b> soma dos valores dos pedidos pendentes, sem
-              contar duplicatas. Não é prejuízo.
+              <b>Valor de carteira:</b> soma dos pedidos, sem duplicatas; não é
+              prejuízo.
             </li>
             <li>
-              <b>Exposição a cancelamento:</b> valor × probabilidade, somente
-              para exceções logísticas sem entrega registrada. Atrasos de 1–2
-              dias úteis usam 4%; 3–5, 10%; 6–10, 22%; acima de 10, 40%. Sem
-              atraso a exposição calculada é zero. Não extrapolamos essa tabela
-              para pagamentos, produção ou outras exceções.
+              <b>Exposição:</b> valor × probabilidade de cancelamento, somente
+              para logística ainda não entregue. Atraso de 1–2 dias úteis: 4%;
+              3–5: 10%; 6–10: 22%; mais de 10: 40%. Sem atraso: zero. Não
+              extrapolamos esses parâmetros para outras exceções.
             </li>
             <li>
-              <b>Reenvio ou reprodução:</b> 24% do valor do pedido + frete médio
-              contratado. Para item faltante, o reenvio integral é uma
-              aproximação porque não há preço por item.
+              <b>Reenvio ou reprodução estimada:</b> 24% do valor do pedido +
+              frete médio contratado. Para item faltante, o pedido integral é
+              uma aproximação, pois não há preço por item.
             </li>
             <li>
-              <b>Reembolso:</b> valor pago pelo cliente. Contato: R$ 9 por
-              contato; o histórico anual não é custo atribuível automaticamente
-              àquela exceção.
+              <b>Reembolso estimado:</b> valor pago pelo cliente. Contato: R$ 9,
+              sem atribuir todo o histórico anual a uma exceção.
             </li>
             <li>
-              <b>Benefício simulado:</b> exposição elegível × eficácia
-              informada, descontando o custo informado. As premissas não
-              comprovam resultado.
+              <b>Volume tratado:</b> valor dos pedidos resolvidos, sem alegar
+              receita preservada.
             </li>
             <li>
-              <b>Resultado declarado:</b> valor preservado ou reembolsado
-              informado pelo operador, com evidência e limitado ao valor do
-              pedido. Fica separado de recuperação comprovada por sistemas
-              externos.
+              <b>Reembolsos e custos registrados:</b> declarações do operador,
+              com custos estimados separados dos informados. Não calculamos
+              saldo entre receita, reembolso e custo como se fosse lucro.
             </li>
           </ul>
           <p>
-            Criar uma tarefa, aprovar uma proposta ou encerrar uma exceção não
-            gera receita recuperada. Sem confirmação externa, não alegamos
-            retorno financeiro comprovado.
-          </p>
-        </details>
-      </section>
-      <section className="panel prose" id="method-agent">
-        <h2>O que a IA faz, e o que cabe à equipe?</h2>
-        <p>
-          A IA consulta fatos e usa ferramentas restritas para registrar planos,
-          tarefas e hipóteses de melhoria. Os cálculos monetários, a pontuação e
-          as validações ficam no servidor para serem reproduzíveis. O texto da
-          IA precisa de revisão humana.
-        </p>
-        <details open>
-          <summary>Três ações úteis do agente</summary>
-          <ul>
-            <li>
-              <b>Plano do dia:</b> consulta a seleção e uma amostra por área,
-              escolhe um primeiro pedido válido e registra motivo e próximo
-              passo. Não investiga toda a carteira nem cria tarefas em lote.
-            </li>
-            <li>
-              <b>Investigação de pedido:</b> consulta o dossiê e registra tarefa
-              com área responsável, prazo e evidências. Propostas financeiras
-              exigem simulação prévia.
-            </li>
-            <li>
-              <b>Investigação de processo:</b> consulta um padrão e registra uma
-              hipótese com amostra e próxima verificação. Concluir essa ação não
-              encerra os pedidos relacionados.
-            </li>
-          </ul>
-        </details>
-        <details>
-          <summary>Aprovação, execução, falhas e limites</summary>
-          <p>
-            Status conflitantes exigem revisão antes de outros encaminhamentos.
-            Propostas passam por aprovação humana; depois, a equipe registra a
-            execução. Aprovação sozinha não resolve o pedido. O encerramento
-            exige tarefa concluída, ausência de pendências e justificativa.
-          </p>
-          <p>
-            O agente usa até seis rodadas, doze ferramentas e duas tarefas por
-            investigação, além de limites de tempo e uso diário. O servidor
-            verifica consulta prévia, escopo e evidências. Idempotência evita
-            duplicação da mesma ação; controle de concorrência protege a sessão.
-            Falhas preservam o histórico e os efeitos já gravados.
-          </p>
-          <p>
-            Tarefas individuais recebem prazo de um dia útil; ações de processo,
-            dois dias úteis após a referência. Esses prazos são escolhas do
-            protótipo, a validar por área. Nenhuma mensagem, pagamento,
-            reembolso ou pedido de reenvio é executado externamente.
+            O simulador genérico de eficácia foi retirado porque não havia
+            medida que sustentasse aquela porcentagem. A estimativa permanece
+            junto da proposta concreta, para apoiar a avaliação antes da
+            execução.
           </p>
         </details>
         <details>
-          <summary>Por que padrões não são causas comprovadas?</summary>
+          <summary>
+            Por que uma investigação de melhoria não encerra pedidos?
+          </summary>
           <p>
-            Usamos dimensões relacionadas à etapa operacional. Sinais de
-            concentração exigem pelo menos dez casos; o encaminhamento para
-            processo usa participação de pelo menos 15% na exceção e associação
-            relativa de pelo menos 1,5 vez a participação na base elegível. São
-            limiares heurísticos, sem teste de significância. Divergência de
-            promessa segue a verificação contratual própria.
+            Exemplo sintético: uma amostra sugere problema de embalagem em um
+            lote. A equipe confere pedidos e registros de campo, documenta a
+            conclusão e encaminha inspeção. Isso conclui o diagnóstico; os
+            clientes continuam precisando de tratativas individuais.
           </p>
           <p>
-            A base contém exceções, sem o total de vendas ou produção por
-            transportadora, CD, máquina ou lote. Portanto, não permite calcular
-            taxas reais de falha nem atribuir causalidade. A ação deve buscar
-            evidências de campo antes de alterar o processo.
+            Finalizar a investigação exige conclusão, observações, referências
+            de ao menos dois pedidos relacionados e próximo encaminhamento. Não
+            basta abrir um pedido ou clicar em concluir. Uma hipótese confirmada
+            pelo operador não comprova implantação ou eficácia da melhoria.
+          </p>
+          <p>
+            Usamos dimensões pertinentes à etapa. Sinais precisam de ao menos
+            dez casos; a triagem de processo usa participação mínima de 15% e
+            associação relativa de 1,5 vez a participação na base elegível. São
+            heurísticas sem teste de significância. A divergência de prazo segue
+            verificação contratual própria. Sem todas as vendas ou produção, não
+            há taxa real de falha nem causalidade demonstrada.
           </p>
         </details>
       </section>
       <section className="panel prose" id="method-data">
-        <h2>Dados, tecnologia e limites do ambiente</h2>
-        {summary ? (
+        <h2>Por que esta arquitetura e esta entrada de dados?</h2>
+        {summary && (
           <p>
-            Na base atual: {summary.sourceRows} registros consolidados em{" "}
-            {summary.totalCount} pedidos. Há {summary.conflicts} pedidos
-            pendentes com conflito de status e {summary.promiseMismatches}{" "}
-            promessas divergentes entre os pedidos pendentes.
-          </p>
-        ) : (
-          <p>
-            Importe a base em Dados para consultar os indicadores de qualidade.
+            Base atual: {summary.sourceRows} linhas, {summary.totalCount}{" "}
+            pedidos únicos. Conflitos de status e promessas divergentes são
+            preservados para revisão.
           </p>
         )}
         <details open>
-          <summary>Importação e futura integração</summary>
+          <summary>CSV no piloto; integração no uso interno</summary>
           <p>
-            CSV é a entrada do piloto: prévia, validação de campos e
-            relacionamentos, consolidação de duplicatas e confirmação. Conflitos
-            de status são preservados porque não há timestamp para escolher o
-            mais recente. Outros conflitos no mesmo pedido bloqueiam a carga.
+            A importação valida campos, relações e duplicatas; exibe prévia e só
+            grava com confirmação. Status conflitantes não são resolvidos
+            automaticamente porque falta timestamp da origem. Outros conflitos
+            do mesmo pedido bloqueiam a carga. A data fixa impede importar
+            eventos posteriores à referência sem revisar a política.
           </p>
           <p>
-            Uma importação pela interface pertence à sessão e não altera a base
-            dos demais visitantes. Trocar a base com histórico ativo é bloqueado
-            para não misturar decisões. Reiniciar limpa as tratativas e preserva
-            a base escolhida.
+            A carga pela interface é exclusiva da sessão. Trocar a base com
+            tratativas ativas é bloqueado. Reiniciar em Dados cria nova sessão
+            sem tratativas e preserva a base escolhida. Os arquivos e
+            credenciais ficam fora do Git.
           </p>
           <p>
-            Para operação diária, recomendamos integração automática após mapear
-            ERP, atendimento e logística. São necessários contrato de dados,
-            identificadores estáveis, atualização incremental, histórico de
-            status, conciliação, monitoramento e tratamento de falhas. Não há
-            evidência de quais serviços a empresa usa; não simulamos uma conexão
-            inexistente.
+            Para o dia a dia interno, a atualização automática é recomendada
+            depois de mapear ERP, atendimento e logística. São necessários
+            responsáveis, IDs estáveis, atualização de status, carga
+            incremental, conciliação, monitoramento e reprocessamento. Não
+            presumimos quais serviços a Gogroup usa.
           </p>
         </details>
         <details>
-          <summary>Por que esta arquitetura?</summary>
+          <summary>Escolhas técnicas e seus limites</summary>
           <ul>
             <li>
               <b>Next.js, React e TypeScript:</b> interface e endpoints no mesmo
-              projeto, com contratos tipados. Regras de domínio ficam separadas
-              para poder testá-las sem a interface ou a IA.
+              projeto, com contratos tipados e domínio separado da interface e
+              do modelo.
             </li>
             <li>
-              <b>Zod e validação no servidor:</b> rejeitam entradas e transições
-              inválidas; a interface não é a única barreira.
+              <b>Zod:</b> validação no servidor de entradas, evidências e
+              transições. A interface não é a única barreira.
             </li>
             <li>
-              <b>Decimal.js:</b> cálculos monetários decimais evitam erros de
-              ponto flutuante.
+              <b>Decimal.js:</b> evita imprecisão de ponto flutuante em valores
+              monetários.
             </li>
             <li>
-              <b>Groq com ferramentas:</b> o modelo investiga e encaminha, com
-              credencial apenas no servidor. Evidências selecionadas são
-              enviadas ao provedor durante a investigação.
+              <b>Groq com ferramentas:</b> IA decide estratégia e
+              encaminhamentos, enquanto cálculos e efeitos são controlados pelo
+              servidor.
             </li>
             <li>
-              <b>PostgreSQL Neon e Drizzle:</b> persistência na hospedagem,
-              versionamento e operações atômicas. Arquivos em .local servem ao
+              <b>Neon PostgreSQL e Drizzle:</b> persistência hospedada, versões
+              e atualizações atômicas. Arquivos .local são alternativa de
               desenvolvimento em uma instância.
             </li>
             <li>
-              <b>Radix UI, CSS e fontes locais:</b> componentes de diálogo com
-              gestão de foco, identidade consistente e menor dependência de
-              recursos externos.
+              <b>JSON versionado:</b> novos planos registram estratégia, base e
+              comparação. Registros antigos são legados, sem evidências
+              fabricadas.
+            </li>
+            <li>
+              <b>Radix UI e fontes locais:</b> diálogos com gestão de foco,
+              identidade visual consistente e menor dependência de fontes
+              externas.
             </li>
           </ul>
-        </details>
-        <details>
-          <summary>O que falta para uso interno real?</summary>
           <p>
-            Hoje cada visitante tem sessão independente por cookie, expira em
-            sete dias e usa data fixa. Isso evita interferência na demonstração,
-            mas não é colaboração da equipe. Produção exige autenticação,
-            permissões de operador e supervisor, fila compartilhada, atribuição
-            por pessoa, histórico durável, calendário operacional atualizado e
-            integração com sistemas de origem.
-          </p>
-          <p>
-            Também será necessário definir retenção e acesso aos dados,
-            homologar o provedor de IA e confirmar resultados financeiros com
-            fontes externas. A demonstração pública deve usar somente dados
-            sintéticos.
+            Tarefas individuais têm prazo de um dia útil; investigações de
+            melhoria, dois após a referência. São escolhas a homologar por área.
+            Sessões independentes por cookie expiram em sete dias. Acesso
+            expirado não representa uma política de descarte auditada para
+            produção.
           </p>
         </details>
       </section>
       <section className="panel prose" id="method-pilot">
-        <h2>Como decidir se a solução ajuda a equipe</h2>
+        <h2>O que falta provar no piloto?</h2>
         <p>
-          No piloto, um operador novo deve conseguir encontrar o próximo pedido,
-          entender o motivo da prioridade, revisar evidências, registrar uma
-          tarefa executada e encerrar o caso sem orientação externa. Observe
-          dificuldades e tempo por etapa; esta revisão de interface não
-          substitui teste com pessoas da operação.
-        </p>
-        <p>
+          Observe se um operador novo consegue preparar o dia, entender a
+          sugestão, registrar a execução e encerrar com resultado sem ajuda.
           Compare com FIFO usando capacidade e carteiras equivalentes. Meça
-          tempo de triagem, pedidos tratados por hora, idade das pendências,
-          reaberturas, tarefas aceitas sem correção e sucesso do agente com ação
-          persistida. Valide responsáveis, capacidade por especialidade e
-          critérios de encerramento antes de medir produtividade.
+          tempo de triagem, pedidos tratados por hora, espera, reaberturas,
+          tarefas aceitas sem correção e sucesso do agente com efeito
+          persistido.
         </p>
         <p>
-          Para avaliar efeito financeiro, cruze resultados com pagamentos,
-          retenção e custos confirmados. Separe receita, margem, custo e
-          benefício incremental. Defina metas e período com a equipe antes de
-          concluir eficácia.
+          Para produção interna faltam autenticação, papéis, atribuição por
+          pessoa, fila compartilhada, histórico durável, calendário atualizado,
+          integrações e capacidade medida por esforço. Também devem ser
+          homologados acesso, retenção e envio de dados ao provedor de IA.
         </p>
-        <Button variant="outline" onClick={onReset}>
-          Reiniciar minha demonstração
-        </Button>
-        <p className="muted">
-          Remove as tratativas da sessão atual e mantém a base importada para
-          começar outra avaliação.
+        <p>
+          Resultados financeiros precisam de conciliação com pagamentos,
+          retenções e custos externos. Sem isso, não alegamos receita
+          recuperada, lucro ou retorno incremental. Defina metas e período com a
+          equipe antes de concluir eficácia.
         </p>
       </section>
     </div>

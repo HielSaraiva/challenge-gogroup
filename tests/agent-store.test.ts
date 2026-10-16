@@ -113,7 +113,13 @@ describe("ferramentas controladas e persistência", () => {
     await expect(updateTask(ids[1], first.id, "concluida")).rejects.toThrow(
       "encontrada",
     );
-    await updateTask(ids[0], first.id, "concluida");
+    await expect(updateTask(ids[0], first.id, "concluida")).rejects.toThrow(
+      "evidência",
+    );
+    await updateTask(ids[0], first.id, "concluida", {
+      note: "Execução documentada no teste",
+      evidence: "Comprovante sintético conferido",
+    });
     expect((await getSession(ids[0]))!.tasks[0].status).toBe("concluida");
   });
   it("bloqueia ação que dependa de status conflitante", async () => {
@@ -147,9 +153,14 @@ describe("ferramentas controladas e persistência", () => {
       "inválida",
     );
     await updateTask(ids[0], task.id, "aprovada");
-    expect((await updateTask(ids[0], task.id, "concluida")).status).toBe(
-      "concluida",
-    );
+    expect(
+      (
+        await updateTask(ids[0], task.id, "concluida", {
+          note: "Execução documentada no teste",
+          evidence: "Comprovante sintético conferido",
+        })
+      ).status,
+    ).toBe("concluida");
     await expect(updateTask(ids[0], task.id, "concluida")).rejects.toThrow(
       "inválida",
     );

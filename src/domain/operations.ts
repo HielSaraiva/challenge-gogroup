@@ -1,4 +1,3 @@
-import Decimal from "decimal.js";
 import { queue, rankOrders, sumMoney } from "./analytics";
 import {
   CAPACITY,
@@ -58,49 +57,45 @@ export function workstreams(data: Dataset, weights: Weights = DEFAULT_WEIGHTS) {
   }));
 }
 export function financialReport(data: Dataset, state: SessionState) {
-  const original = {
-    ...data,
-    orders: data.orders.map((order) => ({ ...order, resolution: undefined })),
-  };
-  const originalRanks = rankOrders(original);
-  const pending = originalRanks.filter(
-    (order) =>
-      !data.orders.find((source) => source.id === order.id)?.resolution,
+  const resolved = data.orders.filter((o) => o.resolution);
+  const outcomes = resolved.flatMap((o) =>
+    o.resolution?.outcome ? [o.resolution.outcome] : [],
   );
-  const closed = originalRanks.filter(
-    (order) => data.orders.find((source) => source.id === order.id)?.resolution,
+  const refunds = outcomes.filter(
+    (o) => o.type === "reembolso_registrado" && o.refund !== undefined,
   );
-  const declared = data.orders.flatMap((order) =>
-    order.resolution?.financial ? [order.resolution.financial] : [],
+  const declared = outcomes.flatMap((o) =>
+    o.cost?.kind === "declared" ? [o.cost.amount] : [],
   );
-  const retained = sumMoney(declared.map((outcome) => outcome.retained));
-  const refunded = sumMoney(declared.map((outcome) => outcome.refunded));
-  const costs = sumMoney(declared.map((outcome) => outcome.cost));
+  const estimated = outcomes.flatMap((o) =>
+    o.cost?.kind === "estimated" ? [o.cost.amount] : [],
+  );
   return {
-    baselineExposure: sumMoney(
-      originalRanks.map((order) => order.priority.cancellationRisk),
-    ),
-    pendingExposure: sumMoney(
-      pending.map((order) => order.priority.cancellationRisk),
-    ),
-    closedExposure: sumMoney(
-      closed.map((order) => order.priority.cancellationRisk),
-    ),
-    verifiedRecovery: "0.00",
-    declaredRetained: retained,
-    declaredRefunded: refunded,
-    declaredCosts: costs,
-    declaredBalance: new Decimal(retained)
-      .minus(refunded)
-      .minus(costs)
-      .toFixed(2),
-    declaredCases: declared.length,
-    financialProposals: state.tasks.filter(
-      (task) =>
-        task.kind.startsWith("proposta_") &&
-        ["aprovada", "concluida"].includes(task.status),
+    resolvedCount: resolved.length,
+    pendingCount: data.orders.length - resolved.length,
+    treatedValue: sumMoney(resolved.map((o) => o.value)),
+    refunds: {
+      count: refunds.length,
+      total: sumMoney(refunds.map((o) => o.refund!)),
+    },
+    declaredCosts: { count: declared.length, total: sumMoney(declared) },
+    estimatedCosts: { count: estimated.length, total: sumMoney(estimated) },
+    unmeasured: resolved.filter(
+      (o) => !o.resolution?.outcome?.cost && !o.resolution?.outcome?.refund,
     ).length,
-    note: "Registros manuais desta demonstração não comprovam recuperação, lucro ou efeito causal. Aprovar uma proposta ou encerrar um caso não equivale a recuperar dinheiro.",
+    legacy: resolved.filter((o) => !o.resolution?.outcome).length,
+    pendingApprovals: state.tasks.filter(
+      (t) => t.status === "pendente_aprovacao",
+    ).length,
+    pendingExecution: state.tasks.filter(
+      (t) => t.status === "aberta" || t.status === "aprovada",
+    ).length,
+    resolvedOrders: resolved.map((o) => ({
+      id: o.id,
+      value: o.value,
+      outcome: o.resolution?.outcome,
+      note: o.resolution!.note,
+    })),
   };
 }
 export function operationalReport(

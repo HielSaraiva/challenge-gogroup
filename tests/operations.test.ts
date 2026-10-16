@@ -3,7 +3,13 @@ import { randomUUID } from "node:crypto";
 import { rm } from "node:fs/promises";
 import { queue, insights } from "@/domain/analytics";
 import { financialReport, workstreams } from "@/domain/operations";
-import { transitionCase, sessionDataset } from "@/domain/cases";
+import { planQueue } from "@/domain/planning";
+import { completedTask } from "@/domain/task-results";
+import {
+  caseActionSchema,
+  transitionCase,
+  sessionDataset,
+} from "@/domain/cases";
 import {
   executeTool,
   investigate,
@@ -80,6 +86,10 @@ const completed: Task = {
   area: "Logística",
   dueAt: "2026-10-01",
   status: "concluida",
+  execution: {
+    note: "Execução documentada no teste",
+    evidence: "Comprovante sintético conferido",
+  },
   createdAt: "",
   updatedAt: "",
   idempotencyKey: "synthetic",
@@ -176,7 +186,16 @@ describe("plano e ferramentas do agente", () => {
     };
     const before = queue(dataset).orders.map((order) => order.id);
     const ctx = context(dataset);
-    await executeTool("consultar_fila", {}, ctx);
+    await executeTool("consultar_diagnostico", {}, ctx);
+    await executeTool(
+      "comparar_estrategias",
+      {
+        strategy: "equilibrada",
+        reason:
+          "Equilibrar o atendimento das pendências com o histórico dos clientes.",
+      },
+      ctx,
+    );
     const plan = (await executeTool(
       "registrar_plano_dia",
       {
@@ -247,7 +266,16 @@ describe("plano e ferramentas do agente", () => {
     await expect(executeTool("registrar_plano_dia", args, ctx)).rejects.toThrow(
       "Consulte",
     );
-    await executeTool("consultar_fila", {}, ctx);
+    await executeTool("consultar_diagnostico", {}, ctx);
+    await executeTool(
+      "comparar_estrategias",
+      {
+        strategy: "equilibrada",
+        reason:
+          "Equilibrar o atendimento das pendências com o histórico dos clientes.",
+      },
+      ctx,
+    );
     await expect(
       executeTool(
         "registrar_plano_dia",
@@ -337,25 +365,34 @@ describe("plano e ferramentas do agente", () => {
                 type: "function",
                 function:
                   step++ === 0
-                    ? { name: "consultar_fila", arguments: "{}" }
-                    : {
-                        name: "registrar_plano_dia",
-                        arguments: JSON.stringify({
-                          briefing:
-                            "Organizar a frente logística e validar as pendências antes do encaminhamento.",
-                          priorityAreas: ["Logística"],
-                          instructions: [
-                            {
-                              area: "Logística",
-                              firstOrderId: baseOrder.id,
-                              justification:
-                                "Verificar este caso logístico com evidência de atraso na amostra.",
-                              nextStep:
-                                "Consultar rastreio e registrar evidências para cada tratativa pendente.",
-                            },
-                          ],
-                        }),
-                      },
+                    ? { name: "consultar_diagnostico", arguments: "{}" }
+                    : step === 2
+                      ? {
+                          name: "comparar_estrategias",
+                          arguments: JSON.stringify({
+                            strategy: "equilibrada",
+                            reason:
+                              "Equilibrar urgência e relacionamento conforme as alternativas consultadas.",
+                          }),
+                        }
+                      : {
+                          name: "registrar_plano_dia",
+                          arguments: JSON.stringify({
+                            briefing:
+                              "Organizar a frente logística e validar as pendências antes do encaminhamento.",
+                            priorityAreas: ["Logística"],
+                            instructions: [
+                              {
+                                area: "Logística",
+                                firstOrderId: baseOrder.id,
+                                justification:
+                                  "Verificar este caso logístico com evidência de atraso na amostra.",
+                                nextStep:
+                                  "Consultar rastreio e registrar evidências para cada tratativa pendente.",
+                              },
+                            ],
+                          }),
+                        },
               },
             ],
           },
@@ -453,6 +490,10 @@ describe("causas e ações de processo", () => {
         [{ ...task, status: "concluida" }],
         {
           action: "resolve",
+          outcome: {
+            type: "entrega_confirmada",
+            evidence: "Comprovante sintético de entrega",
+          },
           orderId: task.orderId,
           note: "Tentativa de fechamento indevido",
         },
@@ -462,8 +503,8 @@ describe("causas e ações de processo", () => {
     ).toThrow("Conclua");
   });
 });
-describe("dinheiro declarado e comprovado", () => {
-  it("não transforma encerramento ou aprovação em receita recuperada", () => {
+describe("resultados operacionais e financeiros", () => {
+  it("mantém custo desconhecido separado de zero e não inventa recuperação", () => {
     const record = transitionCase(
       baseOrder,
       undefined,
@@ -471,7 +512,11 @@ describe("dinheiro declarado e comprovado", () => {
       {
         action: "resolve",
         orderId: baseOrder.id,
-        note: "Concluído sem evidência financeira",
+        note: "Entrega confirmada com evidência",
+        outcome: {
+          type: "entrega_confirmada",
+          evidence: "Comprovante sintético de entrega",
+        },
       },
       randomUUID(),
       new Date().toISOString(),
@@ -483,78 +528,336 @@ describe("dinheiro declarado e comprovado", () => {
       cases: { [baseOrder.id]: record },
     };
     const report = financialReport(sessionDataset(data, state), state);
-    expect(report.verifiedRecovery).toBe("0.00");
-    expect(report.declaredRetained).toBe("0.00");
-    expect(report.closedExposure).toBe(report.baselineExposure);
+    expect(report.resolvedCount).toBe(1);
+    expect(report.unmeasured).toBe(1);
+    expect(report.declaredCosts.count).toBe(0);
+    expect(record.resolution?.outcome?.cost).toBeUndefined();
+    expect(report.treatedValue).toBe(baseOrder.value);
   });
-  it("registra evidência e desconta custos sem atribuir causalidade", () => {
+  it("exige reembolso positivo dentro do valor do pedido", () => {
+    const close = (refund: string) =>
+      transitionCase(
+        baseOrder,
+        undefined,
+        [completed],
+        {
+          action: "resolve",
+          orderId: baseOrder.id,
+          note: "Reembolso registrado na origem",
+          outcome: {
+            type: "reembolso_registrado",
+            evidence: "Comprovante sintético de reembolso",
+            refund,
+          },
+        },
+        randomUUID(),
+        new Date().toISOString(),
+      );
+    expect(() => close("200.00")).toThrow("exceder");
+    expect(() => close("0")).toThrow("positivo");
+    expect(close("80.00").resolution?.outcome?.refund).toBe("80.00");
+  });
+});
+
+describe("contratos do plano orientado pelo agente", () => {
+  it("não apresenta seleção antes da execução e distingue estados", () => {
+    const state = { tasks: [], investigations: [], expiresAt: "" };
+    expect(planQueue(data, state)).toMatchObject({
+      status: "not_prepared",
+      orders: [],
+      plan: null,
+    });
+    const run = {
+      id: randomUUID(),
+      type: "daily" as const,
+      target: "day",
+      status: "running" as const,
+      summary: "",
+      events: [],
+      taskIds: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    expect(planQueue(data, { ...state, investigations: [run] }).status).toBe(
+      "preparing",
+    );
+    expect(
+      planQueue(data, {
+        ...state,
+        investigations: [
+          { ...run, status: "failed", summary: "Limite de uso do provedor" },
+        ],
+      }).status,
+    ).toBe("failed");
+  });
+  it("exige diagnóstico e comparação reais antes do registro", async () => {
+    const ctx = context();
+    await expect(
+      executeTool(
+        "comparar_estrategias",
+        {
+          strategy: "urgencia",
+          reason:
+            "Conferir pendências antigas antes de organizar encaminhamentos.",
+        },
+        ctx,
+      ),
+    ).rejects.toThrow("diagnóstico");
+    await executeTool("consultar_fila", {}, ctx);
+    await expect(executeTool("registrar_plano_dia", {}, ctx)).rejects.toThrow(
+      "Consulte",
+    );
+    await executeTool("consultar_diagnostico", {}, ctx);
+    await expect(
+      executeTool(
+        "comparar_estrategias",
+        {
+          strategy: "inventada",
+          reason:
+            "Conferir pendências antigas antes de organizar encaminhamentos.",
+        },
+        ctx,
+      ),
+    ).rejects.toThrow();
+  });
+  it("estratégias diferentes mudam a seleção sem violar reserva ou capacidade", async () => {
+    const varied = {
+      ...data,
+      orders: Array.from({ length: 220 }, (_, i) => ({
+        ...baseOrder,
+        id: `VAR-${i}`,
+        value: String(10 + i * 3),
+        openedAt: i < 70 ? "2026-08-03" : i < 150 ? "2026-09-15" : "2026-09-25",
+        promisedAt: i < 70 ? "2026-08-06" : "2026-09-28",
+      })),
+    };
+    const ctx = context(varied);
+    await executeTool("consultar_diagnostico", {}, ctx);
+    const balanced = await executeTool(
+      "comparar_estrategias",
+      {
+        strategy: "equilibrada",
+        reason: "Equilibrar o valor dos pedidos com a espera dos clientes.",
+      },
+      ctx,
+    );
+    const a = queue(varied, ctx.weights).orders.map((o) => o.id);
+    await executeTool(
+      "comparar_estrategias",
+      {
+        strategy: "urgencia",
+        reason:
+          "A espera prolongada exige maior foco nas pendências mais antigas.",
+      },
+      ctx,
+    );
+    const b = queue(varied, ctx.weights);
+    expect(b.orders).toHaveLength(150);
+    expect(b.oldestReserved).toBe(30);
+    expect(b.orders.map((o) => o.id)).not.toEqual(a);
+    expect(balanced).toBeTruthy();
+  });
+  it("persiste fotografia e não repõe pedidos após um encerramento", async () => {
+    const dataset = {
+      ...data,
+      orders: Array.from({ length: 180 }, (_, i) => ({
+        ...baseOrder,
+        id: `SNAP-${i}`,
+      })),
+    };
+    const ctx = context(dataset);
+    await executeTool("consultar_diagnostico", {}, ctx);
+    await executeTool(
+      "comparar_estrategias",
+      {
+        strategy: "urgencia",
+        reason:
+          "Priorizar a espera documentada e preservar o atendimento dos casos antigos.",
+      },
+      ctx,
+    );
+    const plan = (await executeTool(
+      "registrar_plano_dia",
+      {
+        briefing:
+          "Conferir as evidências e organizar o encaminhamento das pendências logísticas.",
+        priorityAreas: ["Logística"],
+        instructions: [
+          {
+            area: "Logística",
+            firstOrderId: workstreams(dataset, ctx.weights)[0].sample[0].id,
+            justification:
+              "Começar pela pendência logística consultada na amostra do grupo.",
+            nextStep:
+              "Conferir o rastreio e registrar a evidência para orientar a próxima tratativa.",
+          },
+        ],
+      },
+      ctx,
+    )) as DailyPlan;
+    const first = plan.selectedOrderIds[0];
+    const state = {
+      tasks: [],
+      investigations: [],
+      expiresAt: "",
+      plans: [plan],
+      cases: {
+        [first]: {
+          orderId: first,
+          version: 1,
+          resolution: {
+            note: "Encerramento de teste",
+            resolvedAt: new Date().toISOString(),
+          },
+          history: [],
+        },
+      },
+    };
+    const q = planQueue(dataset, state);
+    expect(q.status).toBe("ready");
+    expect(q.orders).toHaveLength(149);
+    expect(q.completed).toBe(1);
+    expect(q.orders.every((o) => plan.selectedOrderIds.includes(o.id))).toBe(
+      true,
+    );
+    expect(q.plan!.comparison).toEqual(plan.comparison);
+    expect(
+      planQueue({ ...dataset, importedAt: "outra extração" }, state).status,
+    ).toBe("needs_review");
+    expect(
+      planQueue(dataset, {
+        ...state,
+        plans: [{ ...plan, policyVersion: undefined }],
+      }).status,
+    ).toBe("needs_review");
+  });
+  it("falha 429 não cria plano nem sucesso simulado", async () => {
+    const run = await investigate(
+      { type: "daily", target: "day", requestId: randomUUID() },
+      sessionId,
+      data,
+      () => {},
+      async () => {
+        throw Object.assign(new Error("provider quota"), { status: 429 });
+      },
+    );
+    expect(run.status).toBe("failed");
+    expect(run.planId).toBeUndefined();
+    expect(run.summary).toContain("limite");
+  });
+});
+
+describe("conclusões com evidência e compatibilidade", () => {
+  it("exige resultado e não permite usar apenas revisão de status", () => {
+    const action = {
+      action: "resolve" as const,
+      orderId: baseOrder.id,
+      note: "Resultado documentado pelo operador",
+      outcome: {
+        type: "entrega_confirmada" as const,
+        evidence: "Comprovante sintético da entrega",
+      },
+    };
+    expect(() =>
+      transitionCase(
+        baseOrder,
+        undefined,
+        [{ ...completed, kind: "revisao_status" }],
+        action,
+        randomUUID(),
+        new Date().toISOString(),
+      ),
+    ).toThrow("Conclua");
+    expect(() =>
+      transitionCase(
+        baseOrder,
+        undefined,
+        [{ ...completed, execution: undefined }],
+        action,
+        randomUUID(),
+        new Date().toISOString(),
+      ),
+    ).toThrow("Conclua");
+    expect(
+      caseActionSchema.safeParse({
+        action: "resolve",
+        orderId: baseOrder.id,
+        note: action.note,
+      }).success,
+    ).toBe(false);
+    expect(() =>
+      transitionCase(
+        { ...baseOrder, exception: "endereco_divergente" },
+        undefined,
+        [completed],
+        action,
+        randomUUID(),
+        new Date().toISOString(),
+      ),
+    ).toThrow("incompatível");
+  });
+  it("permite corrigir endereço sem inventar valor financeiro", () => {
     const record = transitionCase(
-      baseOrder,
+      { ...baseOrder, exception: "endereco_divergente" },
       undefined,
       [completed],
       {
         action: "resolve",
         orderId: baseOrder.id,
-        note: "Resultado declarado pelo operador",
-        financial: {
-          retained: "80.00",
-          refunded: "0",
-          cost: "12.50",
-          evidence: "Comprovante fictício de resolução do teste",
+        note: "Endereço confirmado na origem",
+        outcome: {
+          type: "endereco_corrigido",
+          evidence: "Referência sintética do endereço confirmado",
         },
       },
       randomUUID(),
       new Date().toISOString(),
     );
-    const state = {
-      tasks: [completed],
-      investigations: [],
-      expiresAt: "",
-      cases: { [baseOrder.id]: record },
+    expect(record.resolution?.outcome?.cost).toBeUndefined();
+    expect(record.resolution?.outcome?.refund).toBeUndefined();
+  });
+  it("conclusão de processo exige documentação e pedidos distintos válidos", () => {
+    const task = {
+      ...completed,
+      scope: "process" as const,
+      affectedOrderIds: ["P1", "P2"],
     };
-    const report = financialReport(sessionDataset(data, state), state);
-    expect(report.declaredBalance).toBe("67.50");
-    expect(report.verifiedRecovery).toBe("0.00");
-    expect(record.history[0].financial?.source).toBe("operator_demo");
+    expect(() => completedTask(task)).toThrow();
+    const conclusion = {
+      outcome: "inconclusiva" as const,
+      observations: "Comparação registrada no teste sintético",
+      evidenceIds: ["P1", "P1"],
+      nextStep: "Solicitar evidências complementares à área responsável",
+    };
+    expect(() => completedTask(task, undefined, conclusion)).toThrow(
+      "distintos",
+    );
     expect(() =>
-      transitionCase(
-        baseOrder,
-        undefined,
-        [completed],
-        {
-          action: "resolve",
-          orderId: baseOrder.id,
-          note: "Registro inválido de valores",
-          financial: {
-            retained: "200.00",
-            refunded: "0",
-            cost: "0",
-            evidence: "Evidência fictícia para validação",
-          },
-        },
-        randomUUID(),
-        new Date().toISOString(),
-      ),
-    ).toThrow("exceder");
-    expect(() =>
-      transitionCase(
-        baseOrder,
-        undefined,
-        [completed],
-        {
-          action: "resolve",
-          orderId: baseOrder.id,
-          note: "Registro inválido de valores",
-          financial: {
-            retained: "40.00",
-            refunded: "60.00",
-            cost: "0",
-            evidence: "Evidência fictícia para validação",
-          },
-        },
-        randomUUID(),
-        new Date().toISOString(),
-      ),
-    ).toThrow("dois");
+      completedTask(task, undefined, {
+        ...conclusion,
+        evidenceIds: ["P1", "OUTRO"],
+      }),
+    ).toThrow("relacionados");
+    expect(
+      completedTask(task, undefined, {
+        ...conclusion,
+        evidenceIds: ["P1", "P2"],
+      }).conclusion?.outcome,
+    ).toBe("inconclusiva");
+    expect(task.status).toBe("concluida");
+    expect(baseOrder.resolution).toBeUndefined();
+  });
+  it("mantém legados sem inventar evidências ou custos", () => {
+    const legacy = {
+      ...baseOrder,
+      resolution: { note: "Registro antigo", resolvedAt: "2026-09-30" },
+    };
+    const report = financialReport(
+      { ...data, orders: [legacy] },
+      { tasks: [], investigations: [], expiresAt: "" },
+    );
+    expect(report.legacy).toBe(1);
+    expect(report.unmeasured).toBe(1);
+    expect(report.declaredCosts.count).toBe(0);
   });
 });

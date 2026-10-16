@@ -59,13 +59,17 @@ const task: Task = {
   id: randomUUID(),
   investigationId: randomUUID(),
   orderId: order.id,
-  kind: "revisao_status",
+  kind: "investigacao_logistica",
   title: "Verificar conflito de status",
   justification: "Confirmar o estado do pedido fictício",
   evidenceIds: [order.id],
   area: "Operações",
   dueAt: "2026-10-01",
   status: "concluida",
+  execution: {
+    note: "Execução documentada no teste",
+    evidence: "Comprovante sintético conferido",
+  },
   createdAt: "",
   updatedAt: "",
   idempotencyKey: "demo",
@@ -79,6 +83,10 @@ const reviewInput = {
 };
 const resolveInput = {
   action: "resolve" as const,
+  outcome: {
+    type: "entrega_confirmada" as const,
+    evidence: "Comprovante sintético da entrega",
+  },
   orderId: order.id,
   note: "Tratativa encerrada com a evidência de teste.",
 };
@@ -168,6 +176,64 @@ describe("ciclo de tratativa", () => {
         resolveInput,
         randomUUID(),
         now,
+      ).resolution,
+    ).toBeDefined();
+  });
+  it("exige uma execução nova após reabrir a exceção", () => {
+    const originalTask = {
+      ...task,
+      execution: {
+        note: "Execução inicial do teste",
+        evidence: "Referência sintética conferida",
+        at: now,
+      },
+    };
+    const resolved = transitionCase(
+      order,
+      review(),
+      [originalTask],
+      resolveInput,
+      randomUUID(),
+      now,
+    );
+    const reopened = transitionCase(
+      order,
+      resolved,
+      [originalTask],
+      {
+        action: "reopen",
+        orderId: order.id,
+        note: "Nova pendência identificada na origem",
+      },
+      randomUUID(),
+      "2026-10-02T12:00:00Z",
+    );
+    expect(() =>
+      transitionCase(
+        order,
+        reopened,
+        [originalTask],
+        resolveInput,
+        randomUUID(),
+        "2026-10-03T12:00:00Z",
+      ),
+    ).toThrow("Conclua");
+    expect(
+      transitionCase(
+        order,
+        reopened,
+        [
+          {
+            ...originalTask,
+            execution: {
+              ...originalTask.execution,
+              at: "2026-10-03T11:00:00Z",
+            },
+          },
+        ],
+        resolveInput,
+        randomUUID(),
+        "2026-10-03T12:00:00Z",
       ).resolution,
     ).toBeDefined();
   });

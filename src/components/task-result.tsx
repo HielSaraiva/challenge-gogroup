@@ -1,0 +1,257 @@
+"use client";
+import { useState } from "react";
+import type { Task, RankedOrder } from "@/domain/types";
+import { shortDate } from "@/lib/utils";
+import { Button } from "./ui/button";
+import { exceptionLabels } from "@/domain/types";
+export function TaskResult({
+  task,
+  orders,
+  onSaved,
+}: {
+  task: Task;
+  orders: RankedOrder[];
+  onSaved: () => Promise<void>;
+}) {
+  const [note, setNote] = useState("");
+  const [evidence, setEvidence] = useState("");
+  const [outcome, setOutcome] = useState("inconclusiva");
+  const [ids, setIds] = useState<string[]>([]);
+  const [next, setNext] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function save(status: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const r = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: task.id,
+          status,
+          ...(status === "concluida"
+            ? task.scope === "process"
+              ? {
+                  conclusion: {
+                    outcome,
+                    observations: note,
+                    evidenceIds: ids,
+                    nextStep: next,
+                  },
+                }
+              : { execution: { note, evidence } }
+            : {}),
+        }),
+      });
+      const b = await r.json();
+      if (!r.ok) throw new Error(b.error);
+      await onSaved();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <article className="panel prose task-result">
+      <span className="badge">
+        {task.scope === "process" ? "Investigação de recorrência" : task.area} ·{" "}
+        {task.status}
+      </span>
+      <h3>{task.title}</h3>
+      <p>
+        <b>Área responsável:</b> {task.area} · Prazo de referência:{" "}
+        {shortDate(task.dueAt)}
+      </p>
+      <p>{task.justification}</p>
+      {task.nextStep && (
+        <p>
+          <b>Verificação necessária:</b> {task.nextStep}
+        </p>
+      )}
+      <details>
+        <summary>Fatos consultados pelo agente</summary>
+        {task.facts?.map((f) => (
+          <p key={f}>{f}</p>
+        ))}
+      </details>
+      {task.status === "pendente_aprovacao" && (
+        <div className="task-actions">
+          <Button disabled={busy} onClick={() => void save("aprovada")}>
+            Aprovar encaminhamento
+          </Button>
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={() => void save("rejeitada")}
+          >
+            Rejeitar proposta
+          </Button>
+          <p>
+            A aprovação não executa reenvio ou pagamento. Depois, registre o que
+            foi realizado.
+          </p>
+        </div>
+      )}
+      {(["aberta", "aprovada"].includes(task.status) ||
+        (task.status === "concluida" &&
+          (task.scope === "process" ? !task.conclusion : !task.execution))) && (
+        <form
+          className="guided-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void save("concluida");
+          }}
+        >
+          {task.scope === "process" ? (
+            <>
+              <h4>Confira a amostra e documente a conclusão</h4>
+              <p>
+                Esta investigação verifica uma hipótese sobre o grupo. Não
+                encerra os pedidos nem comprova implantação da melhoria.
+              </p>
+              <fieldset>
+                <legend>Pedidos relacionados conferidos (ao menos dois)</legend>
+                {(task.affectedOrderIds || []).slice(0, 20).map((id) => {
+                  const o = orders.find((o) => o.id === id);
+                  return (
+                    <div key={id}>
+                      <label className="check-label">
+                        <input
+                          type="checkbox"
+                          checked={ids.includes(id)}
+                          onChange={(e) =>
+                            setIds((v) =>
+                              e.target.checked
+                                ? [...v, id]
+                                : v.filter((x) => x !== id),
+                            )
+                          }
+                        />
+                        {id}
+                      </label>
+                      {o && (
+                        <details>
+                          <summary>Conferir evidências de {id}</summary>
+                          <p>
+                            {exceptionLabels[o.exception]} · {o.product} ·{" "}
+                            {o.status}
+                          </p>
+                          <p>
+                            Exceção aberta em {o.openedAt}; promessa{" "}
+                            {o.promisedAt}; entrega{" "}
+                            {o.deliveredAt || "não registrada"}.
+                          </p>
+                          <p>
+                            CD {o.dc}, turno {o.shift}, máquina{" "}
+                            {o.machine || "não informada"}, lote {o.lot}.
+                          </p>
+                        </details>
+                      )}
+                    </div>
+                  );
+                })}
+              </fieldset>
+              <label>
+                Conclusão sobre a hipótese
+                <select
+                  value={outcome}
+                  onChange={(e) => setOutcome(e.target.value)}
+                >
+                  <option value="inconclusiva">Ainda inconclusiva</option>
+                  <option value="confirmada">
+                    Confirmada pelas verificações registradas
+                  </option>
+                  <option value="descartada">
+                    Descartada pelas verificações registradas
+                  </option>
+                </select>
+              </label>
+              <label>
+                Observações e referências verificadas
+                <textarea
+                  required
+                  minLength={20}
+                  maxLength={2000}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+              </label>
+              <label>
+                Encaminhamento registrado
+                <textarea
+                  required
+                  minLength={15}
+                  maxLength={1500}
+                  value={next}
+                  onChange={(e) => setNext(e.target.value)}
+                />
+              </label>
+            </>
+          ) : (
+            <>
+              <h4>O que foi executado fora da demonstração?</h4>
+              <label>
+                Ação realizada
+                <textarea
+                  required
+                  minLength={15}
+                  maxLength={1500}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+              </label>
+              <label>
+                Evidência ou referência da execução
+                <textarea
+                  required
+                  minLength={15}
+                  maxLength={1500}
+                  value={evidence}
+                  onChange={(e) => setEvidence(e.target.value)}
+                  placeholder="Indique o comprovante ou registro consultado, sem dados pessoais."
+                />
+              </label>
+            </>
+          )}
+          {error && <p role="alert">{error}</p>}
+          <Button
+            disabled={busy || (task.scope === "process" && ids.length < 2)}
+          >
+            {busy
+              ? "Salvando…"
+              : task.scope === "process"
+                ? "Registrar conclusão da investigação"
+                : "Confirmar execução documentada"}
+          </Button>
+        </form>
+      )}
+      {task.status === "concluida" && (
+        <div>
+          <h4>
+            {task.conclusion
+              ? "Conclusão documentada"
+              : task.execution
+                ? "Execução registrada"
+                : "Conclusão legada, sem evidência estruturada"}
+          </h4>
+          <p>{task.execution?.note || task.conclusion?.observations}</p>
+          <p>{task.execution?.evidence}</p>
+          {task.conclusion && (
+            <>
+              <b>Hipótese {task.conclusion.outcome}</b>
+              <p>{task.conclusion.nextStep}</p>
+              <small>
+                Referências: {task.conclusion.evidenceIds.join(", ")}
+              </small>
+            </>
+          )}
+        </div>
+      )}
+      {error && task.status === "pendente_aprovacao" && (
+        <p role="alert">{error}</p>
+      )}
+    </article>
+  );
+}

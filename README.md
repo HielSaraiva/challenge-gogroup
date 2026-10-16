@@ -8,17 +8,17 @@ Projeto demonstrativo desenvolvido para um desafio técnico, com identidade visu
 
 ## Capacidades
 
-| Área               | Funcionalidade                                                                                         |
-| ------------------ | ------------------------------------------------------------------------------------------------------ |
-| Visão geral        | Indicadores da carteira pendente e progresso da sessão                                                 |
-| Operação diária    | Plano persistido pelo agente, orientações por área e capacidade restante                               |
-| Fila de trabalho   | Priorização por valor, urgência e relacionamento, pesos ajustáveis e comparação com FIFO               |
-| Dossiê do pedido   | Evidências, explicação da prioridade, prazos e custos indicativos                                      |
-| Investigações      | Concentrações operacionais com amostra e referências verificáveis                                      |
-| Agente de IA       | Consulta de fatos, simulação de alternativas e criação persistente de tarefas                          |
-| Tratativas         | Revisão de status conflitante, conclusão de tarefas, avaliação de propostas, encerramento e reabertura |
-| Auditoria          | Histórico de decisões e isolamento das alterações por visitante                                        |
-| Impacto financeiro | Exposição elegível, registros declarados com evidência e cenários com custos explícitos                |
+| Área               | Funcionalidade                                                                                             |
+| ------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Visão geral        | Indicadores da carteira pendente e progresso da sessão                                                     |
+| Operação diária    | Plano persistido pelo agente, orientações por área e capacidade restante                                   |
+| Fila de trabalho   | Priorização por valor, urgência e relacionamento, estratégias comparadas pelo agente e comparação com FIFO |
+| Dossiê do pedido   | Evidências, explicação da prioridade, prazos e custos indicativos                                          |
+| Investigações      | Concentrações operacionais com amostra e referências verificáveis                                          |
+| Agente de IA       | Consulta de fatos, simulação de alternativas e criação persistente de tarefas                              |
+| Tratativas         | Revisão de status conflitante, conclusão de tarefas, avaliação de propostas, encerramento e reabertura     |
+| Auditoria          | Histórico de decisões e isolamento das alterações por visitante                                            |
+| Impacto financeiro | Exposição elegível, registros declarados com evidência e cenários com custos explícitos                    |
 
 ## Arquitetura
 
@@ -114,19 +114,21 @@ Sem banco ou importação, a interface orienta a configuração e oferece a áre
 
 O modelo recebe ferramentas restritas conforme a etapa:
 
-| Ferramenta            | Resultado                                                                 |
-| --------------------- | ------------------------------------------------------------------------- |
-| `consultar_pedido`    | Fatos, indicadores calculados, ações admitidas e IDs válidos de evidência |
-| `consultar_padroes`   | Concentração observada e amostra de pedidos relacionados                  |
-| `simular_tratativa`   | Custo indicativo de uma alternativa, sem execução financeira              |
-| `criar_tarefa`        | Tarefa persistida com justificativa, evidências, responsável e prazo      |
-| `consultar_fila`      | Seleção calculada, capacidade, comparação com FIFO e frentes de trabalho  |
-| `registrar_plano_dia` | Plano persistido com orientação para cada área da seleção calculada       |
-| `criar_acao_processo` | Investigação de melhoria vinculada a um padrão e a evidências consultadas |
+| Ferramenta              | Resultado                                                                 |
+| ----------------------- | ------------------------------------------------------------------------- |
+| `consultar_pedido`      | Fatos, indicadores calculados, ações admitidas e IDs válidos de evidência |
+| `consultar_padroes`     | Concentração observada e amostra de pedidos relacionados                  |
+| `simular_tratativa`     | Custo indicativo de uma alternativa, sem execução financeira              |
+| `criar_tarefa`          | Tarefa persistida com justificativa, evidências, responsável e prazo      |
+| `consultar_diagnostico` | Diagnóstico da carteira e métricas das alternativas de estratégia         |
+| `comparar_estrategias`  | Escolha justificada e consulta das frentes da estratégia aplicada         |
+| `consultar_fila`        | Seleção calculada, capacidade, comparação com FIFO e frentes de trabalho  |
+| `registrar_plano_dia`   | Plano persistido com orientação para cada área da seleção calculada       |
+| `criar_acao_processo`   | Investigação de melhoria vinculada a um padrão e a evidências consultadas |
 
 Consultar o pedido é obrigatório antes de criar uma tarefa. Propostas financeiras exigem simulação prévia e avaliação humana. Após aprovar, o operador precisa registrar a execução; aprovação sozinha não permite encerrar a exceção. Um conflito de status bloqueia outras tratativas até uma revisão explícita. A justificativa é identificada como hipótese do agente; fatos e números verificados aparecem separadamente.
 
-A fila sugerida é calculada pelas regras antes da IA. O plano exige consulta prévia e cobertura de todas as áreas: o agente escolhe um primeiro pedido da amostra consultada, justifica a escolha e registra o próximo passo; a seleção e as métricas vêm do servidor. Gerar esse plano não cria tarefas em lote. A investigação explícita do pedido escolhido cria um encaminhamento individual. Ações de processo exigem um padrão consultado e evidências distintas. Elas não encerram o conjunto de pedidos. Uma resposta textual sem plano ou tarefa persistida não conclui uma investigação.
+O agente consulta o diagnóstico, compara três estratégias e escolhe a política aplicada. Os cálculos são feitos no servidor; a fila de trabalho só aparece depois do plano persistido. O plano registra a estratégia, justificativa, referência da base, comparação FIFO e orientações para todas as áreas. O agente escolhe um primeiro pedido da amostra por área e indica o próximo passo. Encerramentos atualizam o progresso sem repor pedidos; outro plano exige solicitação explícita. Gerar esse plano não cria tarefas em lote. A investigação explícita do pedido escolhido cria um encaminhamento individual. Ações de processo exigem um padrão consultado e evidências distintas. Elas não encerram o conjunto de pedidos. Uma resposta textual sem plano ou tarefa persistida não conclui uma investigação.
 
 As execuções têm orçamento de tempo, limite de chamadas e controle de concorrência. Falhas do provedor preservam o histórico e efeitos já registrados. A idempotência evita duplicar uma mesma ação na sessão.
 
@@ -141,13 +143,13 @@ As execuções têm orçamento de tempo, limite de chamadas e controle de concor
 
 ## Critérios e limites
 
-A pontuação combina componentes normalizados de valor, urgência e relacionamento. A seleção reserva parte da capacidade para os casos mais antigos e preenche as demais vagas por pontuação, para reduzir o adiamento contínuo de pedidos de menor valor. Os pesos são ajustáveis e os empates seguem critérios determinísticos. Cada encerramento consome capacidade da data de referência da demonstração; reabrir preserva o esforço consumido. O esforço de melhoria de processo requer dimensionamento próprio. A metodologia detalhada fica na aplicação.
+A pontuação combina componentes normalizados de valor, urgência e relacionamento. A seleção reserva parte da capacidade para os casos mais antigos e preenche as demais vagas por pontuação, para reduzir o adiamento contínuo de pedidos de menor valor. A IA escolhe entre equilibrada (45/35/20), urgência (25/55/20) e relacionamento (25/30/45). Valor, urgência e relacionamento são normalizados pelo percentil 95, limitados a 1; os empates seguem critérios determinísticos. Cada encerramento consome capacidade da data de referência da demonstração; reabrir preserva o esforço consumido. O esforço de melhoria de processo requer dimensionamento próprio. A metodologia detalhada fica na aplicação.
 
-Valor de carteira, exposição estimada, custo de intervenção e benefício simulado são conceitos distintos. Tarefas concluídas não representam receita recuperada. Concentrações em uma base de exceções não demonstram causalidade ou taxa de falha da operação completa.
+Valor de carteira, exposição estimada, custos estimados e custos registrados são conceitos distintos. Tarefas concluídas não representam receita recuperada. Concentrações em uma base de exceções não demonstram causalidade ou taxa de falha da operação completa.
 
-Resultados declarados pelo operador exigem evidência, respeitam o valor do pedido e aparecem separados de recuperação comprovada. A demonstração não possui confirmação externa de pagamentos ou retenção. O simulador exige eficácia e custo assumidos para apresentar benefício líquido estimado.
+O encerramento exige resultado operacional e evidência, além de tarefa executada com documentação. Reembolso exige valor positivo limitado ao pedido. Custos desconhecidos não viram zero; estimativas ficam separadas de valores informados. A revisão de status, sozinha, não resolve a exceção original. Registros antigos sem os novos campos são identificados como legados. Não há simulador genérico de eficácia nem saldo apresentado como recuperação.
 
-Encerrar um caso atualiza a demonstração. Aprovar uma proposta registra uma decisão; registrar sua execução é uma etapa separada. Não existem integrações de envio a clientes, pagamento, reembolso, transportadora ou estoque.
+Encerrar um caso atualiza a demonstração. Aprovar uma proposta registra uma decisão; registrar sua execução é uma etapa separada, com ação realizada e evidência obrigatórias. Concluir uma investigação de recorrência exige observações, duas referências distintas relacionadas e encaminhamento, sem encerrar os pedidos. Não existem integrações de envio a clientes, pagamento, reembolso, transportadora ou estoque.
 
 ## Qualidade e validação
 

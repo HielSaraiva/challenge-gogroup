@@ -83,7 +83,7 @@ async function main() {
   assert.ok(plan);
   assert.deepEqual(
     plan.selectedOrderIds,
-    queue(dataset).orders.map((item) => item.id),
+    queue(dataset, plan.weights).orders.map((item) => item.id),
   );
   for (const stream of plan.workstreams) {
     assert.ok(stream.orderIds.includes(stream.agentDecision!.firstOrderId));

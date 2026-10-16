@@ -182,3 +182,135 @@ summary:focus-visible,
 .queue-comparison {
   margin-bottom: 20px;
 }
+.agent-command {
+  border-top: 4px solid var(--brand-pink, #d51075);
+}
+.agent-command .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.result-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 24px;
+  margin: 24px 0;
+}
+.result-metrics dt {
+  font-size: 14px;
+  color: #62636b;
+}
+.result-metrics dd {
+  font-size: 26px;
+  font-weight: 600;
+  margin: 8px 0;
+  color: #2659a5;
+}
+.result-row {
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
+}
+.agent-steps {
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 14px;
+}
+.agent-steps li {
+  padding: 14px;
+  border-left: 3px solid #2659a5;
+  background: #f3f6fa;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.agent-workstreams {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 20px;
+}
+.workstream-card {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.guided-form {
+  display: grid;
+  gap: 18px;
+  margin-top: 20px;
+}
+.guided-form label {
+  display: grid;
+  gap: 8px;
+  font-weight: 500;
+}
+.guided-form input:not([type="checkbox"]),
+.guided-form textarea,
+.guided-form select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #aeb8c6;
+  border-radius: 6px;
+  font: inherit;
+  background: white;
+  color: #1c1c1c;
+}
+.guided-form textarea {
+  min-height: 100px;
+}
+.guided-form fieldset {
+  padding: 18px;
+  border: 1px solid var(--line);
+}
+.check-label,
+.guided-form .check-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+.check-label input {
+  width: 18px;
+  height: 18px;
+}
+.nav-support {
+  border-left: 1px solid var(--line);
+  margin-left: 8px;
+}
+.results-workspace,
+.reset-panel {
+  margin-top: 24px;
+}
+.results-workspace {
+  display: grid;
+  gap: 24px;
+}
+.table-scroll td p {
+  max-width: 320px;
+  font-size: 12px;
+  color: #62636b;
+}
+main > .panel {
+  margin-block: 24px;
+}
+.task-result {
+  margin-top: 20px;
+}
+@media (max-width: 640px) {
+  .agent-steps li {
+    flex-direction: column;
+  }
+  .guided-form input,
+  .guided-form textarea,
+  .guided-form select {
+    font-size: 16px;
+  }
+  .nav-support {
+    border-left: 0;
+    margin-left: 0;
+    border-top: 1px solid var(--line);
+  }
+}
+.page-heading h1:focus {
+  outline: none;
+}

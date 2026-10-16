@@ -6,11 +6,13 @@ import { workstreams } from "@/domain/operations";
 import { addBusinessDays } from "@/domain/calendar";
 import {
   DEFAULT_WEIGHTS,
+  STRATEGIES,
   REFERENCE_DATE,
   type DailyPlan,
 } from "@/domain/types";
 import { AppError, upsertDailyPlan, upsertTask } from "./store";
 import type { AgentContext } from "./agent";
+import { datasetReference, POLICY_VERSION } from "@/domain/planning";
 import { requireQualitative } from "./agent-evidence";
 const text = { type: "string" };
 const dailyGuidance: Record<string, string> = {
@@ -38,6 +40,30 @@ const object = (properties: Record<string, unknown>, required: string[]) => ({
   additionalProperties: false,
 });
 export const strategicTools: ChatCompletionTool[] = [
+  {
+    type: "function",
+    function: {
+      name: "consultar_diagnostico",
+      description:
+        "Consulta a carteira, capacidade e alternativas calculadas para comparar antes de escolher estratégia.",
+      parameters: object({}, []),
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "comparar_estrategias",
+      description:
+        "Compara TODAS as estratégias e consulta a amostra da estratégia escolhida para preparar encaminhamentos. Escolha equilibrada, urgencia ou relacionamento e justifique qualitativamente com os fatos do diagnóstico.",
+      parameters: object(
+        {
+          strategy: { type: "string", enum: Object.keys(STRATEGIES) },
+          reason: text,
+        },
+        ["strategy", "reason"],
+      ),
+    },
+  },
   {
     type: "function",
     function: {
@@ -138,7 +164,46 @@ export async function executeStrategicTool(
   raw: unknown,
   context: AgentContext,
 ): Promise<unknown> {
-  const weights = context.weights || DEFAULT_WEIGHTS;
+  let weights = context.weights || DEFAULT_WEIGHTS;
+  if (name === "consultar_diagnostico") {
+    if (context.mode !== "daily")
+      throw new AppError("Diagnóstico fora do escopo.");
+    z.object({}).strict().parse(raw);
+    context.diagnosed = true;
+    return {
+      capacidade: queue(context.data).availableCapacity,
+      alternativas: Object.entries(STRATEGIES).map(([strategy, config]) => {
+        const q = queue(context.data, config.weights);
+        return {
+          strategy,
+          weights: config.weights,
+          selecao: q.prioritized,
+          fifo: q.fifo,
+        };
+      }),
+      aviso:
+        "Compare idade, exposição e valor; nenhum deles comprova recuperação. Escolha uma estratégia e consulte suas frentes com comparar_estrategias.",
+    };
+  }
+  if (name === "comparar_estrategias") {
+    if (context.mode !== "daily" || !context.diagnosed)
+      throw new AppError(
+        "Consulte o diagnóstico antes de comparar estratégias.",
+      );
+    const args = z
+      .object({
+        strategy: z.enum(["equilibrada", "urgencia", "relacionamento"]),
+        reason: z.string().min(20).max(1500),
+      })
+      .strict()
+      .parse(raw);
+    requireQualitative(args.reason, context.data);
+    context.strategy = args.strategy;
+    context.strategyReason = args.reason;
+    context.weights = STRATEGIES[args.strategy].weights;
+    context.compared = true;
+    return executeStrategicTool("consultar_fila", {}, context);
+  }
   if (name === "consultar_fila") {
     if (context.mode !== "daily")
       throw new AppError("Consulta de fila fora do escopo desta investigação.");
@@ -176,7 +241,13 @@ export async function executeStrategicTool(
     };
   }
   if (name === "registrar_plano_dia") {
-    if (context.mode !== "daily" || !context.queueConsulted)
+    if (
+      context.mode !== "daily" ||
+      !context.queueConsulted ||
+      !context.compared ||
+      !context.strategy ||
+      !context.strategyReason
+    )
       throw new AppError("Consulte a fila antes de registrar o plano.");
     const args = planArgs.parse(raw);
     requireQualitative(args.briefing, context.data);
@@ -214,7 +285,10 @@ export async function executeStrategicTool(
     const fingerprint = createHash("sha256")
       .update(
         JSON.stringify({
-          policy: "evidence-led-plan-v2",
+          policy: POLICY_VERSION,
+          investigation: context.runId,
+          datasetReference: datasetReference(context.data),
+          strategy: context.strategy,
           reference: REFERENCE_DATE,
           selected: selection.orders.map((order) => [order.id, order.status]),
           used: selection.usedCapacity,
@@ -223,6 +297,14 @@ export async function executeStrategicTool(
       )
       .digest("hex");
     const plan: DailyPlan = {
+      policyVersion: POLICY_VERSION,
+      strategy: context.strategy,
+      strategyReason: context.strategyReason,
+      datasetReference: datasetReference(context.data),
+      statusSnapshot: Object.fromEntries(
+        selection.orders.map((o) => [o.id, o.status]),
+      ),
+      comparison: { prioritized: selection.prioritized, fifo: selection.fifo },
       id: randomUUID(),
       idempotencyKey: fingerprint,
       investigationId: context.runId,

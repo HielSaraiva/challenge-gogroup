@@ -41,6 +41,16 @@ export function rankOrders(
   });
   const p95Value = percentile95(data.orders.map((o) => Number(o.value)));
   const p95Future = percentile95(future.map((v) => v.toNumber()));
+  const urgencyDays = data.orders.map((o) =>
+    Math.max(
+      businessDaysBetween(o.openedAt, reference),
+      businessDaysBetween(
+        o.promisedAt,
+        o.deliveredAt && o.deliveredAt < reference ? o.deliveredAt : reference,
+      ),
+    ),
+  );
+  const p95Urgency = percentile95(urgencyDays);
   const totalWeights = weights.value + weights.urgency + weights.relationship;
   if (totalWeights <= 0) throw new Error("Informe ao menos um peso positivo.");
   return data.orders
@@ -59,7 +69,7 @@ export function rankOrders(
           ? cancellationProbability(delay)
           : 0;
       const value = Math.min(Number(order.value) / p95Value, 1);
-      const urgency = Math.min(Math.max(delay, age) / 10, 1);
+      const urgency = Math.min(Math.max(delay, age) / p95Urgency, 1);
       const relationship = Math.min(future[i].toNumber() / p95Future, 1);
       return {
         ...order,

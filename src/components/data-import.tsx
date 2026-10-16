@@ -141,7 +141,7 @@ export function DataImport({
         {status && !status.canImport ? (
           <p className="alert alert-info">
             Há tratativas nesta demonstração. Para trocar a base sem misturar
-            históricos, reinicie a demonstração em Metodologia e volte aqui.
+            históricos, reinicie a demonstração nesta área Dados e volte aqui.
           </p>
         ) : (
           <>

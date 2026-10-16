@@ -20,10 +20,11 @@ async function main() {
   assert.ok(dashboard.count > 0, "Base importada deve conter pedidos");
   assert.ok(Number(dashboard.value) >= 0);
   const queue = await read("/api/queue", cookie);
-  assert.equal(queue.orders.length, Math.min(queue.capacity, dashboard.count));
-  assert.equal(queue.fifo.count, queue.orders.length);
+  assert.equal(queue.status, "not_prepared");
+  assert.equal(queue.orders.length, 0);
+  assert.equal(queue.plan, null);
   const invalid = await fetch(
-    `${base}/api/queue?value=0&urgency=0&relationship=0`,
+    `${base}/api/orders?value=0&urgency=0&relationship=0`,
     { headers: { cookie } },
   );
   assert.equal(invalid.status, 400);
@@ -39,7 +40,9 @@ async function main() {
   assert.equal(forbidden.status, 403);
   assert.equal((await read("/api/tasks", second)).length, 0);
   if (process.argv.includes("--agent")) {
-    const order = queue.orders.find((o) => o.status !== "status_divergente");
+    const order = (await read("/api/orders?limit=2000", cookie)).orders.find(
+      (o) => o.status !== "status_divergente",
+    );
     assert.ok(order);
     const input = {
       type: "order",
@@ -90,6 +93,14 @@ async function main() {
       body: JSON.stringify({
         id: task.id,
         status: task.status === "pendente_aprovacao" ? "aprovada" : "concluida",
+        ...(task.status !== "pendente_aprovacao"
+          ? {
+              execution: {
+                note: "Execução sintética do smoke de demonstração",
+                evidence: "Referência fictícia para verificar o fluxo",
+              },
+            }
+          : {}),
       }),
     });
     assert.equal(update.status, 200);
@@ -97,7 +108,14 @@ async function main() {
       const executed = await fetch(`${base}/api/tasks`, {
         method: "PATCH",
         headers: { cookie, origin: base, "content-type": "application/json" },
-        body: JSON.stringify({ id: task.id, status: "concluida" }),
+        body: JSON.stringify({
+          id: task.id,
+          status: "concluida",
+          execution: {
+            note: "Execução sintética da proposta do smoke",
+            evidence: "Referência fictícia para verificar o fluxo",
+          },
+        }),
       });
       assert.equal(executed.status, 200);
     }
@@ -121,6 +139,17 @@ async function main() {
       headers: { cookie, origin: base, "content-type": "application/json" },
       body: JSON.stringify({
         action: "resolve",
+        outcome: {
+          type:
+            orderBefore.exception === "endereco_divergente"
+              ? "endereco_corrigido"
+              : orderBefore.exception === "pagamento_pendente"
+                ? "pagamento_regularizado"
+                : orderBefore.exception === "ruptura_pos_venda"
+                  ? "estoque_regularizado"
+                  : "item_reenviado",
+          evidence: "Referência fictícia de resolução do smoke",
+        },
         orderId: task.orderId,
         note: "Tratativa concluída no teste da demonstração.",
       }),
@@ -213,8 +242,8 @@ async function main() {
       assert.equal(task?.scope, "process");
       assert.ok(task.affectedOrderIds.length > 1);
       assert.equal(
-        (await read("/api/operations", cookie)).financial.verifiedRecovery,
-        "0.00",
+        (await read("/api/operations", cookie)).financial.resolvedCount,
+        0,
       );
       assert.equal((await read("/api/dashboard", cookie)).resolvedCount, 0);
       console.log(
@@ -223,7 +252,7 @@ async function main() {
     }
   }
   console.log(
-    "HTTP: dashboard, fila, validação de pesos, origem e isolamento: OK",
+    "HTTP: carteira, ausência de plano antes da IA, validação, origem e isolamento: OK",
   );
 }
 main().catch((e) => {
