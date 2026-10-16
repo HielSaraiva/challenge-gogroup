@@ -562,42 +562,59 @@ export function OperationsApp() {
             </div>
             {tab === "overview" && (
               <div className="brand-circuit" aria-hidden="true">
-                <svg viewBox="0 0 390 220" fill="none">
+                <svg viewBox="0 0 390 235" fill="none">
                   <path
                     className="circuit-track"
-                    d="M0 60H255a20 20 0 0 1 20 20v70a20 20 0 0 1-20 20H95a20 20 0 0 1-20-20V100a20 20 0 0 1 20-20h235"
+                    d="M115 70H275Q295 70 295 90V180Q295 200 275 200H115Q95 200 95 180V90Q95 70 115 70Z"
                   />
                   <path
                     className="circuit-track"
-                    d="M0 45H270a20 20 0 0 1 20 20v100a20 20 0 0 1-20 20H80a20 20 0 0 1-20-20V85a20 20 0 0 1 20-20h250"
+                    d="M115 55H275Q310 55 310 90V180Q310 215 275 215H115Q80 215 80 180V90Q80 55 115 55Z"
                   />
-                  <circle className="circuit-signal" r="5">
+                  <circle className="circuit-signal" r="3.5">
                     <animateMotion
-                      dur="7s"
+                      dur="9s"
+                      calcMode="paced"
                       repeatCount="indefinite"
-                      path="M0 60H255a20 20 0 0 1 20 20v70a20 20 0 0 1-20 20H95a20 20 0 0 1-20-20V100a20 20 0 0 1 20-20h235"
+                      path="M115 70H275Q295 70 295 90V180Q295 200 275 200H115Q95 200 95 180V90Q95 70 115 70Z"
                     />
                   </circle>
                   {[0, 1, 2, 3, 4, 5].map((i) => (
                     <ellipse
                       key={i}
-                      cx={130 + i * 17}
-                      cy="31"
+                      cx={153 + i * 17}
+                      cy="24"
                       rx="13"
-                      ry="27"
+                      ry="18"
                       stroke="currentColor"
                       strokeWidth="1.5"
                     />
                   ))}
+                  <circle cx="195" cy="135" r="44" fill="white" />
+                  <text
+                    x="195"
+                    y="145"
+                    textAnchor="middle"
+                    fill="#2659a5"
+                    fontFamily="Poppins, sans-serif"
+                    fontSize="66"
+                    fontWeight="600"
+                  >
+                    g
+                  </text>
+                  <text
+                    x="195"
+                    y="174"
+                    textAnchor="middle"
+                    fill="#2659a5"
+                    fontFamily="Poppins, sans-serif"
+                    fontSize="9"
+                    fontWeight="500"
+                    letterSpacing="1"
+                  >
+                    gogroup
+                  </text>
                 </svg>
-                <span className="circuit-seal">
-                  g<span>gogroup</span>
-                </span>
-                <span className="circuit-caption">
-                  Cada pedido,
-                  <br />
-                  um próximo passo.
-                </span>
               </div>
             )}
             <div className="date-chip">

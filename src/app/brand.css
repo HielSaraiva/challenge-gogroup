@@ -1227,37 +1227,6 @@ main {
 .circuit-signal {
   fill: var(--brand-lime);
 }
-.circuit-seal {
-  position: absolute;
-  width: 104px;
-  height: 104px;
-  border-radius: 50%;
-  background: white;
-  color: var(--brand-blue);
-  left: 38%;
-  top: 72px;
-  text-align: center;
-  font-size: 78px;
-  font-weight: 700;
-  line-height: 1;
-  transform: rotate(-9deg);
-}
-.circuit-seal > span {
-  display: block;
-  font-size: 10px;
-  letter-spacing: 2px;
-  font-weight: 500;
-  margin-top: -1px;
-}
-.circuit-caption {
-  position: absolute;
-  right: 8%;
-  bottom: -4px;
-  font-size: 13px;
-  color: #fff;
-  line-height: 1.5;
-  transform: rotate(-5deg);
-}
 @keyframes brand-arrive {
   from {
     opacity: 0;
@@ -2066,12 +2035,6 @@ footer > span:last-child {
   .brand-opening > div:first-child {
     width: 68%;
   }
-  .circuit-seal {
-    width: 80px;
-    height: 80px;
-    font-size: 58px;
-    top: 80px;
-  }
   .metric > strong {
     font-size: 24px;
   }
@@ -2473,9 +2436,6 @@ footer > span:last-child {
 }
 .sidebar .nav-item {
   font-size: 14px;
-}
-.circuit-caption {
-  display: none;
 }
 @media (max-width: 1100px) {
   .sidebar .nav-item {
