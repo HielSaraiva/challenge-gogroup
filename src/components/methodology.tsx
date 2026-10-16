@@ -54,11 +54,12 @@ export function Methodology({
       <section className="panel prose" id="method-agent">
         <h2>Por que o agente é parte do trabalho?</h2>
         <p>
-          A IA compara as alternativas calculadas e escolhe uma estratégia com
-          justificativa. Depois consulta amostras da seleção escolhida e
-          registra por onde começar em cada área, com motivo e próximo passo. O
-          servidor calcula números e verifica os vínculos. Assim, a escolha é do
-          agente, com cálculos reproduzíveis e limites verificáveis.
+          Você escolhe o foco do plano: equilíbrio, urgência ou relacionamento.
+          A IA compara as alternativas calculadas, aplica a estratégia escolhida
+          e explica seus efeitos. Depois consulta amostras da seleção e registra
+          por onde começar em cada área, com motivo e próximo passo. O servidor
+          calcula números e verifica os vínculos, inclusive se a estratégia
+          aplicada corresponde à escolha do usuário.
         </p>
         <details open>
           <summary>O que cada execução produz?</summary>
@@ -121,9 +122,10 @@ export function Methodology({
         <h2>Por que estes pedidos foram selecionados?</h2>
         <p>
           Capacidade fornecida: 150 tratativas por dia para toda a equipe, com
-          12 minutos em média por tratativa. A IA escolhe entre três estratégias
-          iniciais. Os pesos são heurísticas deste projeto; não são política
-          oficial nem uma previsão de recuperação financeira.
+          12 minutos em média por tratativa. Antes de cada geração, o usuário
+          escolhe entre três estratégias iniciais. Os pesos são heurísticas
+          deste projeto; não são política oficial nem uma previsão de
+          recuperação financeira.
         </p>
         <table>
           <thead>
@@ -369,7 +371,7 @@ export function Methodology({
               monetários.
             </li>
             <li>
-              <b>Groq com ferramentas:</b> IA decide estratégia e
+              <b>Groq com ferramentas:</b> IA aplica a estratégia escolhida e
               encaminhamentos, enquanto cálculos e efeitos são controlados pelo
               servidor.
             </li>

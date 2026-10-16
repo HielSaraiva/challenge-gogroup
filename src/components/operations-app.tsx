@@ -18,6 +18,8 @@ import { AgentProgress } from "./agent-progress";
 import {
   exceptionLabels,
   DEFAULT_WEIGHTS,
+  STRATEGIES,
+  type Strategy,
   type RankedOrder,
   type Insight,
   type Task,
@@ -100,6 +102,7 @@ export function OperationsApp() {
   const [notice, setNotice] = useState("");
   const [resetting, setResetting] = useState(false);
   const [confirmNewPlan, setConfirmNewPlan] = useState(false);
+  const [planStrategy, setPlanStrategy] = useState<Strategy>("equilibrada");
   const [query, setQuery] = useState("");
   const [all, setAll] = useState(false);
   const [page, setPage] = useState(1);
@@ -203,7 +206,12 @@ export function OperationsApp() {
       const r = await fetch("/api/investigations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ target, type, requestId }),
+        body: JSON.stringify({
+          target,
+          type,
+          requestId,
+          ...(type === "daily" ? { strategy: planStrategy } : {}),
+        }),
       });
       if (!r.ok) throw new Error((await r.json()).error);
       if (r.headers.get("content-type")?.includes("application/json")) {
@@ -365,7 +373,7 @@ export function OperationsApp() {
                 {
                   {
                     overview:
-                      "A IA compara alternativas, escolhe uma estratégia e registra um plano para a equipe.",
+                      "Escolha o foco do dia. A IA compara alternativas e prepara um plano para a equipe.",
                     queue:
                       "Consulte a carteira recebida ou siga o plano preparado pelo agente.",
                     agent:
@@ -470,8 +478,8 @@ export function OperationsApp() {
                     <p>
                       {summary.count} pedidos pendentes recebidos ·{" "}
                       {day?.availableCapacity ?? 150} vagas disponíveis no
-                      piloto. A IA compara equilíbrio, urgência e relacionamento
-                      antes de registrar sua escolha.
+                      piloto. Você escolhe o foco; a IA compara as alternativas
+                      e registra os encaminhamentos.
                     </p>
                     {day?.status === "needs_review" && (
                       <p role="status">
@@ -496,8 +504,8 @@ export function OperationsApp() {
                           !summary.count
                         }
                         onClick={() => {
-                          if (day?.plan) setConfirmNewPlan(true);
-                          else void investigate("day", "daily");
+                          setPlanStrategy(day?.plan?.strategy || "equilibrada");
+                          setConfirmNewPlan(true);
                         }}
                       >
                         {busy
@@ -1072,31 +1080,64 @@ export function OperationsApp() {
           <span className="new-plan-icon" aria-hidden="true">
             <Bot size={24} />
           </span>
-          <DialogTitle>Gerar um novo plano com IA?</DialogTitle>
+          <DialogTitle>
+            {day?.plan ? "Preparar um novo plano" : "Preparar meu dia com IA"}
+          </DialogTitle>
           <DialogDescription>
-            Já existe um plano disponível. Uma nova análise pode mudar a
-            estratégia e os pedidos selecionados para a equipe.
+            Escolha o foco da equipe. A IA comparará as alternativas, aplicará
+            sua escolha e preparará os encaminhamentos.
           </DialogDescription>
-          <div className="new-plan-consequences">
-            <div>
-              <strong>O novo plano passa a ser o ativo</strong>
-              <p>O plano atual continuará disponível no histórico.</p>
+          <fieldset className="plan-strategies">
+            <legend>Qual é o foco para este plano?</legend>
+            {(
+              Object.entries(STRATEGIES) as [
+                Strategy,
+                (typeof STRATEGIES)[Strategy],
+              ][]
+            ).map(([id, strategy]) => (
+              <label className="plan-strategy" key={id}>
+                <input
+                  type="radio"
+                  name="plan-strategy"
+                  value={id}
+                  checked={planStrategy === id}
+                  onChange={() => setPlanStrategy(id)}
+                />
+                <span>
+                  <strong>{strategy.label}</strong>
+                  <span>
+                    {id === "equilibrada"
+                      ? "Equilibra valor dos pedidos, tempo de espera e histórico do cliente."
+                      : id === "urgencia"
+                        ? "Dá mais peso ao tempo de espera e aos atrasos."
+                        : "Dá mais peso ao histórico do cliente e ao potencial de relacionamento."}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          {day?.plan && (
+            <div className="new-plan-consequences">
+              <div>
+                <strong>O novo plano passa a ser o ativo</strong>
+                <p>O plano atual continuará disponível no histórico.</p>
+              </div>
+              <div>
+                <strong>Seu trabalho fica preservado</strong>
+                <p>
+                  As tratativas registradas serão mantidas. Se a análise falhar,
+                  o plano atual continua ativo.
+                </p>
+              </div>
             </div>
-            <div>
-              <strong>Seu trabalho fica preservado</strong>
-              <p>
-                As tratativas registradas serão mantidas. Se a análise falhar, o
-                plano atual continua ativo.
-              </p>
-            </div>
-          </div>
+          )}
           <div className="new-plan-footer">
             <Button
               variant="outline"
               autoFocus
               onClick={() => setConfirmNewPlan(false)}
             >
-              Manter plano atual
+              {day?.plan ? "Manter plano atual" : "Cancelar"}
             </Button>
             <Button
               disabled={
@@ -1110,7 +1151,7 @@ export function OperationsApp() {
                 void investigate("day", "daily");
               }}
             >
-              Gerar novo plano
+              {day?.plan ? "Gerar novo plano" : "Preparar plano com IA"}
             </Button>
           </div>
         </DialogContent>

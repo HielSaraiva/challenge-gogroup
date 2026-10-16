@@ -246,6 +246,34 @@ describe("plano e ferramentas do agente", () => {
       ),
     ).rejects.toThrow("amostra consultada");
   });
+  it("respeita a estratégia escolhida pelo usuário", async () => {
+    const ctx = context();
+    ctx.requestedStrategy = "urgencia";
+    await executeTool("consultar_diagnostico", {}, ctx);
+    await expect(
+      executeTool(
+        "comparar_estrategias",
+        {
+          strategy: "equilibrada",
+          reason:
+            "Equilibrar o atendimento das pendências com o histórico dos clientes.",
+        },
+        ctx,
+      ),
+    ).rejects.toThrow("O usuário escolheu a estratégia urgencia");
+    expect(ctx.compared).not.toBe(true);
+    await executeTool(
+      "comparar_estrategias",
+      {
+        strategy: "urgencia",
+        reason:
+          "Priorizar a espera prolongada conforme o foco escolhido pela equipe.",
+      },
+      ctx,
+    );
+    expect(ctx.strategy).toBe("urgencia");
+    expect(ctx.weights).toEqual(STRATEGIES.urgencia.weights);
+  });
   it("exige consulta e cobre exatamente as áreas calculadas", async () => {
     const ctx = context();
     const args = {
@@ -861,3 +889,4 @@ describe("conclusões com evidência e compatibilidade", () => {
     expect(report.declaredCosts.count).toBe(0);
   });
 });
+import { STRATEGIES } from "../src/domain/types";

@@ -433,6 +433,49 @@ main > .panel {
   padding-top: 20px;
   border-top: 1px solid var(--line);
 }
+.plan-strategies {
+  padding: 0;
+  margin: 24px 0;
+  border: 0;
+  display: grid;
+  gap: 10px;
+}
+.plan-strategies legend {
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.plan-strategy {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.plan-strategy:has(input:checked) {
+  background: #edf2fa;
+  border-color: #2659a5;
+}
+.plan-strategy:focus-within {
+  outline: 2px solid #2659a5;
+  outline-offset: 2px;
+}
+.plan-strategy input {
+  margin-top: 4px;
+  accent-color: #2659a5;
+  flex-shrink: 0;
+}
+.plan-strategy > span {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.plan-strategy > span > span {
+  color: #555761;
+}
 .new-plan-footer .button {
   min-height: 44px;
   min-width: 0;

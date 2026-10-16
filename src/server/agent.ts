@@ -28,6 +28,7 @@ export const investigationInput = z.object({
   type: z.enum(["order", "pattern", "daily"]),
   target: z.string().min(1).max(200),
   requestId: z.uuid(),
+  strategy: z.enum(["equilibrada", "urgencia", "relacionamento"]).optional(),
   weights: z
     .object({
       value: z.number().min(0).max(100),
@@ -200,6 +201,7 @@ export type AgentContext = {
   diagnosed?: boolean;
   compared?: boolean;
   strategy?: import("@/domain/types").Strategy;
+  requestedStrategy?: import("@/domain/types").Strategy;
   strategyReason?: string;
 };
 export async function executeTool(
@@ -470,6 +472,7 @@ export async function investigate(
     simulated: new Set(),
     requiresPattern: Boolean(pattern),
     mode: input.type,
+    requestedStrategy: input.type === "daily" ? input.strategy : undefined,
     patternId: pattern?.id,
     weights: input.weights || DEFAULT_WEIGHTS,
     consultedInsights: new Set(),
@@ -501,7 +504,7 @@ export async function investigate(
       role: "user",
       content:
         input.type === "daily"
-          ? "Consulte a fila atual, escolha as áreas em destaque e registre um plano executável para o time hoje."
+          ? `Consulte o diagnóstico e compare as alternativas. ${input.strategy ? `O usuário escolheu a estratégia ${input.strategy}: aplique exatamente essa estratégia em comparar_estrategias, explique qualitativamente seus efeitos e respeite esta escolha.` : "Escolha a estratégia com base nas evidências."} Escolha as áreas em destaque e registre um plano executável para o time hoje.`
           : input.type === "order"
             ? `Investigue o pedido ${input.target} e registre um encaminhamento útil.`
             : `Investigue o padrão ID ${input.target}. Consulte suas evidências e registre uma ação de processo se esse for o escopo recomendado, ou uma tratativa individual se o sinal ainda precisar de validação.`,

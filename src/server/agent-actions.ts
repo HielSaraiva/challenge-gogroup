@@ -203,6 +203,13 @@ export async function executeStrategicTool(
       .strict()
       .parse(raw);
     requireQualitative(args.reason, context.data);
+    if (
+      context.requestedStrategy &&
+      args.strategy !== context.requestedStrategy
+    )
+      throw new AppError(
+        `O usuário escolheu a estratégia ${context.requestedStrategy}. Compare as alternativas e aplique essa estratégia, justificando seus efeitos.`,
+      );
     context.strategy = args.strategy;
     context.strategyReason = args.reason;
     context.weights = STRATEGIES[args.strategy].weights;
