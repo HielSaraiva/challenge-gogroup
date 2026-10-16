@@ -19,6 +19,7 @@ import {
   Layers3,
   LayoutDashboard,
   Loader2,
+  Menu,
   Package,
   RotateCcw,
   Search,
@@ -114,6 +115,7 @@ function Meter({ value, label }: { value: number; label?: string }) {
 
 export function OperationsApp() {
   const [tab, setTab] = useState<Tab>("overview");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [summary, setSummary] = useState<Dashboard>();
   const [dayQueue, setQueue] = useState<Queue>();
   const [allOrders, setAllOrders] = useState<RankedOrder[]>([]);
@@ -457,22 +459,25 @@ export function OperationsApp() {
   }
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <header className="sidebar">
         <a className="logo" href="/" aria-label="Gogroup início">
           <img src="/gogroup-logo.svg" alt="gogroup" width={159} height={32} />
         </a>
-        <div className="workspace">
-          <span className="workspace-icon">
-            <Layers3 size={20} />
-          </span>
-          <div>
-            <strong>GO OPERATIONS</strong>
-            <small>Central de exceções</small>
-          </div>
-          <span className="workspace-dot" />
-        </div>
-        <p className="nav-label">CENTRAL DE OPERAÇÕES</p>
-        <nav aria-label="Navegação principal">
+        <span className="brand-product">Go Operations</span>
+        <button
+          className="mobile-menu-toggle"
+          aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
+          aria-expanded={menuOpen}
+          aria-controls="operation-navigation"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          {menuOpen ? <X size={21} /> : <Menu size={21} />} Menu
+        </button>
+        <nav
+          id="operation-navigation"
+          className={menuOpen ? "menu-open" : ""}
+          aria-label="Navegação principal"
+        >
           {navigation.map((n) => (
             <button
               key={n.id}
@@ -480,6 +485,7 @@ export function OperationsApp() {
               aria-current={tab === n.id ? "page" : undefined}
               onClick={() => {
                 setTab(n.id);
+                setMenuOpen(false);
                 setPage(1);
               }}
             >
@@ -496,25 +502,7 @@ export function OperationsApp() {
             </button>
           ))}
         </nav>
-        <div className="sidebar-bottom">
-          <div className="ai-status">
-            <span className="live-dot" />
-            <span>Construindo o próximo passo</span>
-          </div>
-          <p>
-            IA que investiga, prioriza e age.
-            <br />
-            Com transparência em cada etapa.
-          </p>
-          <div className="demo-user">
-            <span>OP</span>
-            <div>
-              <b>Seu espaço de demonstração</b>
-              <small>Sua sessão é individual</small>
-            </div>
-          </div>
-        </div>
-      </aside>
+      </header>
       <div className="main-shell">
         <header className="topbar">
           <div className="breadcrumb">
@@ -530,23 +518,33 @@ export function OperationsApp() {
           </div>
         </header>
         <main>
-          <div className="page-heading">
+          <div
+            className={`page-heading ${tab === "overview" ? "brand-opening" : ""}`}
+          >
             <div>
-              <div className="eyebrow">
-                <span /> GO OPERATIONS · INTELIGÊNCIA EM MOVIMENTO
-              </div>
+              {tab === "overview" && (
+                <span className="opening-context">
+                  Central de operações / Go Operations
+                </span>
+              )}
               <h1>
-                {tab === "overview"
-                  ? "Operação de hoje"
-                  : tab === "queue"
-                    ? "Fila priorizada"
-                    : tab === "insights"
-                      ? "Causas e melhorias de processo"
-                      : tab === "agent"
-                        ? "Ações e investigações do agente"
-                        : tab === "impact"
-                          ? "Risco e resultado financeiro"
-                          : "Decisões que você pode explicar."}
+                {tab === "overview" ? (
+                  <>
+                    Amor pelo Cliente.
+                    <br />
+                    Ação na operação.
+                  </>
+                ) : tab === "queue" ? (
+                  "Fila priorizada"
+                ) : tab === "insights" ? (
+                  "Causas e melhorias de processo"
+                ) : tab === "agent" ? (
+                  "Ações e investigações do agente"
+                ) : tab === "impact" ? (
+                  "Risco e resultado financeiro"
+                ) : (
+                  "Decisões que você pode explicar."
+                )}
               </h1>
               <p>
                 {tab === "overview"
@@ -562,6 +560,46 @@ export function OperationsApp() {
                           : "Conheça as regras, os cálculos e os limites desta demonstração."}
               </p>
             </div>
+            {tab === "overview" && (
+              <div className="brand-circuit" aria-hidden="true">
+                <svg viewBox="0 0 390 220" fill="none">
+                  <path
+                    className="circuit-track"
+                    d="M0 60H255a20 20 0 0 1 20 20v70a20 20 0 0 1-20 20H95a20 20 0 0 1-20-20V100a20 20 0 0 1 20-20h235"
+                  />
+                  <path
+                    className="circuit-track"
+                    d="M0 45H270a20 20 0 0 1 20 20v100a20 20 0 0 1-20 20H80a20 20 0 0 1-20-20V85a20 20 0 0 1 20-20h250"
+                  />
+                  <circle className="circuit-signal" r="5">
+                    <animateMotion
+                      dur="7s"
+                      repeatCount="indefinite"
+                      path="M0 60H255a20 20 0 0 1 20 20v70a20 20 0 0 1-20 20H95a20 20 0 0 1-20-20V100a20 20 0 0 1 20-20h235"
+                    />
+                  </circle>
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <ellipse
+                      key={i}
+                      cx={130 + i * 17}
+                      cy="31"
+                      rx="13"
+                      ry="27"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    />
+                  ))}
+                </svg>
+                <span className="circuit-seal">
+                  g<span>gogroup</span>
+                </span>
+                <span className="circuit-caption">
+                  Cada pedido,
+                  <br />
+                  um próximo passo.
+                </span>
+              </div>
+            )}
             <div className="date-chip">
               <CalendarDays size={16} />
               <div>
