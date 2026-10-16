@@ -85,7 +85,9 @@ pnpm import:data "/caminho/privado/operacoes"
 pnpm dev
 ```
 
-Acesse [localhost:3000](http://localhost:3000). O importador valida contratos, relacionamentos e conflitos antes de salvar a base. Não há endpoint público de importação.
+Acesse [localhost:3000](http://localhost:3000). Também é possível abrir **Dados**, selecionar os três CSVs, validar a prévia e confirmar a importação. Essa carga é exclusiva da sessão; não substitui a base administrativa nem afeta outros visitantes. Use somente dados sintéticos na demonstração pública. O limite é 2 MB no total, até 10 mil pedidos, 10 mil clientes e 2 mil contratos. Pedidos e eventos posteriores à referência fixa de 30/09/2026 são bloqueados. Não é aceita troca de base com tratativas ativas: reinicie a demonstração antes. Reiniciar preserva a base escolhida.
+
+O importador valida campos, contratos, relacionamentos e conflitos antes de salvar. O comando administrativo continua disponível para preparar a base inicial do servidor. Arquivos e base importada ficam fora do Git.
 
 Sem `DATABASE_URL`, o desenvolvimento salva dados e sessões em `.local/`, ignorado pelo Git. Esse modo serve somente para uma instância local. O agente exige uma credencial válida; respostas simuladas existem apenas nos testes.
 
@@ -106,7 +108,7 @@ pnpm import:data "/caminho/privado/operacoes"
 
 `db:push` lê a configuração local de ambiente e sincroniza o esquema do banco selecionado. Revise a conexão antes de executá-lo. As migrações SQL também ficam versionadas para revisão. Use bancos ou branches Neon separados para produção e prévias.
 
-Sem banco ou importação, a interface informa que a configuração está pendente. A aplicação não inclui uma base pública. Criação do banco e configuração das credenciais são etapas externas ao código.
+Sem banco ou importação, a interface orienta a configuração e oferece a área Dados para importação por sessão. A aplicação não inclui uma base pública. Criação do banco e configuração das credenciais são etapas externas ao código.
 
 ## Funcionamento do agente
 
@@ -122,7 +124,7 @@ O modelo recebe ferramentas restritas conforme a etapa:
 | `registrar_plano_dia` | Plano persistido com orientação para cada área da seleção calculada       |
 | `criar_acao_processo` | Investigação de melhoria vinculada a um padrão e a evidências consultadas |
 
-Consultar o pedido é obrigatório antes de criar uma tarefa. Propostas financeiras exigem simulação prévia e avaliação humana. Um conflito de status bloqueia outras tratativas até uma revisão explícita. A justificativa é identificada como hipótese do agente; fatos e números verificados aparecem separadamente.
+Consultar o pedido é obrigatório antes de criar uma tarefa. Propostas financeiras exigem simulação prévia e avaliação humana. Após aprovar, o operador precisa registrar a execução; aprovação sozinha não permite encerrar a exceção. Um conflito de status bloqueia outras tratativas até uma revisão explícita. A justificativa é identificada como hipótese do agente; fatos e números verificados aparecem separadamente.
 
 A fila sugerida é calculada pelas regras antes da IA. O plano exige consulta prévia e cobertura de todas as áreas: o agente escolhe um primeiro pedido da amostra consultada, justifica a escolha e registra o próximo passo; a seleção e as métricas vêm do servidor. Gerar esse plano não cria tarefas em lote. A investigação explícita do pedido escolhido cria um encaminhamento individual. Ações de processo exigem um padrão consultado e evidências distintas. Elas não encerram o conjunto de pedidos. Uma resposta textual sem plano ou tarefa persistida não conclui uma investigação.
 
@@ -145,7 +147,7 @@ Valor de carteira, exposição estimada, custo de intervenção e benefício sim
 
 Resultados declarados pelo operador exigem evidência, respeitam o valor do pedido e aparecem separados de recuperação comprovada. A demonstração não possui confirmação externa de pagamentos ou retenção. O simulador exige eficácia e custo assumidos para apresentar benefício líquido estimado.
 
-Encerrar um caso atualiza a demonstração. Aprovar uma proposta registra uma decisão. Não existem integrações de envio a clientes, pagamento, reembolso, transportadora ou estoque.
+Encerrar um caso atualiza a demonstração. Aprovar uma proposta registra uma decisão; registrar sua execução é uma etapa separada. Não existem integrações de envio a clientes, pagamento, reembolso, transportadora ou estoque.
 
 ## Qualidade e validação
 

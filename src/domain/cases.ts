@@ -89,12 +89,14 @@ export function transitionCase(
     const related = tasks.filter(
       (t) => t.orderId === order.id && t.scope !== "process",
     );
-    if (!related.some((t) => ["concluida", "aprovada"].includes(t.status)))
+    if (!related.some((t) => t.status === "concluida"))
       throw new Error(
-        "Conclua uma tarefa ou aprove uma proposta antes de encerrar a exceção.",
+        "Conclua a execução de uma tarefa antes de encerrar a exceção.",
       );
     if (
-      related.some((t) => ["aberta", "pendente_aprovacao"].includes(t.status))
+      related.some((t) =>
+        ["aberta", "pendente_aprovacao", "aprovada"].includes(t.status),
+      )
     )
       throw new Error(
         "Existem tarefas ou propostas pendentes para este pedido.",

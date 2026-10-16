@@ -71,3 +71,17 @@ A contribuição persistida da IA aparece separadamente: foco de trabalho, prime
 A capacidade da demonstração usa encerramentos como aproximação de tratativas consumidas na data fixa. Isso não mede tempo gasto em contatos, investigações, aprovações ou atividades ainda em andamento. Em uma operação real, o consumo deve vir de um registro de esforço por tratativa e da disponibilidade de cada especialidade; não se deve apresentar o contador do protótipo como produtividade real.
 
 O enunciado, o dicionário e os dados permanecem privados. Este documento registra decisões da implementação sem reproduzir o material fornecido.
+
+## Revisão do fluxo e critérios de aceite do piloto
+
+O produto permanece uma demonstração pública com isolamento por visitante. A arquitetura atende à avaliação de triagem e encaminhamento; não substitui ainda uma fila interna compartilhada. O uso interno exige autenticação, permissões, atribuição por pessoa, histórico durável e capacidade medida por esforço. O contador atual é uma aproximação de encerramentos na referência fixa do case.
+
+A primeira visita deve explicar o próximo passo sem exigir comandos de terminal. A carga de CSVs oferece validação e prévia antes de gravar. A origem administrativa continua disponível; a importação pela interface fica exclusiva da sessão e não deve misturar um novo conjunto de pedidos com tratativas existentes. Falhas mantêm a base anterior.
+
+O operador deve conseguir abrir um pedido, entender sua prioridade e tratar tarefas no mesmo dossiê. Propostas financeiras exigem aprovação e depois registro de execução; uma proposta apenas aprovada continua pendente e impede o encerramento. A distinção é necessária porque autorização não demonstra que houve reenvio ou reembolso.
+
+A aba Metodologia explica primeiro o uso e depois as decisões de negócio e tecnologia: parâmetros fornecidos, heurísticas escolhidas, fórmulas, calendário, qualidade dos dados, ferramentas da IA, persistência, limitações financeiras e caminho para produção. A interface não apresenta uma integração sem conexão real.
+
+CSV é a decisão para o piloto. Integração automática é recomendada para produção após mapear sistemas de origem, responsáveis, IDs estáveis, atualização de status, conciliação e reprocessamento. Nenhum fornecedor ou serviço interno específico foi presumido.
+
+Aceite funcional: importação válida com confirmação; rejeição de arquivo inválido sem gravação parcial; isolamento entre visitantes; investigação com tarefa persistida; proposta sem execução bloqueando encerramento; encerramento atualizando fila; recarga preservando estado; navegação por teclado e leitura em tela pequena. Aceite com operadores: realizar essas etapas sem ajuda, registrar tempo, erros e dúvidas e comparar com a rotina anterior. Não alegar produtividade ou recuperação comprovada antes desse piloto.

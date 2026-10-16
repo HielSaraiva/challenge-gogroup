@@ -6,11 +6,36 @@ import type { Dataset, Order } from "./types";
 const money = z
   .string()
   .regex(/^\d+(\.\d{1,2})?$/)
-  .refine((v) => new Decimal(v).gte(0));
+  .refine((v) => {
+    try {
+      return new Decimal(v).gte(0);
+    } catch {
+      return false;
+    }
+  });
 const day = z.iso.date();
 const count = z.coerce.number().int().nonnegative();
 const csv = (text: string): Record<string, string>[] =>
-  parse(text, { columns: true, bom: true, skip_empty_lines: true, trim: true });
+  parse(text, {
+    columns: true,
+    bom: true,
+    skip_empty_lines: true,
+    trim: true,
+    max_record_size: 16000,
+  });
+function row<T>(
+  schema: z.ZodType<T>,
+  value: unknown,
+  file: string,
+  index: number,
+): T {
+  const result = schema.safeParse(value);
+  if (!result.success)
+    throw new Error(
+      `${file}, linha ${index + 2}: revise o campo ${result.error.issues[0]?.path.join(".") || "registro"}.`,
+    );
+  return result.data;
+}
 const customerSchema = z.object({
   customer_id: z.string().min(1),
   n_pedidos: count.positive(),
@@ -69,8 +94,8 @@ export function importDataset(files: {
   customers: string;
   carriers: string;
 }): Dataset {
-  const customers = csv(files.customers).map((row) => {
-    const r = customerSchema.parse(row);
+  const customers = csv(files.customers).map((value, i) => {
+    const r = row(customerSchema, value, "clientes.csv", i);
     return {
       id: r.customer_id,
       orders: r.n_pedidos,
@@ -79,8 +104,8 @@ export function importDataset(files: {
       contacts: r.n_contatos_atendimento,
     };
   });
-  const carriers = csv(files.carriers).map((row) => {
-    const r = carrierSchema.parse(row);
+  const carriers = csv(files.carriers).map((value, i) => {
+    const r = row(carrierSchema, value, "transportadoras.csv", i);
     return {
       name: r.transportadora,
       state: r.uf_atendida,
@@ -97,13 +122,13 @@ export function importDataset(files: {
     throw new Error("Contratos duplicados.");
   const source = csv(files.orders);
   const grouped = new Map<string, Order>();
-  for (const row of source) {
-    const r = orderSchema.parse(row);
-    if (!customers.some((c) => c.id === r.customer_id))
+  const customerIds = new Set(customers.map((c) => c.id));
+  const contracts = new Map(carriers.map((c) => [`${c.name}|${c.state}`, c]));
+  for (const [i, value] of source.entries()) {
+    const r = row(orderSchema, value, "pedidos_excecao.csv", i);
+    if (!customerIds.has(r.customer_id))
       throw new Error(`Cliente inexistente: ${r.order_id}`);
-    const carrier = carriers.find(
-      (c) => c.name === r.transportadora && c.state === r.uf,
-    );
+    const carrier = contracts.get(`${r.transportadora}|${r.uf}`);
     if (!carrier) throw new Error(`Contrato inexistente: ${r.order_id}`);
     const previous = grouped.get(r.order_id);
     const order: Order = {

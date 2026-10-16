@@ -2,7 +2,7 @@
 
 Referência visual: https://estagiogogroup.com.br/ (consultada em outubro de 2026).
 
-A aplicação adapta a identidade da campanha para uma ferramenta de operações. O logotipo original mantém suas proporções. O mantra Amor pelo Cliente orienta a abertura; a continuação Ação na operação é texto próprio do projeto, sem pretensão de ser um slogan oficial.
+A aplicação adapta a identidade da campanha para uma ferramenta de operações. O logotipo original mantém suas proporções. A abertura prioriza a tarefa do operador: escolher um pedido, investigar e executar, registrar o resultado. A marca oferece contexto sem ocupar o espaço principal de trabalho.
 
 ## Tokens
 
@@ -21,10 +21,18 @@ Poppins é servida localmente, em pesos de 400 a 700. Títulos principais usam e
 
 A navegação horizontal dá protagonismo à marca. A abertura azul usa a grade, os circuitos e os contornos circulares presentes na referência, desenhados em CSS e SVG. O restante da interface privilegia listas, divisores, hierarquia e contraste. Rosa identifica a ação principal; o lima pontua a capacidade e o fluxo.
 
-A entrada da abertura, a rotação do anel do selo e a resposta dos botões compõem o movimento. A preferência por redução de movimento desativa animações e transições. Os grafismos são decorativos e ficam fora da árvore de acessibilidade.
+A resposta dos botões e o progresso das investigações oferecem feedback. A preferência por redução de movimento desativa animações e transições. Os grafismos são decorativos e ficam fora da árvore de acessibilidade.
 
 No celular, o menu recolhe a navegação; a comparação das filas passa a uma coluna e as tabelas mantêm rolagem própria. As regras de cálculo e os fluxos do agente são independentes desta camada visual.
 
 Os botões com texto branco usam a variação #d51075 para contraste de 5,05:1; o rosa de referência é preservado nos acentos gráficos.
 
 O selo usa os arquivos originais [rotate-detail.svg](https://estagiogogroup.com.br/assets/rotate-detail.svg) e [g-detail.svg](https://estagiogogroup.com.br/assets/g-detail.svg) da referência. Apenas o anel gira, em 12 segundos; o símbolo central permanece estável.
+
+## Fluxo revisado para piloto
+
+A navegação usa Hoje, Pedidos, Processos, Tarefas, Impacto, Dados e Metodologia. As abas ficam no histórico da URL, permitindo voltar e compartilhar a seção. Hoje prioriza abrir a fila; o plano da IA é opcional. O dossiê mostra o próximo passo e mantém investigação, revisão, aprovação, registro da execução e encerramento no mesmo contexto.
+
+Detalhes de cálculo e distinções técnicas ficam na Metodologia, com navegação por assunto e seções expansíveis. Dados oferece seleção dos CSVs, prévia e confirmação. Erros indicam campos e linhas quando possível, sem reproduzir conteúdo bruto do parser. A confirmação da importação afeta somente a sessão atual.
+
+A revisão aplica linguagem da operação, reconhecimento em vez de memorização, visibilidade de andamento, prevenção de erros e divulgação progressiva. A avaliação é heurística; a facilidade para operadores novos ainda depende de observação no piloto. Referências: [heurísticas de Nielsen](https://www.nngroup.com/articles/ten-usability-heuristics/) e [ordem de foco WCAG](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html).

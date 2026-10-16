@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       .number()
       .int()
       .min(1)
-      .max(2000)
+      .max(10000)
       .parse(params.get("limit") || 50);
     const page = z.coerce
       .number()
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
       .slice(0, 150)
       .toLocaleLowerCase("pt-BR");
     const orders = rankOrders(
-      sessionDataset(await getDataset(), state),
+      sessionDataset(await getDataset(state), state),
       parseWeights(params),
     ).filter(
       (o) =>
@@ -69,7 +69,7 @@ export async function PATCH(request: Request) {
     release = await acquireAgentLease(id);
     const state = await getSession(id);
     if (!state) throw new AppError("Sessão expirada.", 401);
-    const data = await getDataset();
+    const data = await getDataset(state);
     if (
       input.action === "resolve" &&
       usedDailyCapacity(sessionDataset(data, state)) >= CAPACITY

@@ -96,7 +96,9 @@ export function financialReport(data: Dataset, state: SessionState) {
       .toFixed(2),
     declaredCases: declared.length,
     financialProposals: state.tasks.filter(
-      (task) => task.kind.startsWith("proposta_") && task.status === "aprovada",
+      (task) =>
+        task.kind.startsWith("proposta_") &&
+        ["aprovada", "concluida"].includes(task.status),
     ).length,
     note: "Registros manuais desta demonstração não comprovam recuperação, lucro ou efeito causal. Aprovar uma proposta ou encerrar um caso não equivale a recuperar dinheiro.",
   };

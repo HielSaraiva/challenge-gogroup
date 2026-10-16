@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const { state } = await session();
-    const data = sessionDataset(await getDataset(), state);
+    const data = sessionDataset(await getDataset(state), state);
     return json({
       ...operationalReport(
         data,

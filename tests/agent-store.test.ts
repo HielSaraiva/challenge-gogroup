@@ -143,7 +143,13 @@ describe("ferramentas controladas e persistência", () => {
       status: string;
     };
     expect(task.status).toBe("pendente_aprovacao");
+    await expect(updateTask(ids[0], task.id, "concluida")).rejects.toThrow(
+      "inválida",
+    );
     await updateTask(ids[0], task.id, "aprovada");
+    expect((await updateTask(ids[0], task.id, "concluida")).status).toBe(
+      "concluida",
+    );
     await expect(updateTask(ids[0], task.id, "concluida")).rejects.toThrow(
       "inválida",
     );

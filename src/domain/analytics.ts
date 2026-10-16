@@ -177,6 +177,7 @@ export function dashboard(data: Dataset) {
     promiseMismatches: orders.filter((o) =>
       o.issues.some((i) => i.code === "PROMISE_MISMATCH"),
     ).length,
+    importedAt: data.importedAt,
     sourceRows: data.sourceRows,
     totalCount: allOrders.length,
     resolvedCount: allOrders.length - orders.length,

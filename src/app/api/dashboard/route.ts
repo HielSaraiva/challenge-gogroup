@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const { state } = await session();
-    return json(dashboard(sessionDataset(await getDataset(), state)));
+    return json(dashboard(sessionDataset(await getDataset(state), state)));
   } catch (e) {
     return failure(e);
   }

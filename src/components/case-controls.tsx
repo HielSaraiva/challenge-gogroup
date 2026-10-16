@@ -35,11 +35,9 @@ export function CaseControls({
     (t) => t.orderId === order.id && t.scope !== "process",
   );
   const hasPending = related.some((t) =>
-    ["aberta", "pendente_aprovacao"].includes(t.status),
+    ["aberta", "pendente_aprovacao", "aprovada"].includes(t.status),
   );
-  const hasCompleted = related.some((t) =>
-    ["concluida", "aprovada"].includes(t.status),
-  );
+  const hasCompleted = related.some((t) => t.status === "concluida");
   const canResolve = !hasPending && hasCompleted;
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -233,7 +231,7 @@ export function CaseControls({
         {action === "resolve" && !canResolve && (
           <small className="case-help">
             {hasPending
-              ? "Conclua ou avalie as tarefas pendentes antes de encerrar."
+              ? "Avalie as propostas e registre a execução das tarefas pendentes antes de encerrar."
               : "Primeiro investigue este pedido e conclua uma tarefa."}
           </small>
         )}

@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   ArrowRight,
@@ -36,6 +36,8 @@ import {
   isPlanCurrent,
   type OperationsReport,
 } from "./operations-summary";
+import { Methodology } from "./methodology";
+import { DataImport } from "./data-import";
 import { FinancialImpact } from "./financial-impact";
 import {
   Dialog,
@@ -57,13 +59,15 @@ import { money, shortDate, statusLabel } from "@/lib/utils";
 import type { dashboard, queue } from "@/domain/analytics";
 type Dashboard = ReturnType<typeof dashboard>;
 type Queue = ReturnType<typeof queue>;
-type Tab = "overview" | "queue" | "insights" | "agent" | "impact" | "method";
+type Tab =
+  "overview" | "queue" | "insights" | "agent" | "impact" | "method" | "data";
 const navigation = [
-  { id: "overview", title: "Operação hoje", icon: LayoutDashboard },
-  { id: "queue", title: "Fila sugerida", icon: Layers3 },
-  { id: "insights", title: "Causas e processos", icon: Search },
-  { id: "agent", title: "Agente e tarefas", icon: Sparkles },
-  { id: "impact", title: "Impacto financeiro", icon: BarChart3 },
+  { id: "overview", title: "Hoje", icon: LayoutDashboard },
+  { id: "queue", title: "Pedidos", icon: Layers3 },
+  { id: "insights", title: "Processos", icon: Search },
+  { id: "agent", title: "Tarefas", icon: Sparkles },
+  { id: "impact", title: "Impacto", icon: BarChart3 },
+  { id: "data", title: "Dados", icon: Package },
   { id: "method", title: "Metodologia", icon: FileText },
 ] as const;
 async function get<T>(url: string): Promise<T> {
@@ -114,7 +118,38 @@ function Meter({ value, label }: { value: number; label?: string }) {
 }
 
 export function OperationsApp() {
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setActiveTab] = useState<Tab>("overview");
+  const heading = useRef<HTMLHeadingElement>(null);
+  const firstNavigation = useRef(true);
+  useEffect(() => {
+    if (firstNavigation.current) {
+      firstNavigation.current = false;
+      return;
+    }
+    heading.current?.focus({ preventScroll: true });
+  }, [tab]);
+  function setTab(next: Tab) {
+    setActiveTab(next);
+    if (window.location.hash !== `#${next}`)
+      window.history.pushState(null, "", `#${next}`);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
+  useEffect(() => {
+    const restore = () => {
+      const value = window.location.hash.slice(1);
+      if (!value) setActiveTab("overview");
+      else if (value.startsWith("method-")) setActiveTab("method");
+      else if (navigation.some((item) => item.id === value))
+        setActiveTab(value as Tab);
+    };
+    restore();
+    window.addEventListener("popstate", restore);
+    window.addEventListener("hashchange", restore);
+    return () => {
+      window.removeEventListener("popstate", restore);
+      window.removeEventListener("hashchange", restore);
+    };
+  }, []);
   const [menuOpen, setMenuOpen] = useState(false);
   const [summary, setSummary] = useState<Dashboard>();
   const [dayQueue, setQueue] = useState<Queue>();
@@ -125,6 +160,7 @@ export function OperationsApp() {
   const [operations, setOperations] = useState<OperationsReport>();
   const [frontIds, setFrontIds] = useState<string[]>();
   const [taskScope, setTaskScope] = useState("all");
+  const [taskStatus, setTaskStatus] = useState("pending");
   const [weights, setWeights] = useState<Weights>(DEFAULT_WEIGHTS);
   const [draftWeights, setDraftWeights] = useState<Weights>(DEFAULT_WEIGHTS);
   const [query, setQuery] = useState("");
@@ -177,7 +213,7 @@ export function OperationsApp() {
       const [s, q, o, i] = await Promise.all([
         get<Dashboard>("/api/dashboard"),
         get<Queue>("/api/queue"),
-        get<{ orders: RankedOrder[] }>("/api/orders?limit=2000"),
+        get<{ orders: RankedOrder[] }>("/api/orders?limit=10000"),
         get<Insight[]>("/api/insights"),
       ]);
       setSummary(s);
@@ -186,7 +222,14 @@ export function OperationsApp() {
       setPatterns(i);
       await refreshActivity();
     } catch (e) {
-      setError((e as Error).message);
+      setSummary(undefined);
+      setQueue(undefined);
+      setAllOrders([]);
+      setTasks([]);
+      setRuns([]);
+      setOperations(undefined);
+      const message = (e as Error).message;
+      setError(message.startsWith("Base ainda não importada") ? "" : message);
     } finally {
       setLoading(false);
     }
@@ -218,8 +261,17 @@ export function OperationsApp() {
       ),
     [allOrders, dayQueue, showAll, type, brand, status, query, frontIds],
   );
-  const openTasks = tasks.filter(
-    (t) => t.status === "aberta" || t.status === "pendente_aprovacao",
+  const openTasks = tasks.filter((t) =>
+    ["aberta", "pendente_aprovacao", "aprovada"].includes(t.status),
+  );
+  const visibleTasks = tasks.filter(
+    (t) =>
+      (taskScope === "all" ||
+        (t.scope === "process" ? "process" : "case") === taskScope) &&
+      (taskStatus === "all" ||
+        (taskStatus === "pending"
+          ? ["aberta", "pendente_aprovacao", "aprovada"].includes(t.status)
+          : ["concluida", "rejeitada"].includes(t.status))),
   );
   const currentPlan = isPlanCurrent(
     operations?.plans[0],
@@ -234,7 +286,7 @@ export function OperationsApp() {
     const [s, q, o] = await Promise.all([
       get<Dashboard>("/api/dashboard"),
       get<Queue>(`/api/queue?${query}`),
-      get<{ orders: RankedOrder[] }>(`/api/orders?limit=2000&${query}`),
+      get<{ orders: RankedOrder[] }>(`/api/orders?limit=10000&${query}`),
     ]);
     setSummary(s);
     setQueue(q);
@@ -266,8 +318,10 @@ export function OperationsApp() {
     setBusy(true);
     setEvents([]);
     setError("");
-    setSelected(undefined);
-    setTab("agent");
+    if (kind !== "order") {
+      setSelected(undefined);
+      setTab("agent");
+    }
     try {
       const response = await fetch("/api/investigations", {
         method: "POST",
@@ -338,7 +392,7 @@ export function OperationsApp() {
       });
       const result = await r.json();
       if (!r.ok) throw new Error(result.error);
-      await refreshActivity();
+      await refreshWorkspace();
       setNotice(
         nextStatus === "aprovada"
           ? "Proposta aprovada na demonstração. Nenhum pagamento ou reenvio foi executado."
@@ -412,7 +466,7 @@ export function OperationsApp() {
                     {exceptionLabels[o.exception]}
                   </Label>
                   {o.status === "status_divergente" && (
-                    <p className="conflict">Status divergente</p>
+                    <p className="conflict">Revisão de status necessária</p>
                   )}
                 </td>
                 {!compact && (
@@ -527,37 +581,37 @@ export function OperationsApp() {
                   Central de operações / Go Operations
                 </span>
               )}
-              <h1>
+              <h1 ref={heading} tabIndex={-1}>
                 {tab === "overview" ? (
-                  <>
-                    Amor pelo Cliente.
-                    <br />
-                    Ação na operação.
-                  </>
+                  <>Seu dia na operação</>
                 ) : tab === "queue" ? (
-                  "Seleção pelas regras"
+                  "Pedidos para tratar"
                 ) : tab === "insights" ? (
-                  "Causas e melhorias de processo"
+                  "Melhorias de processo"
                 ) : tab === "agent" ? (
-                  "Ações e investigações do agente"
+                  "Tarefas e aprovações"
                 ) : tab === "impact" ? (
                   "Risco e resultado financeiro"
+                ) : tab === "data" ? (
+                  "Dados da operação"
                 ) : (
-                  "Decisões que você pode explicar."
+                  "Como funciona e por quê"
                 )}
               </h1>
               <p>
                 {tab === "overview"
-                  ? "Consulte a seleção das regras. Use o agente para decidir o próximo encaminhamento."
+                  ? "Comece pelos pedidos prioritários. Investigue, registre a execução e acompanhe o que falta resolver."
                   : tab === "queue"
-                    ? "Seleção determinística por capacidade e critérios ajustáveis. Esta fila existe antes da análise do agente."
+                    ? "Veja o que tratar primeiro e abra um pedido para acompanhar a tratativa."
                     : tab === "insights"
                       ? "Diferencie o atendimento individual dos sinais que exigem investigar o processo."
                       : tab === "agent"
                         ? "Planos e encaminhamentos criados com ferramentas, evidências e histórico."
                         : tab === "impact"
                           ? "Exposição, cenários e resultados declarados, apresentados separadamente."
-                          : "Conheça as regras, os cálculos e os limites desta demonstração."}
+                          : tab === "data"
+                            ? "Valide os arquivos e confira a origem da sua fila."
+                            : "Entenda o fluxo, as escolhas de negócio e os limites do piloto."}
               </p>
             </div>
             {tab === "overview" && (
@@ -612,13 +666,29 @@ export function OperationsApp() {
               <Loader2 className="spin" size={28} />
               <p>Organizando os próximos passos da operação…</p>
             </div>
+          ) : tab === "data" ? (
+            <DataImport
+              onImported={async () => {
+                await load();
+                setTab("overview");
+                setNotice("Base importada. Sua fila está pronta para começar.");
+              }}
+            />
+          ) : tab === "method" ? (
+            <Methodology
+              summary={summary}
+              weights={weights}
+              onReset={() => setResetting(true)}
+            />
           ) : !summary || !dayQueue ? (
             <Empty title="Prepare a base de operações">
               <p>
-                Importe os CSVs pelo comando administrativo e configure o banco
-                para publicar. Os dados não são incluídos no código público.
+                Carregue os três CSVs em Dados. Você poderá conferir a qualidade
+                antes de importar e começar sua demonstração.
               </p>
-              <Button onClick={load}>Tentar novamente</Button>
+              <Button onClick={() => setTab("data")}>
+                Importar base de operações
+              </Button>
             </Empty>
           ) : (
             <>
@@ -645,6 +715,27 @@ export function OperationsApp() {
               </div>
               {tab === "overview" && (
                 <>
+                  <div
+                    className="workflow-guide"
+                    aria-label="Roteiro de trabalho"
+                  >
+                    <div>
+                      <b>1. Escolha um pedido</b>
+                      <span>A fila já considera as vagas e prioridades.</span>
+                    </div>
+                    <div>
+                      <b>2. Investigue e execute</b>
+                      <span>
+                        Revise a orientação e registre a tarefa realizada.
+                      </span>
+                    </div>
+                    <div>
+                      <b>3. Encerre e acompanhe</b>
+                      <span>
+                        Informe o resultado; o próximo caso entra na fila.
+                      </span>
+                    </div>
+                  </div>
                   {operations && (
                     <OperationsSummary
                       report={operations}
@@ -867,30 +958,35 @@ export function OperationsApp() {
                       </Button>
                     )}
                   </div>
-                  <div className="comparison-grid">
-                    <Compare
-                      title="Seleção pelas regras"
-                      data={dayQueue.prioritized}
-                      primary
-                    />
-                    <Compare
-                      title="Ordem de chegada (FIFO)"
-                      data={dayQueue.fifo}
-                    />
-                    <div className="panel comparison-note">
-                      <Target size={22} />
-                      <h3>
-                        A mesma capacidade.
-                        <br />
-                        Uma escolha explicável.
-                      </h3>
-                      <p>
-                        Comparação de {dayQueue.orders.length} vagas em cada
-                        fila. Maior valor coberto não comprova maior recuperação
-                        financeira.
-                      </p>
+                  <details className="queue-comparison">
+                    <summary>
+                      Comparar a seleção com a ordem de chegada (FIFO)
+                    </summary>
+                    <div className="comparison-grid">
+                      <Compare
+                        title="Pedidos para tratar"
+                        data={dayQueue.prioritized}
+                        primary
+                      />
+                      <Compare
+                        title="Ordem de chegada (FIFO)"
+                        data={dayQueue.fifo}
+                      />
+                      <div className="panel comparison-note">
+                        <Target size={22} />
+                        <h3>
+                          A mesma capacidade.
+                          <br />
+                          Uma escolha explicável.
+                        </h3>
+                        <p>
+                          Comparação de {dayQueue.orders.length} vagas em cada
+                          fila. Maior valor coberto não comprova maior
+                          recuperação financeira.
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  </details>
                   <section className="panel queue-panel">
                     <div className="panel-heading">
                       <div>
@@ -1306,6 +1402,19 @@ export function OperationsApp() {
                       pagamento real
                     </p>
                   </div>
+                  <label className="task-status-label">
+                    Situação das tarefas
+                    <select
+                      value={taskStatus}
+                      onChange={(e) => setTaskStatus(e.target.value)}
+                    >
+                      <option value="pending">
+                        Pendentes e aguardando execução
+                      </option>
+                      <option value="finished">Concluídas e rejeitadas</option>
+                      <option value="all">Todas as situações</option>
+                    </select>
+                  </label>
                   <div
                     className="task-scope-filter"
                     role="group"
@@ -1325,18 +1434,11 @@ export function OperationsApp() {
                       </button>
                     ))}
                   </div>
-                  {tasks.length > 0 &&
-                    !tasks.some(
-                      (task) =>
-                        taskScope === "all" ||
-                        (task.scope === "process" ? "process" : "case") ===
-                          taskScope,
-                    ) && (
-                      <Empty title="Nenhuma ação neste escopo">
-                        Selecione outro filtro ou solicite uma investigação ao
-                        agente.
-                      </Empty>
-                    )}
+                  {tasks.length > 0 && !visibleTasks.length && (
+                    <Empty title="Nenhuma tarefa nesta situação">
+                      Altere os filtros para consultar outras tarefas.
+                    </Empty>
+                  )}
                   {!tasks.length ? (
                     <section className="panel">
                       <Empty title="A primeira ação começa com uma investigação">
@@ -1351,144 +1453,134 @@ export function OperationsApp() {
                     </section>
                   ) : (
                     <div className="task-grid">
-                      {[...tasks]
-                        .filter(
-                          (t) =>
-                            taskScope === "all" ||
-                            (t.scope === "process" ? "process" : "case") ===
-                              taskScope,
-                        )
-                        .reverse()
-                        .map((t) => (
-                          <section className="panel task-card" key={t.id}>
-                            <div className="task-top">
-                              <Label
-                                tone={
-                                  t.status === "pendente_aprovacao"
-                                    ? "orange"
-                                    : ["concluida", "aprovada"].includes(
-                                          t.status,
-                                        )
-                                      ? "green"
-                                      : "purple"
-                                }
-                              >
-                                {statusLabel(t.status)}
-                              </Label>
+                      {[...visibleTasks].reverse().map((t) => (
+                        <section className="panel task-card" key={t.id}>
+                          <div className="task-top">
+                            <Label
+                              tone={
+                                t.status === "pendente_aprovacao"
+                                  ? "orange"
+                                  : ["concluida", "aprovada"].includes(t.status)
+                                    ? "green"
+                                    : "purple"
+                              }
+                            >
+                              {statusLabel(t.status)}
+                            </Label>
+                            <small>
+                              {t.scope === "process"
+                                ? "Ação de processo"
+                                : t.kind.startsWith("proposta")
+                                  ? "Proposta · sem execução externa"
+                                  : "Tarefa interna"}
+                            </small>
+                          </div>
+                          <h3>{t.title}</h3>
+                          <p>{t.justification}</p>
+                          {t.scope === "process" && (
+                            <div className="process-next-step">
+                              <b>Próximo passo de validação</b>
+                              <p>{t.nextStep}</p>
                               <small>
-                                {t.scope === "process"
-                                  ? "Ação de processo"
-                                  : t.kind.startsWith("proposta")
-                                    ? "Proposta · sem execução externa"
-                                    : "Tarefa interna"}
+                                {t.affectedOrderIds?.length || 0} pedidos
+                                relacionados. Esta ação não encerra esses casos
+                                e exige dimensionamento de esforço.
                               </small>
+                              <button
+                                className="plain-link"
+                                onClick={() => {
+                                  openQueue(t.affectedOrderIds);
+                                  setShowAll(true);
+                                }}
+                              >
+                                Ver pedidos relacionados{" "}
+                                <ArrowRight size={13} />
+                              </button>
                             </div>
-                            <h3>{t.title}</h3>
-                            <p>{t.justification}</p>
-                            {t.scope === "process" && (
-                              <div className="process-next-step">
-                                <b>Próximo passo de validação</b>
-                                <p>{t.nextStep}</p>
-                                <small>
-                                  {t.affectedOrderIds?.length || 0} pedidos
-                                  relacionados. Esta ação não encerra esses
-                                  casos e exige dimensionamento de esforço.
-                                </small>
-                                <button
-                                  className="plain-link"
-                                  onClick={() => {
-                                    openQueue(t.affectedOrderIds);
-                                    setShowAll(true);
-                                  }}
-                                >
-                                  Ver pedidos relacionados{" "}
-                                  <ArrowRight size={13} />
-                                </button>
-                              </div>
-                            )}
-                            {t.facts && (
-                              <div className="verified-facts">
-                                <b>Fatos verificados pelo sistema</b>
-                                {t.facts.map((fact) => (
-                                  <small key={fact}>{fact}</small>
-                                ))}
-                              </div>
-                            )}
-                            <div className="task-meta">
-                              <span>
-                                <Package size={13} />
-                                {t.orderId}
-                              </span>
-                              <span>
-                                <ClipboardList size={13} />
-                                {t.area}
-                              </span>
-                              <span>
-                                <CalendarDays size={13} />
-                                {shortDate(t.dueAt)} · data do caso
-                              </span>
-                            </div>
-                            <div className="evidence-links">
-                              {t.evidenceIds.map((id) => (
-                                <button
-                                  key={id}
-                                  onClick={() =>
-                                    setSelected(
-                                      allOrders.find((o) => o.id === id),
-                                    )
-                                  }
-                                >
-                                  {id}
-                                </button>
+                          )}
+                          {t.facts && (
+                            <div className="verified-facts">
+                              <b>Fatos verificados pelo sistema</b>
+                              {t.facts.map((fact) => (
+                                <small key={fact}>{fact}</small>
                               ))}
                             </div>
-                            <div className="task-actions">
-                              <Button
-                                size="sm"
-                                variant="outline"
+                          )}
+                          <div className="task-meta">
+                            <span>
+                              <Package size={13} />
+                              {t.orderId}
+                            </span>
+                            <span>
+                              <ClipboardList size={13} />
+                              {t.area}
+                            </span>
+                            <span>
+                              <CalendarDays size={13} />
+                              {shortDate(t.dueAt)} · data do caso
+                            </span>
+                          </div>
+                          <div className="evidence-links">
+                            {t.evidenceIds.map((id) => (
+                              <button
+                                key={id}
                                 onClick={() =>
                                   setSelected(
-                                    allOrders.find((o) => o.id === t.orderId),
+                                    allOrders.find((o) => o.id === id),
                                   )
                                 }
                               >
-                                Ver pedido <ArrowUpRight size={14} />
+                                {id}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="task-actions">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                setSelected(
+                                  allOrders.find((o) => o.id === t.orderId),
+                                )
+                              }
+                            >
+                              Ver pedido <ArrowUpRight size={14} />
+                            </Button>
+                            {["aberta", "aprovada"].includes(t.status) && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={Boolean(taskPending) || busy}
+                                onClick={() => changeTask(t, "concluida")}
+                              >
+                                <Check size={14} />{" "}
+                                {t.scope === "process"
+                                  ? "Concluir ação de processo"
+                                  : "Registrar execução"}
                               </Button>
-                              {t.status === "aberta" && (
+                            )}
+                            {t.status === "pendente_aprovacao" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  disabled={Boolean(taskPending) || busy}
+                                  onClick={() => changeTask(t, "aprovada")}
+                                >
+                                  Aprovar proposta na demo
+                                </Button>
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   disabled={Boolean(taskPending) || busy}
-                                  onClick={() => changeTask(t, "concluida")}
+                                  onClick={() => changeTask(t, "rejeitada")}
                                 >
-                                  <Check size={14} />{" "}
-                                  {t.scope === "process"
-                                    ? "Concluir ação de processo"
-                                    : "Concluir tarefa"}
+                                  Rejeitar
                                 </Button>
-                              )}
-                              {t.status === "pendente_aprovacao" && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    disabled={Boolean(taskPending) || busy}
-                                    onClick={() => changeTask(t, "aprovada")}
-                                  >
-                                    Aprovar proposta na demo
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    disabled={Boolean(taskPending) || busy}
-                                    onClick={() => changeTask(t, "rejeitada")}
-                                  >
-                                    Rejeitar
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </section>
-                        ))}
+                              </>
+                            )}
+                          </div>
+                        </section>
+                      ))}
                     </div>
                   )}
                   <div className="section-title">
@@ -1562,12 +1654,6 @@ export function OperationsApp() {
                   onQueue={() => openQueue()}
                 />
               )}
-              {tab === "method" && (
-                <Methodology
-                  summary={summary}
-                  onReset={() => setResetting(true)}
-                />
-              )}
               <footer>
                 <span>
                   <ShieldCheck size={13} /> Dados sintéticos · referência fixa
@@ -1594,6 +1680,60 @@ export function OperationsApp() {
                 <DialogDescription>
                   {selected.brand} · {selected.product}
                 </DialogDescription>
+              </div>
+              <div className="case-next-step" role="status">
+                <b>
+                  {selected.resolution
+                    ? "Caso encerrado"
+                    : selected.status === "status_divergente"
+                      ? "Próximo passo: validar o status"
+                      : tasks.some(
+                            (t) =>
+                              t.orderId === selected.id &&
+                              t.scope !== "process" &&
+                              [
+                                "aberta",
+                                "pendente_aprovacao",
+                                "aprovada",
+                              ].includes(t.status),
+                          )
+                        ? "Próximo passo: revisar e executar as tarefas abaixo"
+                        : tasks.some(
+                              (t) =>
+                                t.orderId === selected.id &&
+                                t.scope !== "process" &&
+                                t.status === "concluida",
+                            )
+                          ? "Próximo passo: registrar o resultado e encerrar"
+                          : "Próximo passo: investigar este pedido"}
+                </b>
+                <p>
+                  {selected.deliveredAt
+                    ? "Entrega registrada não significa que a exceção foi resolvida."
+                    : "Confira os fatos antes de executar o encaminhamento."}
+                </p>
+                {!selected.resolution &&
+                  selected.status !== "status_divergente" &&
+                  !tasks.some(
+                    (t) =>
+                      t.orderId === selected.id &&
+                      t.scope !== "process" &&
+                      t.status !== "rejeitada",
+                  ) && (
+                    <Button
+                      disabled={busy}
+                      onClick={() => startInvestigation(selected.id, "order")}
+                    >
+                      <Sparkles size={16} />
+                      {busy ? "Investigando…" : "Investigar com IA"}
+                    </Button>
+                  )}
+                {busy && (
+                  <p aria-live="polite">
+                    {events.at(-1)?.message ||
+                      "Consultando evidências e preparando a tarefa…"}
+                  </p>
+                )}
               </div>
               <div className="detail-labels">
                 <Label tone="orange">
@@ -1633,120 +1773,171 @@ export function OperationsApp() {
                   </b>
                 </div>
               </div>
-              <h3>Por que este pedido está na fila</h3>
-              <div className="priority-meters">
-                <Meter
-                  label="Valor normalizado"
-                  value={selected.priority.value * 100}
-                />
-                <Meter
-                  label="Urgência normalizada"
-                  value={selected.priority.urgency * 100}
-                />
-                <Meter
-                  label="Relacionamento normalizado"
-                  value={selected.priority.relationship * 100}
-                />
-              </div>
-              <ul className="reasons">
-                {selected.priority.reasons.map((r) => (
-                  <li key={r}>
-                    <Check size={14} />
-                    {r}
-                  </li>
-                ))}
-              </ul>
-              <h3>Prazos e operação</h3>
-              <dl className="detail-grid">
-                <div>
-                  <dt>Pedido em</dt>
-                  <dd>{shortDate(selected.orderedAt)}</dd>
+              <details className="case-evidence">
+                <summary>Conferir evidências, prazos e prioridade</summary>
+                <h3>Por que este pedido está na fila</h3>
+                <div className="priority-meters">
+                  <Meter
+                    label="Valor normalizado"
+                    value={selected.priority.value * 100}
+                  />
+                  <Meter
+                    label="Urgência normalizada"
+                    value={selected.priority.urgency * 100}
+                  />
+                  <Meter
+                    label="Relacionamento normalizado"
+                    value={selected.priority.relationship * 100}
+                  />
                 </div>
-                <div>
-                  <dt>Exceção aberta em</dt>
-                  <dd>{shortDate(selected.openedAt)}</dd>
-                </div>
-                <div>
-                  <dt>Promessa original</dt>
-                  <dd>{shortDate(selected.promisedAt)}</dd>
-                </div>
-                <div>
-                  <dt>Prazo contratual calculado</dt>
-                  <dd>{shortDate(selected.priority.contractPromise)}</dd>
-                </div>
-                <div>
-                  <dt>Entrega registrada</dt>
-                  <dd>
-                    {selected.deliveredAt
-                      ? shortDate(selected.deliveredAt)
-                      : "Não registrada"}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Risco de cancelamento elegível</dt>
-                  <dd>
-                    {money(selected.priority.cancellationRisk)} (
-                    {selected.priority.cancellationProbability * 100}%)
-                  </dd>
-                </div>
-                <div>
-                  <dt>Transportadora / UF</dt>
-                  <dd>
-                    {selected.carrier} / {selected.state}
-                  </dd>
-                </div>
-                <div>
-                  <dt>CD / turno / máquina</dt>
-                  <dd>
-                    {selected.dc} / {selected.shift} / {selected.machine || "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Lote / brinde</dt>
-                  <dd>
-                    {selected.lot} / {selected.gift ? "Sim" : "Não"}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Cliente</dt>
-                  <dd>{selected.customerId}</dd>
-                </div>
-              </dl>
-              {selected.customer && (
-                <>
-                  <h3>Histórico do cliente</h3>
-                  <div className="customer-summary">
-                    <div>
-                      <small>Pedidos realizados</small>
-                      <strong>{selected.customer.orders}</strong>
-                    </div>
-                    <div>
-                      <small>Receita histórica</small>
-                      <strong>{money(selected.customer.revenue)}</strong>
-                    </div>
-                    <div>
-                      <small>Contatos no período</small>
-                      <strong>{selected.customer.contacts}</strong>
-                    </div>
-                    <div>
-                      <small>Cliente desde</small>
-                      <strong>{shortDate(selected.customer.firstOrder)}</strong>
-                    </div>
+                <ul className="reasons">
+                  {selected.priority.reasons.map((r) => (
+                    <li key={r}>
+                      <Check size={14} />
+                      {r}
+                    </li>
+                  ))}
+                </ul>
+                <h3>Prazos e operação</h3>
+                <dl className="detail-grid">
+                  <div>
+                    <dt>Pedido em</dt>
+                    <dd>{shortDate(selected.orderedAt)}</dd>
                   </div>
-                  <p className="customer-caveat">
-                    Histórico agregado do cliente. Não atribuímos todos os
-                    contatos a esta exceção.
-                  </p>
-                </>
-              )}
-              <h3>Ações nesta sessão</h3>
+                  <div>
+                    <dt>Exceção aberta em</dt>
+                    <dd>{shortDate(selected.openedAt)}</dd>
+                  </div>
+                  <div>
+                    <dt>Promessa original</dt>
+                    <dd>{shortDate(selected.promisedAt)}</dd>
+                  </div>
+                  <div>
+                    <dt>Prazo contratual calculado</dt>
+                    <dd>{shortDate(selected.priority.contractPromise)}</dd>
+                  </div>
+                  <div>
+                    <dt>Entrega registrada</dt>
+                    <dd>
+                      {selected.deliveredAt
+                        ? shortDate(selected.deliveredAt)
+                        : "Não registrada"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Risco de cancelamento elegível</dt>
+                    <dd>
+                      {money(selected.priority.cancellationRisk)} (
+                      {selected.priority.cancellationProbability * 100}%)
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Transportadora / UF</dt>
+                    <dd>
+                      {selected.carrier} / {selected.state}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>CD / turno / máquina</dt>
+                    <dd>
+                      {selected.dc} / {selected.shift} /{" "}
+                      {selected.machine || "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Lote / brinde</dt>
+                    <dd>
+                      {selected.lot} / {selected.gift ? "Sim" : "Não"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Cliente</dt>
+                    <dd>{selected.customerId}</dd>
+                  </div>
+                </dl>
+                {selected.customer && (
+                  <>
+                    <h3>Histórico do cliente</h3>
+                    <div className="customer-summary">
+                      <div>
+                        <small>Pedidos realizados</small>
+                        <strong>{selected.customer.orders}</strong>
+                      </div>
+                      <div>
+                        <small>Receita histórica</small>
+                        <strong>{money(selected.customer.revenue)}</strong>
+                      </div>
+                      <div>
+                        <small>Contatos no período</small>
+                        <strong>{selected.customer.contacts}</strong>
+                      </div>
+                      <div>
+                        <small>Cliente desde</small>
+                        <strong>
+                          {shortDate(selected.customer.firstOrder)}
+                        </strong>
+                      </div>
+                    </div>
+                    <p className="customer-caveat">
+                      Histórico agregado do cliente. Não atribuímos todos os
+                      contatos a esta exceção.
+                    </p>
+                  </>
+                )}
+              </details>
+              <h3 id="case-tasks">Tarefas deste pedido</h3>
+              <p className="muted">
+                Aprovar autoriza o encaminhamento. Registre a execução somente
+                depois de realizar a ação fora da demonstração.
+              </p>
               {tasks
-                .filter((t) => t.orderId === selected.id)
+                .filter(
+                  (t) => t.orderId === selected.id && t.scope !== "process",
+                )
                 .map((t) => (
                   <div className="detail-task" key={t.id}>
                     <CheckCircle2 size={16} />
-                    <span>{t.title}</span>
-                    <Label>{statusLabel(t.status)}</Label>
+                    <div>
+                      <b>{t.title}</b>
+                      <p>{t.justification}</p>
+                      <small>
+                        {t.area} · prazo {shortDate(t.dueAt)}
+                      </small>
+                      <Label>{statusLabel(t.status)}</Label>
+                      {t.facts?.map((fact) => (
+                        <p key={fact}>{fact}</p>
+                      ))}
+                      <div className="task-actions">
+                        {["aberta", "aprovada"].includes(t.status) && (
+                          <Button
+                            size="sm"
+                            disabled={busy || Boolean(taskPending)}
+                            onClick={() => changeTask(t, "concluida")}
+                          >
+                            Registrar execução
+                          </Button>
+                        )}
+                        {t.status === "pendente_aprovacao" && (
+                          <>
+                            <Button
+                              size="sm"
+                              disabled={busy || Boolean(taskPending)}
+                              onClick={() => changeTask(t, "aprovada")}
+                            >
+                              Aprovar proposta
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={busy || Boolean(taskPending)}
+                              onClick={() => changeTask(t, "rejeitada")}
+                            >
+                              Rejeitar
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))}
               {!tasks.some((t) => t.orderId === selected.id) && (
@@ -1857,144 +2048,5 @@ function Compare({
         ))}
       </div>
     </section>
-  );
-}
-function Methodology({
-  summary,
-  onReset,
-}: {
-  summary: Dashboard;
-  onReset: () => void;
-}) {
-  return (
-    <div className="method-grid">
-      <section className="panel prose">
-        <Label tone="green">TRANSPARÊNCIA POR PADRÃO</Label>
-        <h2>Uma pontuação explicável, não uma promessa de retorno.</h2>
-        <p>
-          A pontuação combina valor (45%), urgência (35%) e relacionamento
-          (20%). Os pesos podem ser alterados e são normalizados pela soma.
-          Empates seguem a abertura mais antiga e depois o ID.
-        </p>
-        <p>
-          A seleção reserva 20% das vagas restantes aos casos mais antigos. As
-          demais vagas seguem a pontuação. Na simulação, um encerramento
-          aproxima uma tratativa consumida; reabrir não devolve essa vaga. Não
-          medimos o tempo de contatos ou atividades em andamento. A reserva é
-          uma política do protótipo e precisa ser avaliada pela equipe.
-        </p>
-        <h3>Como cada componente é calculado</h3>
-        <p>
-          <b>Valor:</b> valor do pedido dividido pelo percentil 95 da carteira,
-          limitado a 1.
-        </p>
-        <p>
-          <b>Urgência:</b> maior valor entre dias úteis de atraso e dias úteis
-          desde a abertura da exceção, dividido por 10 e limitado a 1. Para
-          pedidos entregues, o atraso termina na entrega.
-        </p>
-        <p>
-          <b>Relacionamento:</b> ticket médio histórico × probabilidade de
-          recompra × 50% de redução por exceção mal resolvida. Probabilidade de
-          70% para receita acumulada acima de R$ 1.500 e 28% para os demais.
-          Normalizado pelo percentil 95. É uma proxy por pedido; não somamos
-          essa proxy para alegar perda futura da carteira.
-        </p>
-        <h3>Datas e calendário</h3>
-        <p>
-          Referência fixa: 30/09/2026. Sábados, domingos, 07/09 e 12/10 não
-          contam como dias úteis. A contagem do contrato inicia no primeiro dia
-          útil depois do pedido: um dia de separação + SLA da transportadora. A
-          promessa original continua sendo a base para atraso perante o cliente.
-        </p>
-        <h3>Dinheiro com significado</h3>
-        <p>
-          Valor da carteira não é perda. A exposição de cancelamento é valor ×
-          probabilidade, aplicada apenas à logística ainda não entregue: 1–2
-          dias de atraso (4%), 3–5 (10%), 6–10 (22%) e acima de 10 (40%). Não há
-          probabilidade fornecida para as outras exceções.
-        </p>
-        <p>
-          Reembolso estimado = valor do pedido. Reenvio/reprodução = 24% do
-          valor + frete contratado. Para item faltante, o reenvio integral é uma
-          proxy, pois não há preço por item. Custos de contato: R$ 9 por
-          contato; não atribuímos o histórico anual de contatos a uma exceção
-          específica.
-        </p>
-        <p>
-          A simulação de benefício multiplica a exposição elegível pela eficácia
-          assumida. Custos são descontados do cenário apenas quando informados;
-          não comprova recuperação. Tarefas criadas ou concluídas não geram
-          receita recuperada.
-        </p>
-      </section>
-      <div className="method-side">
-        <section className="panel prose">
-          <h2>Qualidade e limites da base</h2>
-          <p>
-            <b>
-              {summary.sourceRows} registros → {summary.totalCount} pedidos
-              únicos na origem.
-            </b>{" "}
-            Existem {summary.conflicts} conflitos apenas de status, sem
-            timestamp para definir o mais recente. O agente solicita revisão
-            antes de qualquer outra tratativa nesses pedidos.
-          </p>
-          <p>
-            <b>{summary.promiseMismatches} promessas divergentes</b> da regra
-            contratual nos pedidos consolidados. As duas datas são preservadas e
-            exibidas.
-          </p>
-          <p>
-            Padrões mostram concentrações dentro das exceções. Sem todos os
-            pedidos expedidos, não há taxa de falha por máquina, transportadora
-            ou CD, nem comprovação de causa.
-          </p>
-          <p>
-            As dimensões são selecionadas conforme a etapa operacional. Sinais
-            estatísticos exigem ao menos dez casos no grupo; sugerimos
-            investigar o processo quando a participação na exceção alcança 15% e
-            a associação relativa é de pelo menos 1,5 vez a participação na base
-            elegível. São limiares de triagem, sem teste de significância. A
-            divergência de prazo é uma verificação da regra contratual e segue
-            critério próprio.
-          </p>
-        </section>
-        <section className="panel prose">
-          <h2>O agente dentro da operação</h2>
-          <p>
-            Groq consulta ferramentas controladas pelo servidor: pedido,
-            padrões, planos diários, simulação e ações de processo. Cada ação
-            exige consulta prévia e IDs válidos de evidência. Há limite de seis
-            rodadas, doze ferramentas e duas tarefas por investigação.
-          </p>
-          <p>
-            Tarefas individuais têm prazo de um dia útil; ações de processo, de
-            dois dias úteis após a referência. O esforço de processo precisa ser
-            dimensionado antes de incluído na agenda. Aprovar uma proposta só
-            altera o estado na demonstração.
-          </p>
-          <p>
-            Histórico é persistido por sete dias, isolado por cookie seguro de
-            sessão. Produção exige PostgreSQL; o modo local salva em arquivos
-            privados.
-          </p>
-          <Button variant="outline" onClick={onReset}>
-            <RotateCcw size={14} /> Reiniciar minha demonstração
-          </Button>
-        </section>
-        <section className="panel prose">
-          <h2>Roteiro para apresentar</h2>
-          <ol>
-            <li>Mostre a carteira e os limites dos indicadores.</li>
-            <li>Compare a fila de 150 com FIFO.</li>
-            <li>Abra um pedido e explique sua prioridade.</li>
-            <li>Execute o agente e acompanhe as ferramentas.</li>
-            <li>Confira a tarefa persistida após atualizar.</li>
-            <li>Investigue um padrão e ressalve a causalidade.</li>
-          </ol>
-        </section>
-      </div>
-    </div>
   );
 }

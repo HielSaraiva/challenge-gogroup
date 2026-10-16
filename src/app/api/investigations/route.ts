@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     try {
       const latestState = await getSession(id);
       if (!latestState) throw new AppError("Sessão expirada.", 401);
-      data = sessionDataset(await getDataset(), latestState);
+      data = sessionDataset(await getDataset(latestState), latestState);
       await consumeLimit(`request:${id}:${input.requestId}`, 1);
     } catch (error) {
       await release();

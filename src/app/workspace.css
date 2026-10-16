@@ -1,0 +1,184 @@
+/* Task-first workspace and progressive disclosure. */
+.workflow-guide {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+  padding: 22px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.workflow-guide b,
+.workflow-guide span {
+  display: block;
+}
+.workflow-guide span {
+  margin-top: 6px;
+  color: #62636b;
+  line-height: 1.6;
+}
+.decision-explainer {
+  margin: 16px 0;
+}
+summary {
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1.6;
+  padding: 14px 0;
+}
+summary:focus-visible,
+.method-index a:focus-visible {
+  outline: 3px solid #2659a5;
+  outline-offset: 4px;
+}
+.methodology {
+  max-width: 1050px;
+  margin-inline: auto;
+  display: grid;
+  gap: 22px;
+}
+.methodology .prose {
+  max-width: none;
+}
+.methodology details {
+  border-top: 1px solid var(--line);
+}
+.methodology details p,
+.methodology li {
+  line-height: 1.85;
+}
+.methodology ul,
+.methodology ol {
+  padding-left: 24px;
+}
+.methodology section {
+  scroll-margin-top: 24px;
+}
+.method-index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.method-index a {
+  color: #2659a5;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.workflow-steps li {
+  margin-bottom: 12px;
+}
+.data-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.data-workspace h2 {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.import-fields {
+  border: 0;
+  padding: 16px 0;
+  display: grid;
+  gap: 20px;
+}
+.import-fields label {
+  display: grid;
+  gap: 8px;
+  font-weight: 600;
+}
+.import-fields input {
+  max-width: 100%;
+  padding: 12px;
+  border: 1px solid #c4cad3;
+  border-radius: 6px;
+  font-weight: 400;
+}
+.import-fields input::file-selector-button {
+  padding: 8px 12px;
+  margin-right: 12px;
+  cursor: pointer;
+}
+.import-preview,
+.data-status {
+  margin-block: 20px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f7f9fc;
+}
+.case-next-step {
+  border-left: 4px solid #2659a5;
+  padding: 16px;
+  margin-block: 20px;
+  background: #f2f6fc;
+}
+.case-next-step p {
+  margin: 8px 0 12px;
+  line-height: 1.6;
+}
+.detail-task {
+  align-items: flex-start;
+}
+.detail-task > div {
+  flex: 1;
+  min-width: 0;
+}
+.detail-task p {
+  line-height: 1.6;
+  margin: 10px 0;
+}
+.detail-task .badge {
+  margin: 8px;
+}
+.task-status-label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.task-status-label select {
+  padding: 10px;
+  border: 1px solid #c4cad3;
+  border-radius: 6px;
+  background: white;
+  max-width: 100%;
+}
+@media (min-width: 1000px) {
+  .brand-opening {
+    padding-block: 26px;
+    min-height: 0;
+  }
+  .brand-opening h1 {
+    font-size: 34px;
+  }
+  .brand-seal {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .workflow-guide,
+  .data-workspace {
+    grid-template-columns: 1fr;
+  }
+  .methodology .panel,
+  .data-workspace .panel {
+    padding: 20px;
+  }
+  .import-fields input {
+    font-size: 16px;
+  }
+}
+.methodology ul {
+  list-style: disc;
+}
+.methodology .workflow-steps {
+  list-style: decimal;
+}
+.queue-comparison {
+  margin-bottom: 20px;
+}

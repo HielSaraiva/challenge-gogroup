@@ -133,6 +133,44 @@ describe("ciclo de tratativa", () => {
       ),
     ).toThrow("pendentes");
   });
+  it("aprovação não substitui execução, inclusive quando há outra tarefa concluída", () => {
+    const approved = {
+      ...task,
+      id: randomUUID(),
+      kind: "proposta_reenvio" as const,
+      status: "aprovada" as const,
+    };
+    expect(() =>
+      transitionCase(
+        order,
+        review(),
+        [approved],
+        resolveInput,
+        randomUUID(),
+        now,
+      ),
+    ).toThrow("Conclua");
+    expect(() =>
+      transitionCase(
+        order,
+        review(),
+        [task, approved],
+        resolveInput,
+        randomUUID(),
+        now,
+      ),
+    ).toThrow("pendentes");
+    expect(
+      transitionCase(
+        order,
+        review(),
+        [{ ...approved, status: "concluida" }],
+        resolveInput,
+        randomUUID(),
+        now,
+      ).resolution,
+    ).toBeDefined();
+  });
   it("remove o caso encerrado da fila sem alegar recuperação financeira", () => {
     const record = transitionCase(
       order,

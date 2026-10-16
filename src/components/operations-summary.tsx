@@ -71,7 +71,7 @@ export function OperationsSummary({
           <span className="command-context">
             <Clock3 size={15} /> Seleção calculada pelo sistema
           </span>
-          <h2>A fila sugerida já está calculada.</h2>
+          <h2>Comece pelos pedidos de hoje.</h2>
           <p>
             {report.selected} pedidos selecionados para{" "}
             {report.availableCapacity} vagas restantes. Reserva de{" "}
@@ -88,35 +88,42 @@ export function OperationsSummary({
           <span>{report.usedCapacity} encerramentos na simulação</span>
         </div>
       </div>
-      <div
-        className="decision-boundary"
-        aria-label="Contribuição do sistema e do agente"
-      >
-        <div>
-          <b>Sistema · quem entra na seleção</b>
-          <p>
-            Calcula capacidade, pontuação, desempates e comparação com FIFO. Os
-            pesos são uma heurística ajustável.
-          </p>
+      <details className="decision-explainer">
+        <summary>Como a seleção e a IA se complementam</summary>
+        <div
+          className="decision-boundary"
+          aria-label="Contribuição do sistema e do agente"
+        >
+          <div>
+            <b>Sistema · quem entra na seleção</b>
+            <p>
+              Calcula capacidade, pontuação, desempates e comparação com FIFO.
+              Os pesos são uma heurística ajustável.
+            </p>
+          </div>
+          <div>
+            <b>Agente · por onde começar e o que fazer</b>
+            <p>
+              Analisa uma amostra por área, escolhe um primeiro pedido e
+              registra motivo e próximo passo. A investigação de um pedido cria
+              uma tarefa com evidências.
+            </p>
+            <span>
+              {current
+                ? "Encaminhamentos registrados"
+                : latest
+                  ? "Reanálise necessária"
+                  : "Agente ainda não executado nesta seleção"}
+            </span>
+          </div>
         </div>
-        <div>
-          <b>Agente · por onde começar e o que fazer</b>
-          <p>
-            Analisa uma amostra por área, escolhe um primeiro pedido e registra
-            motivo e próximo passo. A investigação de um pedido cria uma tarefa
-            com evidências.
-          </p>
-          <span>
-            {current
-              ? "Encaminhamentos registrados"
-              : latest
-                ? "Reanálise necessária"
-                : "Agente ainda não executado nesta seleção"}
-          </span>
-        </div>
-      </div>
+      </details>
       <div className="workspace-actions">
+        <Button onClick={() => onQueue()}>
+          Abrir fila de hoje <ArrowRight size={15} />
+        </Button>
         <Button
+          variant="outline"
           disabled={busy || !report.selected || current}
           onClick={onPrepare}
         >
@@ -125,11 +132,9 @@ export function OperationsSummary({
             ? "Encaminhamentos registrados"
             : latest
               ? "Reanalisar seleção com o agente"
-              : "Analisar seleção com o agente"}
+              : "Preparar plano com IA"}
         </Button>
-        <Button variant="outline" onClick={() => onQueue()}>
-          Ver seleção e critérios <ArrowRight size={15} />
-        </Button>
+
         <button className="plain-link" onClick={onInsights}>
           Investigar causas
         </button>

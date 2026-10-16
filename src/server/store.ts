@@ -78,7 +78,8 @@ export async function saveDataset(data: Dataset) {
     .values({ id: "operations", payload: data })
     .onConflictDoUpdate({ target: schema.datasets.id, set: { payload: data } });
 }
-export async function getDataset(): Promise<Dataset> {
+export async function getDataset(state?: SessionState): Promise<Dataset> {
+  if (state?.importedDataset) return state.importedDataset;
   if (!process.env.DATABASE_URL) return readLocal<Dataset>("dataset.json");
   const [row] = await db()
     .select()
@@ -86,6 +87,30 @@ export async function getDataset(): Promise<Dataset> {
     .where(eq(schema.datasets.id, "operations"));
   if (!row) throw new AppError("Base ainda não importada.", 503);
   return row.payload;
+}
+// Session uploads never replace the administrator's shared source dataset.
+export async function saveSessionDataset(sessionId: string, data: Dataset) {
+  const save = async () => {
+    const state = await getSession(sessionId);
+    if (!state) throw new AppError("Sessão expirada.", 401);
+    if (
+      state.tasks.length ||
+      state.investigations.length ||
+      Object.keys(state.cases || {}).length
+    )
+      throw new AppError(
+        "Esta demonstração já tem tratativas. Reinicie a demonstração antes de trocar a base.",
+        409,
+      );
+    state.importedDataset = data;
+    if (!process.env.DATABASE_URL)
+      return writeLocal(`session-${sessionId}.json`, state);
+    await db()
+      .update(schema.sessions)
+      .set({ payload: state })
+      .where(eq(schema.sessions.id, sessionId));
+  };
+  return process.env.DATABASE_URL ? save() : locked(save);
 }
 export function emptySession(): SessionState {
   return {
@@ -207,7 +232,8 @@ export async function updateTask(
   const allowed = (previous: Task) =>
     previous.status === "pendente_aprovacao"
       ? ["aprovada", "rejeitada"].includes(status)
-      : previous.status === "aberta" && status === "concluida";
+      : ["aberta", "aprovada"].includes(previous.status) &&
+        status === "concluida";
   if (!process.env.DATABASE_URL)
     return locked(async () => {
       const state = await getSession(sessionId);

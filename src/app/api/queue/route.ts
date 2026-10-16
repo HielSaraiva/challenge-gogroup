@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const { state } = await session();
     const p = new URL(request.url).searchParams;
     return json(
-      queue(sessionDataset(await getDataset(), state), parseWeights(p)),
+      queue(sessionDataset(await getDataset(state), state), parseWeights(p)),
     );
   } catch (e) {
     return failure(e);

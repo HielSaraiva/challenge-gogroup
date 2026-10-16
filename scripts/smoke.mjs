@@ -93,6 +93,14 @@ async function main() {
       }),
     });
     assert.equal(update.status, 200);
+    if (task.status === "pendente_aprovacao") {
+      const executed = await fetch(`${base}/api/tasks`, {
+        method: "PATCH",
+        headers: { cookie, origin: base, "content-type": "application/json" },
+        body: JSON.stringify({ id: task.id, status: "concluida" }),
+      });
+      assert.equal(executed.status, 200);
+    }
     const orderBefore = (await read(`/api/orders?id=${task.orderId}`, cookie))
       .orders[0];
     if (orderBefore.status === "status_divergente") {

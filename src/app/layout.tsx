@@ -7,6 +7,7 @@ import "@fontsource/poppins/latin-700.css";
 
 import "./operations.css";
 import "./brand.css";
+import "./workspace.css";
 export const metadata: Metadata = {
   title: "Gogroup | Central de Operações",
   description:

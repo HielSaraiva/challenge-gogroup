@@ -192,6 +192,7 @@ export type DailyPlan = {
   fingerprint: string;
 };
 export type SessionState = {
+  importedDataset?: Dataset;
   tasks: Task[];
   investigations: Investigation[];
   expiresAt: string;
