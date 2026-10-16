@@ -91,6 +91,25 @@ export function AgentProgress({
   const failed = !busy && run?.status === "failed";
   const grouped = new Map<string, ToolEvent>();
   history.forEach((e, i) => grouped.set(e.operationId || `legacy-${i}`, e));
+  const calls = [...grouped.entries()];
+  const recovered = new Set(
+    calls
+      .filter(
+        ([, event], index) =>
+          event.state === "error" &&
+          [
+            "consultar_diagnostico",
+            "comparar_estrategias",
+            "registrar_plano_dia",
+          ].includes(event.tool) &&
+          calls
+            .slice(index + 1)
+            .some(
+              ([, later]) => later.tool === event.tool && later.state === "ok",
+            ),
+      )
+      .map(([id]) => id),
+  );
   return (
     <section className="panel prose" aria-label="Atividade do agente">
       <h2>
@@ -135,10 +154,16 @@ export function AgentProgress({
         <summary>Detalhes técnicos da execução</summary>
         <p>
           Histórico das chamadas do agente, da mais recente para a mais antiga.
-          Cada registro mostra o último estado de uma chamada; uma tentativa com
-          erro pode ser seguida por outra tentativa.
+          Tentativas não concluídas ficam registradas mesmo quando o agente
+          corrige o conteúdo e consegue concluir a etapa depois.
         </p>
-        {[...grouped.entries()]
+        {recovered.size > 0 && (
+          <p>
+            O agente corrigiu uma tentativa anterior e concluiu a etapa em
+            seguida. O resultado válido é o registro concluído mais recente.
+          </p>
+        )}
+        {calls
           .reverse()
           .sort(([, a], [, b]) => Date.parse(b.at) - Date.parse(a.at))
           .map(([id, e]) => (
@@ -150,14 +175,32 @@ export function AgentProgress({
                   {e.state === "ok"
                     ? "Concluída"
                     : e.state === "error"
-                      ? "Falhou"
+                      ? recovered.has(id)
+                        ? "Tentativa corrigida depois"
+                        : e.tool === "agente" && failed
+                          ? "Análise interrompida"
+                          : "Tentativa não concluída"
                       : "Em andamento"}
                 </b>
                 <time dateTime={e.at}>
                   {new Date(e.at).toLocaleTimeString("pt-BR")}
                 </time>
               </header>
-              <p>{eventDescription(e)}</p>
+              <p>
+                {recovered.has(id)
+                  ? e.message.includes(
+                      "Use exatamente uma orientação por cada área",
+                    )
+                    ? "A primeira versão não atendia à exigência de uma orientação por área. O servidor rejeitou essa versão; o agente ajustou os encaminhamentos e salvou o plano na tentativa seguinte."
+                    : "Esta tentativa não foi aceita. Uma tentativa posterior da mesma etapa foi concluída com sucesso."
+                  : eventDescription(e)}
+              </p>
+              {recovered.has(id) && (
+                <details>
+                  <summary>Motivo da tentativa rejeitada</summary>
+                  <p>{e.message}</p>
+                </details>
+              )}
               {!e.operationId && (
                 <small>Registro legado: sem identificador de chamada.</small>
               )}
