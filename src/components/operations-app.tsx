@@ -561,60 +561,21 @@ export function OperationsApp() {
               </p>
             </div>
             {tab === "overview" && (
-              <div className="brand-circuit" aria-hidden="true">
-                <svg viewBox="0 0 390 235" fill="none">
-                  <path
-                    className="circuit-track"
-                    d="M115 70H275Q295 70 295 90V180Q295 200 275 200H115Q95 200 95 180V90Q95 70 115 70Z"
-                  />
-                  <path
-                    className="circuit-track"
-                    d="M115 55H275Q310 55 310 90V180Q310 215 275 215H115Q80 215 80 180V90Q80 55 115 55Z"
-                  />
-                  <circle className="circuit-signal" r="3.5">
-                    <animateMotion
-                      dur="9s"
-                      calcMode="paced"
-                      repeatCount="indefinite"
-                      path="M115 70H275Q295 70 295 90V180Q295 200 275 200H115Q95 200 95 180V90Q95 70 115 70Z"
-                    />
-                  </circle>
-                  {[0, 1, 2, 3, 4, 5].map((i) => (
-                    <ellipse
-                      key={i}
-                      cx={153 + i * 17}
-                      cy="24"
-                      rx="13"
-                      ry="18"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                    />
-                  ))}
-                  <circle cx="195" cy="135" r="44" fill="white" />
-                  <text
-                    x="195"
-                    y="145"
-                    textAnchor="middle"
-                    fill="#2659a5"
-                    fontFamily="Poppins, sans-serif"
-                    fontSize="66"
-                    fontWeight="600"
-                  >
-                    g
-                  </text>
-                  <text
-                    x="195"
-                    y="174"
-                    textAnchor="middle"
-                    fill="#2659a5"
-                    fontFamily="Poppins, sans-serif"
-                    fontSize="9"
-                    fontWeight="500"
-                    letterSpacing="1"
-                  >
-                    gogroup
-                  </text>
-                </svg>
+              <div className="brand-seal" aria-hidden="true">
+                <img
+                  className="brand-seal-ring"
+                  src="/gogroup-seal-ring.svg"
+                  alt=""
+                  width={111}
+                  height={111}
+                />
+                <img
+                  className="brand-seal-center"
+                  src="/gogroup-seal-center.svg"
+                  alt=""
+                  width={35}
+                  height={50}
+                />
               </div>
             )}
             <div className="date-chip">

@@ -21,8 +21,10 @@ Poppins é servida localmente, em pesos de 400 a 700. Títulos principais usam e
 
 A navegação horizontal dá protagonismo à marca. A abertura azul usa a grade, os circuitos e os contornos circulares presentes na referência, desenhados em CSS e SVG. O restante da interface privilegia listas, divisores, hierarquia e contraste. Rosa identifica a ação principal; o lima pontua a capacidade e o fluxo.
 
-A entrada da abertura, o sinal que percorre o circuito e a resposta dos botões compõem o movimento. A preferência por redução de movimento desativa animações e transições. Os grafismos são decorativos e ficam fora da árvore de acessibilidade.
+A entrada da abertura, a rotação do anel do selo e a resposta dos botões compõem o movimento. A preferência por redução de movimento desativa animações e transições. Os grafismos são decorativos e ficam fora da árvore de acessibilidade.
 
 No celular, o menu recolhe a navegação; a comparação das filas passa a uma coluna e as tabelas mantêm rolagem própria. As regras de cálculo e os fluxos do agente são independentes desta camada visual.
 
 Os botões com texto branco usam a variação #d51075 para contraste de 5,05:1; o rosa de referência é preservado nos acentos gráficos.
+
+O selo usa os arquivos originais [rotate-detail.svg](https://estagiogogroup.com.br/assets/rotate-detail.svg) e [g-detail.svg](https://estagiogogroup.com.br/assets/g-detail.svg) da referência. Apenas o anel gira, em 12 segundos; o símbolo central permanece estável.
