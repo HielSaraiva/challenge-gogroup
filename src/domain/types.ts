@@ -174,6 +174,7 @@ export type Workstream = {
   value: string;
   risk: string;
   nextStep: string;
+  agentDecision?: { firstOrderId: string; justification: string };
 };
 export type DailyPlan = {
   id: string;

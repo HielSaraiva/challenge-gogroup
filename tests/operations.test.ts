@@ -166,6 +166,67 @@ describe("capacidade e equidade operacional", () => {
   });
 });
 describe("plano e ferramentas do agente", () => {
+  it("permite escolher outro pedido consultado sem alterar a seleção pelas regras", async () => {
+    const dataset = {
+      ...data,
+      orders: [
+        { ...baseOrder, id: "SYNTHETIC-FIRST", value: "900.00" },
+        { ...baseOrder, id: "SYNTHETIC-SECOND", value: "10.00" },
+      ],
+    };
+    const before = queue(dataset).orders.map((order) => order.id);
+    const ctx = context(dataset);
+    await executeTool("consultar_fila", {}, ctx);
+    const plan = (await executeTool(
+      "registrar_plano_dia",
+      {
+        briefing:
+          "Validar as pendências e organizar o encaminhamento com evidências da amostra.",
+        priorityAreas: ["Logística"],
+        instructions: [
+          {
+            area: "Logística",
+            firstOrderId: "SYNTHETIC-SECOND",
+            justification:
+              "Começar pela verificação do rastreio deste caso antes de definir a tratativa.",
+            nextStep:
+              "Consultar a ocorrência e registrar a evidência necessária ao encaminhamento.",
+          },
+        ],
+      },
+      ctx,
+    )) as DailyPlan;
+    expect(plan.workstreams[0].agentDecision!.firstOrderId).toBe(
+      "SYNTHETIC-SECOND",
+    );
+    expect(plan.selectedOrderIds).toEqual(before);
+    expect(queue(dataset).orders.map((order) => order.id)).toEqual(before);
+    const bad = {
+      ...ctx,
+      evidence: new Set<string>(),
+    };
+    await expect(
+      executeTool(
+        "registrar_plano_dia",
+        {
+          briefing:
+            "Validar pendências logísticas e organizar o encaminhamento da seleção.",
+          priorityAreas: ["Logística"],
+          instructions: [
+            {
+              area: "Logística",
+              firstOrderId: "SYNTHETIC-SECOND",
+              justification:
+                "Verificar este caso por evidência documentada no pedido.",
+              nextStep:
+                "Conferir rastreio antes de definir o encaminhamento do pedido.",
+            },
+          ],
+        },
+        bad,
+      ),
+    ).rejects.toThrow("amostra consultada");
+  });
   it("exige consulta e cobre exatamente as áreas calculadas", async () => {
     const ctx = context();
     const args = {
@@ -175,6 +236,9 @@ describe("plano e ferramentas do agente", () => {
       instructions: [
         {
           area: "Logística",
+          firstOrderId: baseOrder.id,
+          justification:
+            "Começar pelo caso com pendência logística documentada na amostra.",
           nextStep:
             "Verificar os rastreios e registrar o encaminhamento de cada pendência.",
         },
@@ -191,12 +255,31 @@ describe("plano e ferramentas do agente", () => {
         ctx,
       ),
     ).rejects.toThrow("área");
+    await expect(
+      executeTool(
+        "registrar_plano_dia",
+        {
+          ...args,
+          instructions: [
+            { ...args.instructions[0], firstOrderId: "PEDIDO-INVENTADO" },
+          ],
+        },
+        ctx,
+      ),
+    ).rejects.toThrow("amostra consultada");
     const plan = (await executeTool(
       "registrar_plano_dia",
       args,
       ctx,
     )) as DailyPlan;
     expect(plan.selectedOrderIds).toEqual([baseOrder.id]);
+    expect(plan.workstreams[0].agentDecision).toEqual({
+      firstOrderId: baseOrder.id,
+      justification: args.instructions[0].justification,
+    });
+    expect(plan.selectedOrderIds).toEqual(
+      queue(data).orders.map((order) => order.id),
+    );
     expect(plan.workstreams.map((stream) => stream.area)).toEqual(
       workstreams(data).map((stream) => stream.area),
     );
@@ -206,7 +289,11 @@ describe("plano e ferramentas do agente", () => {
       ctx,
     )) as DailyPlan;
     expect(replay.id).toBe(plan.id);
-    expect((await getSession(sessionId))!.plans).toHaveLength(1);
+    expect(
+      (await getSession(sessionId))!.plans!.filter(
+        (saved) => saved.idempotencyKey === plan.idempotencyKey,
+      ),
+    ).toHaveLength(1);
     await expect(
       executeTool(
         "registrar_plano_dia",
@@ -260,6 +347,9 @@ describe("plano e ferramentas do agente", () => {
                           instructions: [
                             {
                               area: "Logística",
+                              firstOrderId: baseOrder.id,
+                              justification:
+                                "Verificar este caso logístico com evidência de atraso na amostra.",
                               nextStep:
                                 "Consultar rastreio e registrar evidências para cada tratativa pendente.",
                             },

@@ -15,7 +15,7 @@ A aplicação apoia decisões de triagem e encaminhamento. O agente transforma c
 
 O agente opera em três níveis:
 
-1. **Planejar o dia:** consulta a seleção determinística e registra orientação para todas as áreas envolvidas. A IA escolhe o foco e encaminhamento; o servidor preserva os pedidos e verifica a capacidade.
+1. **Planejar o dia:** consulta a seleção determinística e registra orientação para todas as áreas envolvidas. A IA escolhe um primeiro pedido entre os casos da amostra consultada de cada área, justifica a escolha e registra o próximo passo. O servidor verifica os vínculos e preserva a seleção calculada. O plano não é uma investigação completa de todos os pedidos; o operador pode iniciar a investigação do caso escolhido para criar uma tarefa.
 2. **Investigar um pedido:** consulta o dossiê, usa evidências e registra uma tarefa compatível com a exceção. Simula custos antes de propor medidas financeiras. Status conflitantes exigem revisão.
 3. **Investigar um processo:** consulta o padrão, escolhe evidências e registra uma ação de melhoria para validar a hipótese no conjunto. A conclusão dessa ação não encerra pedidos individuais.
 
@@ -59,3 +59,15 @@ Medir tempo de triagem, pedidos tratados por hora, envelhecimento dos casos rest
 Para efeito financeiro, cruzar pedidos elegíveis com retenções e pagamentos confirmados, custos de reenvio, reembolso e esforço operacional. Comparar com a linha de base; receita preservada declarada não é lucro nem recuperação incremental. Definir com o time as metas e o período de observação antes de avaliar o piloto.
 
 Materiais e resultados da base privada não fazem parte deste documento.
+
+## Requisitos, parâmetros e escolhas do protótipo
+
+A revisão do enunciado e dos parâmetros distingue três responsabilidades. O problema exige priorizar, investigar e ajudar a resolver exceções, com agente executando uma ação útil. Os dados fornecem capacidade, calendário, SLA, custos e probabilidades. O protótipo escolhe como combinar esses dados para apoiar a triagem.
+
+Os pesos de pontuação, a reserva para antigos, os limiares de padrões, a escolha de amostras e a divisão por áreas são heurísticas deste projeto. Não são políticas impostas pelo enunciado nem modelos validados de retorno financeiro. A fila pode existir antes do agente: seus cálculos devem ser reproduzíveis.
+
+A contribuição persistida da IA aparece separadamente: foco de trabalho, primeiro pedido sugerido na amostra, justificativa e próximo encaminhamento. A ferramenta só aceita pedidos consultados da área correta. Gerar o plano não cria tarefas para todos os pedidos. A investigação individual ou de processo é uma operação explícita que pode criar uma tarefa.
+
+A capacidade da demonstração usa encerramentos como aproximação de tratativas consumidas na data fixa. Isso não mede tempo gasto em contatos, investigações, aprovações ou atividades ainda em andamento. Em uma operação real, o consumo deve vir de um registro de esforço por tratativa e da disponibilidade de cada especialidade; não se deve apresentar o contador do protótipo como produtividade real.
+
+O enunciado, o dicionário e os dados permanecem privados. Este documento registra decisões da implementação sem reproduzir o material fornecido.

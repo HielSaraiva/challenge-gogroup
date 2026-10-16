@@ -50,6 +50,9 @@ export function workstreams(data: Dataset, weights: Weights = DEFAULT_WEIGHTS) {
     sample: orders.slice(0, 3).map((order) => ({
       id: order.id,
       exception: order.exception,
+      status: order.status,
+      delivered: Boolean(order.deliveredAt),
+      issues: order.issues.map((issue) => issue.code),
       reasons: order.priority.reasons,
     })),
   }));

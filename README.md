@@ -124,7 +124,7 @@ O modelo recebe ferramentas restritas conforme a etapa:
 
 Consultar o pedido é obrigatório antes de criar uma tarefa. Propostas financeiras exigem simulação prévia e avaliação humana. Um conflito de status bloqueia outras tratativas até uma revisão explícita. A justificativa é identificada como hipótese do agente; fatos e números verificados aparecem separadamente.
 
-O plano exige consulta prévia e cobertura de todas as áreas; sua seleção e métricas vêm do servidor. Ações de processo exigem um padrão consultado e evidências distintas. Elas não encerram o conjunto de pedidos. Uma resposta textual sem plano ou tarefa persistida não conclui uma investigação.
+A fila sugerida é calculada pelas regras antes da IA. O plano exige consulta prévia e cobertura de todas as áreas: o agente escolhe um primeiro pedido da amostra consultada, justifica a escolha e registra o próximo passo; a seleção e as métricas vêm do servidor. Gerar esse plano não cria tarefas em lote. A investigação explícita do pedido escolhido cria um encaminhamento individual. Ações de processo exigem um padrão consultado e evidências distintas. Elas não encerram o conjunto de pedidos. Uma resposta textual sem plano ou tarefa persistida não conclui uma investigação.
 
 As execuções têm orçamento de tempo, limite de chamadas e controle de concorrência. Falhas do provedor preservam o histórico e efeitos já registrados. A idempotência evita duplicar uma mesma ação na sessão.
 
@@ -161,7 +161,10 @@ Com a aplicação em execução:
 ```sh
 pnpm test:smoke
 
-# Opcional: consome a cota da API Groq
+# Opcional: Groq real com dados fictícios próprios
+pnpm test:agent:synthetic
+
+# Fluxos HTTP sobre a base carregada na demonstração
 pnpm test:smoke --agent
 
 # Plano diário e ação de processo com Groq real

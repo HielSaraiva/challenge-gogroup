@@ -60,7 +60,7 @@ type Queue = ReturnType<typeof queue>;
 type Tab = "overview" | "queue" | "insights" | "agent" | "impact" | "method";
 const navigation = [
   { id: "overview", title: "Operação hoje", icon: LayoutDashboard },
-  { id: "queue", title: "Fila do dia", icon: Layers3 },
+  { id: "queue", title: "Fila sugerida", icon: Layers3 },
   { id: "insights", title: "Causas e processos", icon: Search },
   { id: "agent", title: "Agente e tarefas", icon: Sparkles },
   { id: "impact", title: "Impacto financeiro", icon: BarChart3 },
@@ -535,7 +535,7 @@ export function OperationsApp() {
                     Ação na operação.
                   </>
                 ) : tab === "queue" ? (
-                  "Fila priorizada"
+                  "Seleção pelas regras"
                 ) : tab === "insights" ? (
                   "Causas e melhorias de processo"
                 ) : tab === "agent" ? (
@@ -548,9 +548,9 @@ export function OperationsApp() {
               </h1>
               <p>
                 {tab === "overview"
-                  ? "Prepare o plano com o agente, distribua as frentes e acompanhe as tratativas."
+                  ? "Consulte a seleção das regras. Use o agente para decidir o próximo encaminhamento."
                   : tab === "queue"
-                    ? "Uma fila transparente, construída para a capacidade real do seu time."
+                    ? "Seleção determinística por capacidade e critérios ajustáveis. Esta fila existe antes da análise do agente."
                     : tab === "insights"
                       ? "Diferencie o atendimento individual dos sinais que exigem investigar o processo."
                       : tab === "agent"
@@ -655,6 +655,7 @@ export function OperationsApp() {
                       onQueue={openQueue}
                       onInsights={() => setTab("insights")}
                       onImpact={() => setTab("impact")}
+                      onInvestigate={(id) => startInvestigation(id, "order")}
                     />
                   )}
                   <section
@@ -684,7 +685,7 @@ export function OperationsApp() {
                       icon={Target}
                       label="Casos encerrados"
                       value={String(summary.resolvedCount)}
-                      detail={`${dayQueue.usedCapacity} tratativas consumidas na sessão`}
+                      detail={`${dayQueue.usedCapacity} encerramentos na simulação`}
                       tone="green"
                     />
                   </section>
@@ -811,7 +812,7 @@ export function OperationsApp() {
                     <div className="panel-heading">
                       <div>
                         <div className="heading-inline">
-                          <h2>Prioridade de hoje</h2>
+                          <h2>Sugestão das regras</h2>
                           <Label tone="orange">Top 5</Label>
                         </div>
                         <p>
@@ -853,7 +854,8 @@ export function OperationsApp() {
                       </b>{" "}
                       Reserva de {dayQueue.oldestReserved} vagas para os casos
                       mais antigos; demais por valor, urgência e relacionamento.
-                      Cada encerramento consome uma vaga.
+                      Na simulação, um encerramento aproxima uma tratativa
+                      consumida.
                     </p>
                     {frontIds && (
                       <Button
@@ -867,7 +869,7 @@ export function OperationsApp() {
                   </div>
                   <div className="comparison-grid">
                     <Compare
-                      title="Fila priorizada"
+                      title="Seleção pelas regras"
                       data={dayQueue.prioritized}
                       primary
                     />
@@ -1229,10 +1231,11 @@ export function OperationsApp() {
                   {operations && (
                     <div className="agent-start">
                       <div>
-                        <h2>Comece pelo plano do dia</h2>
+                        <h2>Transforme a seleção em encaminhamentos</h2>
                         <p>
-                          O agente organiza a seleção inteira por área. Use a
-                          investigação individual para aprofundar um caso.
+                          A fila é calculada pelas regras. O agente escolhe por
+                          onde começar em cada área, justifica com a amostra
+                          consultada e registra o próximo passo.
                         </p>
                       </div>
                       <Button
@@ -1245,8 +1248,8 @@ export function OperationsApp() {
                       >
                         <Sparkles size={16} />{" "}
                         {currentPlan
-                          ? "Abrir plano do dia"
-                          : "Preparar plano do dia"}
+                          ? "Ver encaminhamentos do agente"
+                          : "Analisar seleção com o agente"}
                       </Button>
                     </div>
                   )}
@@ -1875,10 +1878,10 @@ function Methodology({
         </p>
         <p>
           A seleção reserva 20% das vagas restantes aos casos mais antigos. As
-          demais vagas seguem a pontuação. Cada encerramento consome uma
-          tratativa do dia; reabrir não devolve o esforço já realizado. A
-          reserva é uma política do protótipo e precisa ser avaliada pela
-          equipe.
+          demais vagas seguem a pontuação. Na simulação, um encerramento
+          aproxima uma tratativa consumida; reabrir não devolve essa vaga. Não
+          medimos o tempo de contatos ou atividades em andamento. A reserva é
+          uma política do protótipo e precisa ser avaliada pela equipe.
         </p>
         <h3>Como cada componente é calculado</h3>
         <p>

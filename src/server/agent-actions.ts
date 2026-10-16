@@ -52,7 +52,7 @@ export const strategicTools: ChatCompletionTool[] = [
     function: {
       name: "registrar_plano_dia",
       description:
-        "Persiste o plano do dia para a seleção calculada pelo servidor. Indique até três áreas prioritárias e uma próxima ação qualitativa para CADA área retornada por consultar_fila. Não informe números, IDs nem altere a seleção.",
+        "Registra encaminhamentos para a seleção já calculada pelo sistema. Para CADA área escolha firstOrderId entre os IDs da amostra consultada, justifique a escolha e indique o próximo passo. Destaque até três áreas. Textos qualitativos; IDs somente no campo firstOrderId. Não altere a seleção nem declare casos investigados em profundidade.",
       parameters: object(
         {
           briefing: text,
@@ -64,7 +64,15 @@ export const strategicTools: ChatCompletionTool[] = [
           },
           instructions: {
             type: "array",
-            items: object({ area: text, nextStep: text }, ["area", "nextStep"]),
+            items: object(
+              {
+                area: text,
+                nextStep: text,
+                firstOrderId: text,
+                justification: text,
+              },
+              ["area", "nextStep", "firstOrderId", "justification"],
+            ),
             minItems: 1,
             maxItems: 10,
           },
@@ -104,7 +112,12 @@ const planArgs = z
     instructions: z
       .array(
         z
-          .object({ area: z.string(), nextStep: z.string().min(15).max(1000) })
+          .object({
+            area: z.string(),
+            nextStep: z.string().min(15).max(1000),
+            firstOrderId: z.string().min(1).max(50),
+            justification: z.string().min(15).max(1000),
+          })
           .strict(),
       )
       .min(1)
@@ -137,6 +150,9 @@ export async function executeStrategicTool(
         409,
       );
     context.queueConsulted = true;
+    for (const stream of workstreams(context.data, weights)) {
+      for (const order of stream.sample) context.evidence.add(order.id);
+    }
     return {
       referencia: REFERENCE_DATE,
       capacidade: selection.capacity,
@@ -164,16 +180,15 @@ export async function executeStrategicTool(
       throw new AppError("Consulte a fila antes de registrar o plano.");
     const args = planArgs.parse(raw);
     requireQualitative(args.briefing, context.data);
-    for (const instruction of args.instructions)
+    for (const instruction of args.instructions) {
       requireQualitative(instruction.nextStep, context.data);
+      requireQualitative(instruction.justification, context.data);
+    }
     const selection = queue(context.data, weights);
     const streams = workstreams(context.data, weights);
     const expected = new Set(streams.map((stream) => stream.area));
     const instructions = new Map(
-      args.instructions.map((instruction) => [
-        instruction.area,
-        instruction.nextStep,
-      ]),
+      args.instructions.map((instruction) => [instruction.area, instruction]),
     );
     if (
       instructions.size !== args.instructions.length ||
@@ -185,9 +200,21 @@ export async function executeStrategicTool(
       throw new AppError(
         `Use exatamente uma orientação para cada área: ${[...expected].join(", ")}. Destaque apenas áreas dessa lista.`,
       );
+    for (const stream of streams) {
+      const instruction = instructions.get(stream.area)!;
+      if (
+        !context.evidence.has(instruction.firstOrderId) ||
+        !stream.sample.some((order) => order.id === instruction.firstOrderId)
+      ) {
+        throw new AppError(
+          `O primeiro pedido de ${stream.area} deve pertencer à amostra consultada dessa área: ${stream.sample.map((order) => order.id).join(", ")}.`,
+        );
+      }
+    }
     const fingerprint = createHash("sha256")
       .update(
         JSON.stringify({
+          policy: "evidence-led-plan-v2",
           reference: REFERENCE_DATE,
           selected: selection.orders.map((order) => [order.id, order.status]),
           used: selection.usedCapacity,
@@ -212,7 +239,11 @@ export async function executeStrategicTool(
         orderIds: stream.orderIds,
         value: stream.value,
         risk: stream.risk,
-        nextStep: instructions.get(stream.area)!,
+        nextStep: instructions.get(stream.area)!.nextStep,
+        agentDecision: {
+          firstOrderId: instructions.get(stream.area)!.firstOrderId,
+          justification: instructions.get(stream.area)!.justification,
+        },
       })),
       fingerprint,
     };

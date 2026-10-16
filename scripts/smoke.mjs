@@ -179,6 +179,10 @@ async function main() {
       const operations = await read("/api/operations", cookie);
       const plan = operations.plans.find((p) => p.id === daily.planId);
       assert.ok(plan);
+      for (const stream of plan.workstreams) {
+        assert.ok(stream.agentDecision?.justification.length >= 15);
+        assert.ok(stream.orderIds.includes(stream.agentDecision.firstOrderId));
+      }
       const currentQueue = await read("/api/queue", cookie);
       assert.deepEqual(
         [...plan.selectedOrderIds].sort(),
