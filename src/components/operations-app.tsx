@@ -1068,16 +1068,29 @@ export function OperationsApp() {
         </DialogContent>
       </Dialog>
       <Dialog open={confirmNewPlan} onOpenChange={setConfirmNewPlan}>
-        <DialogContent>
+        <DialogContent className="new-plan-dialog">
+          <span className="new-plan-icon" aria-hidden="true">
+            <Bot size={24} />
+          </span>
           <DialogTitle>Gerar um novo plano com IA?</DialogTitle>
           <DialogDescription>
-            Você já tem um plano disponível. A IA analisará novamente a carteira
-            e poderá selecionar outros pedidos ou mudar a estratégia. Quando o
-            novo plano for salvo, ele passará a ser o plano ativo. O anterior
-            continuará no histórico, e as tratativas já registradas serão
-            preservadas. Se a geração falhar, o plano atual será mantido.
+            Já existe um plano disponível. Uma nova análise pode mudar a
+            estratégia e os pedidos selecionados para a equipe.
           </DialogDescription>
-          <div className="task-actions">
+          <div className="new-plan-consequences">
+            <div>
+              <strong>O novo plano passa a ser o ativo</strong>
+              <p>O plano atual continuará disponível no histórico.</p>
+            </div>
+            <div>
+              <strong>Seu trabalho fica preservado</strong>
+              <p>
+                As tratativas registradas serão mantidas. Se a análise falhar, o
+                plano atual continua ativo.
+              </p>
+            </div>
+          </div>
+          <div className="new-plan-footer">
             <Button
               variant="outline"
               autoFocus
