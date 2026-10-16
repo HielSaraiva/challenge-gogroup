@@ -34,18 +34,35 @@ export function OperationsSummary({
       <div className="agent-workstreams">
         {plan.workstreams.map((s) => (
           <article className="workstream-card" key={s.area}>
-            <h3>{s.area}</h3>
-            <p>{s.orderIds.length} pedidos selecionados</p>
-            <p>{s.nextStep}</p>
-            <p>{s.agentDecision?.justification}</p>
+            <header className="workstream-heading">
+              <h3>{s.area}</h3>
+              <span>{s.orderIds.length} pedidos selecionados</span>
+            </header>
+            <div className="workstream-guidance">
+              <h4>Orientação para a equipe</h4>
+              <p>{s.nextStep}</p>
+            </div>
+            {s.agentDecision?.justification && (
+              <div className="workstream-guidance">
+                <h4>Por que começar por este pedido</h4>
+                <p>{s.agentDecision.justification}</p>
+              </div>
+            )}
             {s.agentDecision &&
               pendingIds.includes(s.agentDecision.firstOrderId) && (
-                <Button
-                  variant="outline"
-                  onClick={() => onOrder(s.agentDecision!.firstOrderId)}
-                >
-                  Começar pelo pedido sugerido · {s.agentDecision.firstOrderId}
-                </Button>
+                <footer className="workstream-action">
+                  <span>
+                    Pedido sugerido{" "}
+                    <strong>{s.agentDecision.firstOrderId}</strong>
+                  </span>
+                  <Button
+                    variant="outline"
+                    aria-label={`Abrir pedido sugerido ${s.agentDecision.firstOrderId} de ${s.area}`}
+                    onClick={() => onOrder(s.agentDecision!.firstOrderId)}
+                  >
+                    Abrir pedido sugerido
+                  </Button>
+                </footer>
               )}
             {s.agentDecision &&
               !pendingIds.includes(s.agentDecision.firstOrderId) && (

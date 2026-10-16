@@ -248,13 +248,62 @@ summary:focus-visible,
 }
 .agent-workstreams {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: 20px;
 }
 .workstream-card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
   padding: 20px;
   border: 1px solid var(--line);
   border-radius: 8px;
+}
+.workstream-card .workstream-heading h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+.workstream-heading > span {
+  font-size: 13px;
+  color: #62636b;
+}
+.workstream-card .workstream-guidance h4 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2659a5;
+}
+.workstream-card .workstream-guidance p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.workstream-action {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.workstream-action > span {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-size: 12px;
+}
+.workstream-action .button {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: auto;
+  min-height: 44px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 13px;
 }
 .guided-form {
   display: grid;
