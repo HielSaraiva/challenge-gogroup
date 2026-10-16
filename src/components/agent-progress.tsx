@@ -42,6 +42,11 @@ function eventDescription(event: ToolEvent) {
   if (event.state === "running")
     return "Etapa iniciada. Aguardando o retorno da ferramenta.";
   if (event.state === "error") {
+    if (
+      event.message.startsWith("Use exatamente uma orientação para cada área")
+    ) {
+      return "O plano não foi salvo nesta tentativa porque as orientações ou os destaques não correspondiam às áreas da seleção. Este registro antigo não informa qual área faltou, foi repetida ou era inválida.";
+    }
     if (event.message.includes("Escreva apenas orientação qualitativa")) {
       return "O registro foi rejeitado porque o texto gerado incluiu números que devem ser acrescentados pelas ferramentas do servidor. Esta tentativa não salvou o encaminhamento.";
     }
@@ -186,20 +191,12 @@ export function AgentProgress({
                   {new Date(e.at).toLocaleTimeString("pt-BR")}
                 </time>
               </header>
-              <p>
-                {recovered.has(id)
-                  ? e.message.includes(
-                      "Use exatamente uma orientação por cada área",
-                    )
-                    ? "A primeira versão não atendia à exigência de uma orientação por área. O servidor rejeitou essa versão; o agente ajustou os encaminhamentos e salvou o plano na tentativa seguinte."
-                    : "Esta tentativa não foi aceita. Uma tentativa posterior da mesma etapa foi concluída com sucesso."
-                  : eventDescription(e)}
-              </p>
+              <p>{eventDescription(e)}</p>
               {recovered.has(id) && (
-                <details>
-                  <summary>Motivo da tentativa rejeitada</summary>
-                  <p>{e.message}</p>
-                </details>
+                <p>
+                  Depois dessa rejeição, o agente fez uma nova tentativa da
+                  mesma etapa e conseguiu concluí-la.
+                </p>
               )}
               {!e.operationId && (
                 <small>Registro legado: sem identificador de chamada.</small>

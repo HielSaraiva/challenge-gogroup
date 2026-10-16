@@ -282,7 +282,7 @@ describe("plano e ferramentas do agente", () => {
         { ...args, priorityAreas: ["Inventada"] },
         ctx,
       ),
-    ).rejects.toThrow("área");
+    ).rejects.toThrow("Área não permitida nos destaques: Inventada.");
     await expect(
       executeTool(
         "registrar_plano_dia",

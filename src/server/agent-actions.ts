@@ -266,15 +266,42 @@ export async function executeStrategicTool(
     const instructions = new Map(
       args.instructions.map((instruction) => [instruction.area, instruction]),
     );
-    if (
-      instructions.size !== args.instructions.length ||
-      instructions.size !== expected.size ||
-      [...expected].some((area) => !instructions.has(area)) ||
-      args.priorityAreas.some((area) => !expected.has(area)) ||
-      new Set(args.priorityAreas).size !== args.priorityAreas.length
-    )
+    const missing = [...expected].filter((area) => !instructions.has(area));
+    const invalid = [...instructions.keys()].filter(
+      (area) => !expected.has(area),
+    );
+    const repeated = args.instructions
+      .filter(
+        (item, index, all) =>
+          all.findIndex((other) => other.area === item.area) !== index,
+      )
+      .map((item) => item.area);
+    const invalidHighlights = args.priorityAreas.filter(
+      (area) => !expected.has(area),
+    );
+    const repeatedHighlights = args.priorityAreas.filter(
+      (area, index, all) => all.indexOf(area) !== index,
+    );
+    const problems = [
+      missing.length
+        ? `Faltou orientação para a área: ${missing.join(", ")}.`
+        : "",
+      invalid.length
+        ? `Área não permitida nas orientações: ${invalid.join(", ")}.`
+        : "",
+      repeated.length
+        ? `Orientação repetida para a área: ${[...new Set(repeated)].join(", ")}.`
+        : "",
+      invalidHighlights.length
+        ? `Área não permitida nos destaques: ${invalidHighlights.join(", ")}.`
+        : "",
+      repeatedHighlights.length
+        ? `Área repetida nos destaques: ${[...new Set(repeatedHighlights)].join(", ")}.`
+        : "",
+    ].filter(Boolean);
+    if (problems.length)
       throw new AppError(
-        `Use exatamente uma orientação para cada área: ${[...expected].join(", ")}. Destaque apenas áreas dessa lista.`,
+        `Plano não salvo. ${problems.join(" ")} Envie exatamente uma orientação para cada área da seleção e destaque apenas áreas dessa seleção.`,
       );
     for (const stream of streams) {
       const instruction = instructions.get(stream.area)!;
