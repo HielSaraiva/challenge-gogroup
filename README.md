@@ -130,6 +130,8 @@ Consultar o pedido é obrigatório antes de criar uma tarefa. Propostas financei
 
 O agente consulta o diagnóstico, compara três estratégias e escolhe a política aplicada. Os cálculos são feitos no servidor; a fila de trabalho só aparece depois do plano persistido. O plano registra a estratégia, justificativa, referência da base, comparação FIFO e orientações para todas as áreas. O agente escolhe um primeiro pedido da amostra por área e indica o próximo passo. Encerramentos atualizam o progresso sem repor pedidos; outro plano exige solicitação explícita. Gerar esse plano não cria tarefas em lote. A investigação explícita do pedido escolhido cria um encaminhamento individual. Ações de processo exigem um padrão consultado e evidências distintas. Elas não encerram o conjunto de pedidos. Uma resposta textual sem plano ou tarefa persistida não conclui uma investigação.
 
+O modelo padrão é `openai/gpt-oss-20b`, com esforço de raciocínio baixo. O planejamento restringe cada chamada à ferramenta da etapa atual. Uma resposta 429 com espera explícita de até 12 segundos permite uma única nova tentativa por chamada, respeitando o orçamento total e cancelamento. Esperas maiores ou sem indicação não geram repetição automática.
+
 As execuções têm orçamento de tempo, limite de chamadas e controle de concorrência. Falhas do provedor preservam o histórico e efeitos já registrados. A idempotência evita duplicar uma mesma ação na sessão.
 
 ## Sessões, integridade e privacidade

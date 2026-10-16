@@ -15,6 +15,11 @@ import type { AgentContext } from "./agent";
 import { datasetReference, POLICY_VERSION } from "@/domain/planning";
 import { requireQualitative } from "./agent-evidence";
 const text = { type: "string" };
+const qualitative = {
+  type: "string",
+  description:
+    "Orientação qualitativa em português. NÃO inclua dígitos, valores, porcentagens, quantidades, datas ou pesos. Exemplo: Priorizar a espera prolongada e conferir as evidências antes do encaminhamento. Os números são anexados pelo servidor.",
+};
 const dailyGuidance: Record<string, string> = {
   Logística:
     "Conferir rastreio, ocorrências e comprovantes dos pedidos; registrar investigação ou proposta sujeita a aprovação.",
@@ -58,7 +63,7 @@ export const strategicTools: ChatCompletionTool[] = [
       parameters: object(
         {
           strategy: { type: "string", enum: Object.keys(STRATEGIES) },
-          reason: text,
+          reason: qualitative,
         },
         ["strategy", "reason"],
       ),
@@ -81,7 +86,7 @@ export const strategicTools: ChatCompletionTool[] = [
         "Registra encaminhamentos para a seleção já calculada pelo sistema. Para CADA área escolha firstOrderId entre os IDs da amostra consultada, justifique a escolha e indique o próximo passo. Destaque até três áreas. Textos qualitativos; IDs somente no campo firstOrderId. Não altere a seleção nem declare casos investigados em profundidade.",
       parameters: object(
         {
-          briefing: text,
+          briefing: qualitative,
           priorityAreas: {
             type: "array",
             items: text,
@@ -93,9 +98,9 @@ export const strategicTools: ChatCompletionTool[] = [
             items: object(
               {
                 area: text,
-                nextStep: text,
+                nextStep: qualitative,
                 firstOrderId: text,
-                justification: text,
+                justification: qualitative,
               },
               ["area", "nextStep", "firstOrderId", "justification"],
             ),
@@ -117,8 +122,8 @@ export const strategicTools: ChatCompletionTool[] = [
         {
           insightId: text,
           title: text,
-          justification: text,
-          nextStep: text,
+          justification: qualitative,
+          nextStep: qualitative,
           evidenceIds: {
             type: "array",
             items: text,

@@ -1,4 +1,5 @@
 import Groq from "groq-sdk";
+import { withShortRateLimitRetry } from "./provider-retry";
 import type {
   ChatCompletionMessageParam,
   ChatCompletionTool,
@@ -104,7 +105,11 @@ export const agentTools: ChatCompletionTool[] = [
           orderId: stringField,
           kind: { type: "string", enum: [...TASK_KINDS] },
           title: stringField,
-          justification: stringField,
+          justification: {
+            type: "string",
+            description:
+              "Justificativa qualitativa SEM dígitos, números, valores, datas, porcentagens ou prazos. Não copie métricas do pedido. Exemplo válido: Conferir o rastreio e registrar o encaminhamento a partir das evidências do pedido. Os números e o prazo são preenchidos pelo servidor.",
+          },
           evidenceIds: {
             type: "array",
             items: stringField,
@@ -502,6 +507,7 @@ export async function investigate(
             : `Investigue o padrão ID ${input.target}. Consulte suas evidências e registre uma ação de processo se esse for o escopo recomendado, ou uma tratativa individual se o sinal ainda precisar de validação.`,
     },
   ];
+  const model = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
   const client = completion
     ? null
     : new Groq({
@@ -524,11 +530,17 @@ export async function investigate(
         );
         return client!.chat.completions.create(
           {
-            model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+            model,
             messages,
             tools,
-            tool_choice: "auto",
+            tool_choice: {
+              type: "function",
+              function: { name: tools[0].function!.name },
+            },
             temperature: 0.1,
+            ...(model.startsWith("openai/gpt-oss-")
+              ? { reasoning_effort: "low" as const }
+              : {}),
             max_completion_tokens: 3500,
             parallel_tool_calls: false,
           },
@@ -556,11 +568,14 @@ export async function investigate(
         };
         return client!.chat.completions.create(
           {
-            model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+            model,
             messages,
             tools,
             tool_choice: "auto",
             temperature: 0.1,
+            ...(model.startsWith("openai/gpt-oss-")
+              ? { reasoning_effort: "low" as const }
+              : {}),
             max_completion_tokens: 2400,
             parallel_tool_calls: false,
           },
@@ -605,11 +620,14 @@ export async function investigate(
             : tools;
       return client!.chat.completions.create(
         {
-          model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+          model,
           messages,
           tools: visibleTools,
           tool_choice: "auto",
           temperature: 0.15,
+          ...(model.startsWith("openai/gpt-oss-")
+            ? { reasoning_effort: "low" as const }
+            : {}),
           max_completion_tokens: 3500,
           parallel_tool_calls: false,
         },
@@ -628,7 +646,12 @@ export async function investigate(
     );
     for (let round = 0; round < 6; round++) {
       if (abort.signal.aborted) throw new Error("Timeout");
-      const response = await call(messages, abort.signal);
+      const response = completion
+        ? await call(messages, abort.signal)
+        : await withShortRateLimitRetry(
+            () => call(messages, abort.signal),
+            abort.signal,
+          );
       const message = response.choices[0]?.message;
       if (!message) throw new Error("EmptyResponse");
       messages.push({
