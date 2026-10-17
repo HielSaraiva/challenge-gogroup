@@ -319,6 +319,9 @@ summary:focus-visible,
 .agent-event-header b {
   color: #2659a5;
 }
+.agent-step-body strong {
+  color: #2659a5;
+}
 .agent-event-error .agent-event-header b,
 .agent-step-error .agent-step-body strong {
   color: #ad3565;
