@@ -33,10 +33,36 @@ summary:focus-visible,
   outline-offset: 4px;
 }
 .methodology {
-  max-width: 1050px;
+  max-width: 1280px;
   margin-inline: auto;
   display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+.method-content {
+  display: grid;
   gap: 22px;
+  min-width: 0;
+}
+.method-sidebar {
+  position: sticky;
+  top: 96px;
+  padding: 18px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  max-height: calc(100dvh - 120px);
+  overflow-y: auto;
+}
+.method-index-title {
+  margin: 0 12px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #62636b;
+}
+.method-index-toggle {
+  display: none;
 }
 .methodology .prose {
   max-width: none;
@@ -60,13 +86,74 @@ summary:focus-visible,
 }
 .method-index {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+  flex-direction: column;
+  gap: 4px;
 }
 .method-index a {
   color: #2659a5;
-  text-decoration: underline;
-  text-underline-offset: 4px;
+  text-decoration: none;
+  padding: 12px;
+  min-height: 44px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.method-index a:hover,
+.method-index a:focus-visible {
+  background: #edf2fa;
+}
+@media (max-width: 900px) {
+  .methodology {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .method-sidebar {
+    top: 80px;
+    z-index: 20;
+    padding: 0;
+    overflow: visible;
+    box-shadow: 0 4px 16px #17345a0d;
+  }
+  .method-index-title {
+    display: none;
+  }
+  .method-index-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 16px;
+    border: 0;
+    border-radius: 10px;
+    background: #fff;
+    color: #2659a5;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .method-index-toggle svg:last-child {
+    margin-left: auto;
+  }
+  .method-index {
+    display: none;
+    position: absolute;
+    inset: 100% -1px auto;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 0 0 10px 10px;
+    background: #fff;
+    max-height: calc(100dvh - 160px);
+    overflow-y: auto;
+    box-shadow: 0 10px 20px #17345a12;
+  }
+  .method-index.is-open {
+    display: flex;
+  }
+  .methodology section {
+    scroll-margin-top: 148px;
+  }
 }
 .workflow-steps li {
   margin-bottom: 12px;
