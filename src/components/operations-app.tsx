@@ -32,6 +32,7 @@ import type { planQueue } from "@/domain/planning";
 import type { financialReport } from "@/domain/operations";
 import { money, shortDate, statusLabel } from "@/lib/utils";
 import { paginationItems } from "@/lib/pagination";
+import { orderList, PAGE_SIZES } from "@/lib/order-list";
 type Tab =
   "overview" | "queue" | "agent" | "impact" | "insights" | "data" | "method";
 const nav = [
@@ -125,6 +126,9 @@ export function OperationsApp() {
   const [confirmNewPlan, setConfirmNewPlan] = useState(false);
   const [planStrategy, setPlanStrategy] = useState<Strategy>("equilibrada");
   const [query, setQuery] = useState("");
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [exceptionFilter, setExceptionFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [all, setAll] = useState(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(4);
@@ -307,19 +311,24 @@ export function OperationsApp() {
   const selected = orders.find((o) => o.id === selectedId);
   const processTask = tasks.find((t) => t.id === processId);
   const ready = day?.usable === true;
-  const visible = (
-    all || !ready
-      ? [...orders].sort(
-          (a, b) =>
-            a.openedAt.localeCompare(b.openedAt) || a.id.localeCompare(b.id),
-        )
-      : day?.orders || []
-  ).filter((o) =>
-    `${o.id} ${o.product} ${exceptionLabels[o.exception]} ${o.brand} ${statusLabel(o.status)}`
-      .toLocaleLowerCase("pt-BR")
-      .includes(query.toLocaleLowerCase("pt-BR")),
+  const sourceOrders = all || !ready ? orders : day?.orders || [];
+  const visible = orderList(
+    sourceOrders,
+    { query, exception: exceptionFilter, status: statusFilter },
+    !all && ready,
   );
-  const totalPages = Math.max(1, Math.ceil(visible.length / 15));
+  const hasOrderFilters = Boolean(
+    query.trim() || exceptionFilter || statusFilter,
+  );
+  const exceptionOptions = [
+    ...new Set(sourceOrders.map((order) => order.exception)),
+  ].sort((a, b) =>
+    (exceptionLabels[a] || a).localeCompare(exceptionLabels[b] || b, "pt-BR"),
+  );
+  const statusOptions = [
+    ...new Set(sourceOrders.map((order) => order.status)),
+  ].sort((a, b) => statusLabel(a).localeCompare(statusLabel(b), "pt-BR"));
+  const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   function activity(type: Investigation["type"], target?: string) {
     const matches = (run: Investigation) =>
@@ -661,6 +670,82 @@ export function OperationsApp() {
                         }}
                       />
                     </label>
+                    <div className="order-list-controls">
+                      <label>
+                        Pendência
+                        <select
+                          value={exceptionFilter}
+                          onChange={(event) => {
+                            setExceptionFilter(event.target.value);
+                            setPage(1);
+                          }}
+                        >
+                          <option value="">Todas as pendências</option>
+                          {exceptionOptions.map((value) => (
+                            <option value={value} key={value}>
+                              {exceptionLabels[value] || value}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Status
+                        <select
+                          value={statusFilter}
+                          onChange={(event) => {
+                            setStatusFilter(event.target.value);
+                            setPage(1);
+                          }}
+                        >
+                          <option value="">Todos os status</option>
+                          {statusOptions.map((value) => (
+                            <option value={value} key={value}>
+                              {statusLabel(value)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Itens por página
+                        <select
+                          value={pageSize}
+                          onChange={(event) => {
+                            const size = Number(event.target.value);
+                            if (PAGE_SIZES.some((value) => value === size)) {
+                              setPageSize(size);
+                              setPage(1);
+                            }
+                          }}
+                        >
+                          {PAGE_SIZES.map((size) => (
+                            <option key={size} value={size}>
+                              {size} pedidos
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      {hasOrderFilters && (
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setQuery("");
+                            setExceptionFilter("");
+                            setStatusFilter("");
+                            setPage(1);
+                          }}
+                        >
+                          Limpar filtros
+                        </Button>
+                      )}
+                    </div>
+                    <p className="order-list-caption">
+                      {hasOrderFilters
+                        ? `${visible.length} de ${sourceOrders.length} pedidos encontrados. `
+                        : `${sourceOrders.length} pedidos. `}
+                      {all || !ready
+                        ? "Ordem: exceções abertas há mais tempo primeiro; empate pelo código do pedido."
+                        : "Ordem: prioridade do plano da IA. Os filtros preservam essa sequência."}
+                    </p>
                     <div className="table-scroll">
                       <table>
                         <thead>
@@ -673,7 +758,10 @@ export function OperationsApp() {
                         </thead>
                         <tbody>
                           {visible
-                            .slice((currentPage - 1) * 15, currentPage * 15)
+                            .slice(
+                              (currentPage - 1) * pageSize,
+                              currentPage * pageSize,
+                            )
                             .map((o) => (
                               <tr
                                 key={o.id}
@@ -725,8 +813,9 @@ export function OperationsApp() {
                     </div>
                     {!visible.length && (
                       <p>
-                        Nenhum pedido nesta seleção. Consulte a carteira
-                        completa ou prepare outro plano.
+                        {hasOrderFilters
+                          ? "Nenhum pedido corresponde aos filtros. Ajuste os critérios ou use Limpar filtros."
+                          : "Nenhum pedido nesta seleção. Consulte a carteira completa ou prepare outro plano."}
                       </p>
                     )}
                     <div className="pagination">
