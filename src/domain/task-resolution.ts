@@ -1,3 +1,4 @@
+import { currentCaseTasks } from "./case-cycle";
 import { completedTask } from "./task-results";
 import { sessionDataset, transitionCase } from "./cases";
 import { usedDailyCapacity } from "./operations";
@@ -29,6 +30,15 @@ export function prepareTaskResolution(
     );
   const order = data.orders.find((order) => order.id === previous.orderId);
   if (!order) throw new Error("Pedido não encontrado.");
+  if (
+    !currentCaseTasks(
+      { ...order, caseHistory: state.cases?.[order.id]?.history },
+      [previous],
+    ).length
+  )
+    throw new Error(
+      "Esta tarefa pertence a uma etapa anterior. Investigue o pedido reaberto novamente.",
+    );
   if (usedDailyCapacity(sessionDataset(data, state)) >= CAPACITY)
     throw new Error("A capacidade operacional do dia foi consumida.");
   const task = {
@@ -60,9 +70,7 @@ export function awaitingResultOrders<T extends Dataset["orders"][number]>(
 ): T[] {
   return orders.filter((order) => {
     if (order.resolution || order.status === "status_divergente") return false;
-    const related = tasks.filter(
-      (task) => task.scope !== "process" && task.orderId === order.id,
-    );
+    const related = currentCaseTasks(order, tasks);
     const lastReopen = [...(order.caseHistory || [])]
       .reverse()
       .find((event) => event.action === "reopen");

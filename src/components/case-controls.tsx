@@ -1,4 +1,5 @@
 "use client";
+import { currentCaseTasks, latestReopen } from "@/domain/case-cycle";
 import { generatedTextLabel } from "@/lib/utils";
 import { useState } from "react";
 import { Button } from "./ui/button";
@@ -32,12 +33,8 @@ export function CaseControls({
     : review
       ? "review_status"
       : "resolve";
-  const related = tasks.filter(
-    (t) => t.orderId === order.id && t.scope !== "process",
-  );
-  const lastReopen = [...(order.caseHistory || [])]
-    .reverse()
-    .find((event) => event.action === "reopen");
+  const related = currentCaseTasks(order, tasks);
+  const lastReopen = latestReopen(order.caseHistory);
   const canResolve =
     related.some(
       (t) =>
@@ -103,11 +100,15 @@ export function CaseControls({
       <section className="panel prose case-result-panel">
         <h3>Encerramento do pedido</h3>
         <p>
-          Para encerrar, primeiro investigue o pedido com IA, execute a tarefa
-          sugerida e registre a evidência.{" "}
+          {lastReopen
+            ? "Este pedido foi reaberto. Para encerrar novamente, investigue"
+            : "Para encerrar, primeiro investigue"}{" "}
+          o pedido com IA, execute a tarefa sugerida e registre a evidência.{" "}
           {related.length
             ? "Confira as tarefas acima para saber o que ainda falta concluir."
-            : "Comece pelo botão “Investigar este pedido com IA”."}
+            : lastReopen
+              ? "Comece pelo botão “Investigar pedido reaberto com IA”."
+              : "Comece pelo botão “Investigar este pedido com IA”."}
         </p>
         <p className="muted">
           Não é necessário preparar o plano do dia. Aprovar uma proposta ou
@@ -126,12 +127,19 @@ export function CaseControls({
             : "Registrar resultado do pedido"}
       </h3>
       {order.resolution && (
-        <p>
-          {order.resolution.outcome
-            ? outcomeLabels[order.resolution.outcome.type]
-            : "Encerramento legado, sem resultado estruturado"}
-          : {order.resolution.note}
-        </p>
+        <>
+          <p className="muted">
+            A reabertura inicia uma nova etapa. Os registros anteriores serão
+            preservados; será necessária uma nova investigação e execução para
+            encerrar novamente.
+          </p>
+          <p>
+            {order.resolution.outcome
+              ? outcomeLabels[order.resolution.outcome.type]
+              : "Encerramento legado, sem resultado estruturado"}
+            : {order.resolution.note}
+          </p>
+        </>
       )}
       <form onSubmit={submit} className="guided-form">
         {review && (
@@ -168,7 +176,7 @@ export function CaseControls({
         )}
         {action !== "resolve" && (
           <label>
-            {review ? "Como o status foi validado?" : "Registro da tratativa"}
+            {review ? "Como o status foi validado?" : "Motivo da reabertura"}
             <textarea
               required
               minLength={10}

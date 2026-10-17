@@ -1,4 +1,5 @@
 import Groq from "groq-sdk";
+import { latestReopen } from "@/domain/case-cycle";
 import { statusLabel, insightGroupLabel } from "@/lib/utils";
 import { withShortRateLimitRetry } from "./provider-retry";
 import type {
@@ -254,6 +255,14 @@ export async function executeTool(
       cliente: { pedidos: c.orders, receita: c.revenue, contatos: c.contacts },
       indicadores: o.priority,
       problemasDados: o.issues,
+      reabertura: latestReopen(o.caseHistory)
+        ? {
+            em: latestReopen(o.caseHistory)!.at,
+            motivo: latestReopen(o.caseHistory)!.note,
+            orientacao:
+              "Nova etapa de atendimento. Registre um novo encaminhamento; a execução anterior não comprova a resolução atual.",
+          }
+        : undefined,
       acoesAdmitidas:
         o.status === "status_divergente"
           ? ["revisao_status"]

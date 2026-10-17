@@ -1,3 +1,4 @@
+import { currentCaseTasks } from "./case-cycle";
 import { z } from "zod";
 import Decimal from "decimal.js";
 import type { CaseRecord, Dataset, Order, SessionState, Task } from "./types";
@@ -124,8 +125,9 @@ export function transitionCase(
       throw new Error(
         "Revise o conflito de status antes de encerrar a exceção.",
       );
-    const related = tasks.filter(
-      (t) => t.orderId === order.id && t.scope !== "process",
+    const related = currentCaseTasks(
+      { ...order, caseHistory: previous?.history },
+      tasks,
     );
     const lastReopen = [...(previous?.history || [])]
       .reverse()
@@ -157,6 +159,9 @@ export function transitionCase(
       if (
         !source?.execution ||
         source.status !== "concluida" ||
+        source.kind === "revisao_status" ||
+        (lastReopen &&
+          (!source.execution.at || source.execution.at < lastReopen.at)) ||
         source.execution.evidence !== outcome.evidence
       )
         throw new Error(

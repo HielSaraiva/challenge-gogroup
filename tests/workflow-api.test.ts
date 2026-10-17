@@ -1,3 +1,5 @@
+import { currentCaseTasks, reopenedWithoutTask } from "@/domain/case-cycle";
+import { financialReport, usedDailyCapacity } from "@/domain/operations";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import {
@@ -108,6 +110,137 @@ describe("fluxo persistido pelos endpoints", () => {
     note: "Endereço conferido e correção registrada no sistema",
     evidence: "Chamado sintético com confirmação da correção cadastral",
   };
+  it("reabre em nova etapa, preserva histórico e recusa evidência do atendimento anterior", async () => {
+    const original = newTask();
+    await upsertTask(sessionId, original);
+    const resolution = {
+      type: "endereco_corrigido",
+      evidence: execution.evidence,
+      evidenceTaskId: original.id,
+    };
+    expect(
+      (
+        await taskPATCH(
+          request("tasks", {
+            id: original.id,
+            status: "concluida",
+            execution,
+            resolution,
+          }),
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await orderPATCH(
+          request("orders", {
+            action: "reopen",
+            orderId: "SYN-A",
+            note: "O endereço voltou a apresentar divergência",
+          }),
+        )
+      ).status,
+    ).toBe(200);
+    let state = (await getSession(sessionId))!;
+    let effective = sessionDataset(data, state);
+    expect(currentCaseTasks(effective.orders[0], state.tasks)).toEqual([]);
+    expect(
+      reopenedWithoutTask(effective.orders, state.tasks).map(
+        (order) => order.id,
+      ),
+    ).toEqual(["SYN-A"]);
+    expect(awaitingResultOrders(effective.orders, state.tasks)).toEqual([]);
+    expect(financialReport(effective, state).resolvedCount).toBe(0);
+    expect(usedDailyCapacity(effective)).toBe(1);
+    const historyLength = state.cases!["SYN-A"].history.length;
+    expect(
+      (
+        await orderPATCH(
+          request("orders", {
+            action: "reopen",
+            orderId: "SYN-A",
+            note: "Segunda tentativa de reabertura duplicada",
+          }),
+        )
+      ).status,
+    ).toBe(409);
+    expect((await getSession(sessionId))!.cases!["SYN-A"].history).toHaveLength(
+      historyLength,
+    );
+    expect(
+      (
+        await taskPATCH(
+          request("tasks", { id: original.id, status: "concluida", execution }),
+        )
+      ).status,
+    ).toBe(409);
+    const newContext = { ...context("order"), data: effective };
+    await executeTool("consultar_pedido", { orderId: "SYN-A" }, newContext);
+    const args = {
+      orderId: "SYN-A",
+      kind: "revisao_cadastral",
+      title: "Conferir novamente o endereço",
+      justification:
+        "Investigar a nova divergência registrada após reabrir o pedido.",
+      evidenceIds: ["SYN-A"],
+    };
+    const fresh = (await executeTool("criar_tarefa", args, newContext)) as Task;
+    const repeated = (await executeTool(
+      "criar_tarefa",
+      args,
+      newContext,
+    )) as Task;
+    expect(repeated.id).toBe(fresh.id);
+    expect(fresh.id).not.toBe(original.id);
+    state = (await getSession(sessionId))!;
+    effective = sessionDataset(data, state);
+    expect(reopenedWithoutTask(effective.orders, state.tasks)).toEqual([]);
+    expect(
+      (
+        await taskPATCH(
+          request("tasks", { id: fresh.id, status: "concluida", execution }),
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await orderPATCH(
+          request("orders", {
+            action: "resolve",
+            orderId: "SYN-A",
+            note: execution.note,
+            outcome: resolution,
+          }),
+        )
+      ).status,
+    ).toBe(409);
+    expect(
+      (await getSession(sessionId))!.cases!["SYN-A"].resolution,
+    ).toBeUndefined();
+    expect(
+      (
+        await orderPATCH(
+          request("orders", {
+            action: "resolve",
+            orderId: "SYN-A",
+            note: execution.note,
+            outcome: { ...resolution, evidenceTaskId: fresh.id },
+          }),
+        )
+      ).status,
+    ).toBe(200);
+    state = (await getSession(sessionId))!;
+    effective = sessionDataset(data, state);
+    expect(state.tasks).toHaveLength(2);
+    expect(state.cases!["SYN-A"].history.map((event) => event.action)).toEqual([
+      "resolve",
+      "reopen",
+      "resolve",
+    ]);
+    expect(financialReport(effective, state).resolvedCount).toBe(1);
+    expect(usedDailyCapacity(effective)).toBe(2);
+    expect(reopenedWithoutTask(effective.orders, state.tasks)).toEqual([]);
+  });
   it("registra execução sem encerrar e mantém pedido aguardando resultado", async () => {
     const task = newTask();
     await upsertTask(sessionId, task);

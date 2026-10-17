@@ -225,6 +225,8 @@ describe("ciclo de tratativa", () => {
         [
           {
             ...originalTask,
+            id: randomUUID(),
+            createdAt: "2026-10-03T10:00:00Z",
             execution: {
               ...originalTask.execution,
               at: "2026-10-03T11:00:00Z",

@@ -40,6 +40,11 @@ import {
 } from "@/lib/utils";
 import { paginationItems } from "@/lib/pagination";
 import { orderList, PAGE_SIZES } from "@/lib/order-list";
+import {
+  currentCaseTasks,
+  latestReopen,
+  reopenedWithoutTask,
+} from "@/domain/case-cycle";
 import { awaitingResultOrders } from "@/domain/task-resolution";
 import { outcomeLabels } from "@/domain/cases";
 type Tab =
@@ -342,7 +347,11 @@ export function OperationsApp() {
   const currentPage = Math.min(page, totalPages);
   function activity(type: Investigation["type"], target?: string) {
     const matches = (run: Investigation) =>
-      run.type === type && (target === undefined || run.target === target);
+      run.type === type &&
+      (target === undefined || run.target === target) &&
+      (type !== "order" ||
+        !selectedReopen ||
+        run.createdAt >= selectedReopen.at);
     const run =
       activeRun && matches(activeRun) ? activeRun : runs.find(matches);
     if (!run) return null;
@@ -355,9 +364,26 @@ export function OperationsApp() {
       />
     );
   }
-  const related = selected
-    ? tasks.filter((t) => t.scope !== "process" && t.orderId === selected.id)
-    : [];
+  const selectedReopen = latestReopen(selected?.caseHistory);
+  const related = selected ? currentCaseTasks(selected, tasks) : [];
+  const previousTasks =
+    selected && selectedReopen
+      ? tasks.filter(
+          (task) =>
+            task.scope !== "process" &&
+            task.orderId === selected.id &&
+            task.createdAt < selectedReopen.at,
+        )
+      : [];
+  const previousRuns =
+    selected && selectedReopen
+      ? runs.filter(
+          (run) =>
+            run.type === "order" &&
+            run.target === selected.id &&
+            run.createdAt < selectedReopen.at,
+        )
+      : [];
   function openOrder(id: string) {
     setProcessId(undefined);
     setSelectedId(id);
@@ -366,6 +392,7 @@ export function OperationsApp() {
     ["aberta", "aprovada", "pendente_aprovacao"].includes(t.status),
   );
   const awaitingResults = awaitingResultOrders(orders, tasks);
+  const awaitingInvestigation = reopenedWithoutTask(orders, tasks);
   return (
     <div className="app-layout">
       <header className="sidebar">
@@ -402,9 +429,14 @@ export function OperationsApp() {
             >
               {label}
               {id === "agent" &&
-                pending.length + awaitingResults.length > 0 && (
+                pending.length +
+                  awaitingResults.length +
+                  awaitingInvestigation.length >
+                  0 && (
                   <span className="nav-count">
-                    {pending.length + awaitingResults.length}
+                    {pending.length +
+                      awaitingResults.length +
+                      awaitingInvestigation.length}
                   </span>
                 )}
             </button>
@@ -925,6 +957,29 @@ export function OperationsApp() {
                       />
                       Mostrar somente pendências
                     </label>
+                    {awaitingInvestigation.map((order) => (
+                      <article
+                        className="result-row"
+                        key={`reopened-${order.id}`}
+                      >
+                        <span className="badge">
+                          Pedido reaberto — aguardando nova investigação
+                        </span>
+                        <h3>
+                          {order.id} · {exceptionLabels[order.exception]}
+                        </h3>
+                        <p>
+                          A etapa anterior foi preservada. Investigue o pedido
+                          para gerar um novo encaminhamento.
+                        </p>
+                        <Button
+                          variant="outline"
+                          onClick={() => openOrder(order.id)}
+                        >
+                          Abrir pedido e iniciar nova etapa
+                        </Button>
+                      </article>
+                    ))}
                     {awaitingResults.map((order) => (
                       <article
                         key={`result-${order.id}`}
@@ -982,13 +1037,14 @@ export function OperationsApp() {
                     {tasks.length > 0 &&
                       pendingOnly &&
                       !pending.length &&
-                      !awaitingResults.length && (
+                      !awaitingResults.length &&
+                      !awaitingInvestigation.length && (
                         <p>
                           Não há pendências. Desmarque o filtro para consultar
                           os registros concluídos.
                         </p>
                       )}
-                    {!tasks.length && (
+                    {!tasks.length && !awaitingInvestigation.length && (
                       <p>
                         O agente ainda não registrou tarefas. Prepare o dia e
                         investigue um pedido, ou escolha uma recorrência em
@@ -1189,7 +1245,9 @@ export function OperationsApp() {
                               (t) => t.execution && t.kind !== "revisao_status",
                             )
                           ? "Registre o resultado da tratativa"
-                          : "Peça ao agente um encaminhamento"}
+                          : selectedReopen
+                            ? "Pedido reaberto — inicie uma nova investigação"
+                            : "Peça ao agente um encaminhamento"}
                 </h3>
                 <p>
                   {selected.resolution
@@ -1207,16 +1265,24 @@ export function OperationsApp() {
                             (run) =>
                               run.type === "order" &&
                               run.target === selected.id &&
+                              (!selectedReopen ||
+                                run.createdAt >= selectedReopen.at) &&
                               run.status === "completed",
                           ) ||
                           (activeRun?.type === "order" &&
                             activeRun.target === selected.id &&
+                            (!selectedReopen ||
+                              activeRun.createdAt >= selectedReopen.at) &&
                             activeRun.status === "completed");
                         if (alreadyAnalyzed) setConfirmOrderId(selected.id);
                         else void investigate(selected.id, "order");
                       }}
                     >
-                      {busy ? "Investigando…" : "Investigar este pedido com IA"}
+                      {busy
+                        ? "Investigando…"
+                        : selectedReopen && !related.length
+                          ? "Investigar pedido reaberto com IA"
+                          : "Investigar este pedido com IA"}
                     </Button>
                   )}
                 {selected.status === "status_divergente" && (
@@ -1226,6 +1292,14 @@ export function OperationsApp() {
                   </p>
                 )}
               </section>
+              {selectedReopen && !selected.resolution && (
+                <p className="case-next-step">
+                  Reaberto em{" "}
+                  {new Date(selectedReopen.at).toLocaleString("pt-BR")}. Motivo:{" "}
+                  {selectedReopen.note}. As execuções anteriores não encerram
+                  esta nova etapa.
+                </p>
+              )}
               {activity("order", selected.id)}
               <Expandable className="panel prose order-facts-panel">
                 <summary>Conferir fatos, prazos e histórico do cliente</summary>
@@ -1258,8 +1332,11 @@ export function OperationsApp() {
                 <h3>Encaminhamentos para este pedido</h3>
                 {!related.length && (
                   <p className="order-empty-tasks">
-                    Ainda não há tarefas. A investigação individual com IA pode
-                    ser feita sem preparar o plano do dia.
+                    {selectedReopen
+                      ? "Ainda não há encaminhamentos nesta nova etapa."
+                      : "Ainda não há tarefas."}{" "}
+                    A investigação individual com IA pode ser feita sem preparar
+                    o plano do dia.
                   </p>
                 )}
                 {related.map((t) => (
@@ -1285,8 +1362,47 @@ export function OperationsApp() {
                   </div>
                 ))}
               </section>
+              {selectedReopen &&
+                (previousTasks.length > 0 || previousRuns.length > 0) && (
+                  <Expandable className="panel prose order-facts-panel">
+                    <summary>Etapas anteriores — somente consulta</summary>
+                    <p>
+                      Estes registros pertencem ao atendimento anterior à última
+                      reabertura e não comprovam a resolução da etapa atual.
+                    </p>
+                    {previousTasks.map((task) => (
+                      <article className="case-history-event" key={task.id}>
+                        <strong>
+                          {generatedTextLabel(task.title)} ·{" "}
+                          {statusLabel(task.status)}
+                        </strong>
+                        <p>{generatedTextLabel(task.justification)}</p>
+                        {task.execution && (
+                          <>
+                            <p>
+                              <strong>Ação registrada:</strong>{" "}
+                              {task.execution.note}
+                            </p>
+                            <p>
+                              <strong>Evidência:</strong>{" "}
+                              {task.execution.evidence}
+                            </p>
+                          </>
+                        )}
+                      </article>
+                    ))}
+                    {previousRuns.map((run) => (
+                      <AgentProgress
+                        key={run.id}
+                        run={run}
+                        events={[]}
+                        busy={false}
+                      />
+                    ))}
+                  </Expandable>
+                )}
               <CaseControls
-                key={selected.id + selected.status}
+                key={selected.id + selected.status + (selectedReopen?.id || "")}
                 order={selected}
                 tasks={tasks}
                 disabled={busy}
@@ -1321,6 +1437,30 @@ export function OperationsApp() {
                         <strong>Resultado:</strong>{" "}
                         {outcomeLabels[event.outcome.type]}
                       </p>
+                    )}
+                    {event.outcome && (
+                      <>
+                        <p>
+                          <strong>Evidência do resultado:</strong>{" "}
+                          {event.outcome.evidence}
+                        </p>
+                        {event.outcome.refund !== undefined && (
+                          <p>
+                            <strong>Reembolso registrado:</strong>{" "}
+                            {money(event.outcome.refund)}
+                          </p>
+                        )}
+                        {event.outcome.cost && (
+                          <p>
+                            <strong>Custo registrado:</strong>{" "}
+                            {money(event.outcome.cost.amount)} (
+                            {event.outcome.cost.kind === "estimated"
+                              ? "estimado"
+                              : "informado pelo operador"}
+                            )
+                          </p>
+                        )}
+                      </>
                     )}
                     {event.status && (
                       <p>

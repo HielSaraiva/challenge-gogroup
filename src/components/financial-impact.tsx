@@ -15,7 +15,10 @@ export function FinancialImpact({
         <h2>O que a equipe já registrou?</h2>
         <p>
           Resultados declarados nesta demonstração. Não há confirmação externa
-          de pagamentos, retenção ou lucro.
+          de pagamentos, retenção ou lucro. Estes totais consideram apenas os
+          pedidos atualmente encerrados. Ao reabrir, os valores do encerramento
+          anterior saem destes indicadores e permanecem no histórico do caso;
+          isso não desfaz pagamentos ou despesas.
         </p>
         <dl className="result-metrics">
           <div>

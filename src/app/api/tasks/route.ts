@@ -1,3 +1,4 @@
+import { currentCaseTasks } from "@/domain/case-cycle";
 import { executionSchema, conclusionSchema } from "@/domain/task-results";
 import { z } from "zod";
 import { failure, json, session, verifyOrigin } from "@/server/http";
@@ -6,6 +7,7 @@ import {
   acquireAgentLease,
   completeTaskAndResolve,
   updateTask,
+  getSession,
 } from "@/server/store";
 import { outcomeSchema } from "@/domain/cases";
 export const dynamic = "force-dynamic";
@@ -33,6 +35,21 @@ export async function PATCH(request: Request) {
       .strict()
       .parse(await request.json());
     release = await acquireAgentLease(sessionId);
+    const state = await getSession(sessionId);
+    if (!state) throw new AppError("Sessão expirada.", 401);
+    const task = state.tasks.find((item) => item.id === input.id);
+    if (
+      task &&
+      task.scope !== "process" &&
+      !currentCaseTasks(
+        { id: task.orderId, caseHistory: state.cases?.[task.orderId]?.history },
+        [task],
+      ).length
+    )
+      throw new AppError(
+        "Esta tarefa pertence a uma etapa anterior. Investigue o pedido reaberto novamente.",
+        409,
+      );
     if (input.resolution) {
       if (input.status !== "concluida" || !input.execution || input.conclusion)
         throw new AppError(
