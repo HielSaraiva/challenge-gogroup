@@ -138,9 +138,11 @@ export function TaskResult({
       {task.nextStep && (
         <p>
           <b>
-            {order?.resolution
-              ? "Orientação registrada:"
-              : "Verificação necessária:"}
+            {task.scope === "process"
+              ? "Verificação recomendada pelo agente:"
+              : order?.resolution
+                ? "Orientação registrada:"
+                : "Verificação necessária:"}
           </b>{" "}
           {generatedTextLabel(task.nextStep)}
         </p>

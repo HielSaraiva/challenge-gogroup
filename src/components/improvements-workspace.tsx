@@ -255,7 +255,9 @@ export function ImprovementsWorkspace({
             {selected ? recurrenceQuestion(selected) : "Detalhes do sinal"}
           </DialogTitle>
           <DialogDescription>
-            Confira o sinal antes de investigar sua causa.
+            {selectedTask
+              ? "Consulte o sinal e abra a investigação para ver a análise do agente."
+              : "Dados da base. Inicie a análise para receber uma hipótese do agente."}
           </DialogDescription>
           {selected && (
             <>
@@ -263,12 +265,6 @@ export function ImprovementsWorkspace({
                 <span className="badge">
                   {exceptionLabels[selected.exception] || "Prazo prometido"}
                 </span>
-                <p>
-                  <strong>Grupo:</strong> {insightGroupLabel(selected.group)}
-                </p>
-                <p>
-                  <strong>{selected.count}</strong> casos relacionados
-                </p>
               </div>
               <SignalContext pattern={selected} />
               <div className="signal-dialog-actions">

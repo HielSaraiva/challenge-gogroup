@@ -1,18 +1,17 @@
 import type { Insight } from "@/domain/types";
-import { generatedTextLabel } from "@/lib/utils";
+import { generatedTextLabel, insightGroupLabel } from "@/lib/utils";
 
 export function SignalContext({ pattern }: { pattern: Insight }) {
   return (
-    <section
-      className="signal-context"
-      aria-label="Orientações para conferir o sinal"
-    >
-      <h3>O que conferir</h3>
-      <p>{generatedTextLabel(pattern.investigationQuestion)}</p>
+    <section className="signal-context" aria-label="Sinal observado na base">
+      <h3>Sinal observado na base</h3>
+      <p>{generatedTextLabel(pattern.title)}</p>
       <p>
-        {generatedTextLabel(pattern.title)}. A concentração é um ponto de
-        partida; valide os registros e as condições da operação antes de
-        concluir a causa.
+        <strong>Grupo:</strong> {insightGroupLabel(pattern.group)}
+      </p>
+      <p>
+        <strong>{pattern.count.toLocaleString("pt-BR")}</strong> casos
+        relacionados
       </p>
       {pattern.evidenceIds.length > 0 && (
         <p className="signal-references">
