@@ -197,7 +197,10 @@ export function AgentProgress({
             .reverse()
             .sort(([, a], [, b]) => Date.parse(b.at) - Date.parse(a.at))
             .map(([id, e]) => (
-              <article className="agent-event" key={id}>
+              <article
+                className={`agent-event ${e.state === "error" ? "agent-event-error" : ""}`}
+                key={id}
+              >
                 <header className="agent-event-header">
                   <b>
                     {toolDescriptions[e.tool]?.[0] ||
