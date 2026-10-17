@@ -10,7 +10,6 @@ import {
 import { generatedTextLabel, insightGroupLabel } from "@/lib/utils";
 import { paginate } from "@/lib/pagination";
 import { Button } from "./ui/button";
-import { Expandable } from "./ui/expandable";
 import { Pagination } from "./ui/pagination";
 import {
   Dialog,
@@ -149,14 +148,7 @@ export function ImprovementsWorkspace({
           tabIndex={-1}
           aria-label="Atividade da análise de recorrências"
         >
-          {analyzing ? (
-            activity
-          ) : (
-            <Expandable className="panel prose">
-              <summary>Atividade da análise</summary>
-              {activity}
-            </Expandable>
-          )}
+          {activity}
         </div>
       )}
       {reviewed?.recurrenceReview && (

@@ -1517,14 +1517,6 @@ main > .panel {
   }
 }
 
-.pattern-analysis .expandable-content > .agent-progress {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  background: transparent;
-}
 .agent-progress-caption {
   color: #62636b;
   font-size: 13px;
