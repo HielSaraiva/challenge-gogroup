@@ -382,6 +382,74 @@ main > .panel {
 .page-heading h1:focus {
   outline: none;
 }
+.sidebar {
+  min-height: 72px;
+  padding: 12px 28px;
+  gap: 18px;
+}
+.sidebar .logo img {
+  width: 140px;
+}
+.sidebar .brand-product {
+  max-width: 92px;
+  padding-left: 12px;
+  font-size: 11px;
+}
+.sidebar .nav-item {
+  min-height: 44px;
+  padding: 10px 12px;
+}
+.sidebar .nav-item.active::after {
+  bottom: -13px;
+}
+@media (max-width: 1100px) {
+  .sidebar {
+    min-height: 64px;
+    padding: 10px 18px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .sidebar .logo img {
+    width: 124px;
+  }
+  .mobile-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    min-height: 44px;
+    padding: 10px;
+    border: 0;
+    border-radius: 7px;
+    background: #edf2fa;
+    color: #2659a5;
+    font-size: 12px;
+  }
+  .sidebar nav {
+    display: none;
+  }
+  .sidebar nav.menu-open {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin: 0;
+    padding: 8px 0 0;
+    overflow: visible;
+  }
+  .sidebar .nav-item {
+    width: 100%;
+    text-align: left;
+    border-radius: 7px;
+  }
+  .sidebar .nav-item.active {
+    background: #edf2fa;
+  }
+  .sidebar .nav-item.active::after {
+    inset: 10px auto 10px 0;
+    width: 3px;
+    height: auto;
+  }
+}
 .dialog-content {
   top: 50%;
   transform: translate(-50%, -50%);
