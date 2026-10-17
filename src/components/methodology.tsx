@@ -134,9 +134,9 @@ export function Methodology({
               consultar um pedido específico, use Pedidos.
             </li>
             <li>
-              <b>Recorrências:</b> abra um sinal de problema repetido, solicite
-              a análise com IA e registre a conclusão da equipe. Essa
-              investigação não encerra os pedidos relacionados.
+              <b>Recorrências:</b> solicite a análise da base com IA, confira as
+              investigações propostas pelo agente e registre a conclusão da
+              equipe. Essa investigação não encerra os pedidos relacionados.
             </li>
           </ol>
           <p>
@@ -170,25 +170,28 @@ export function Methodology({
                 valor e aprovação humana antes da execução.
               </li>
               <li>
-                <b>Recorrência:</b> consulta uma amostra do grupo e registra uma
-                hipótese com verificação recomendada. A conclusão só vem depois
-                das verificações documentadas pela equipe.
+                <b>Recorrência:</b> compara agrupamentos e investigações
+                anteriores, seleciona até três achados e cria títulos, hipóteses
+                e verificações recomendadas. Pode não propor novos achados. A
+                conclusão depende das verificações documentadas pela equipe.
               </li>
             </ul>
           </Expandable>
           <Expandable>
             <summary>Repetir uma análise usa a IA novamente?</summary>
             <p>
-              Abrir pedidos, sinais ou investigações já registradas não usa a
-              IA. Investigar um pedido novamente ou preparar outro plano faz uma
+              Abrir pedidos ou investigações já registradas não usa a IA.
+              Investigar um pedido novamente ou preparar outro plano faz uma
               nova chamada e exige confirmação quando já existe análise ou
               plano.
             </p>
             <p>
-              Em Recorrências, abrir a investigação existente não gera outra.
-              Após registrar a conclusão, você pode solicitar uma nova análise
-              com confirmação. A conclusão anterior é preservada e pode ser
-              consultada a partir da nova investigação.
+              Em Recorrências, analisar a base novamente usa a IA e exige
+              confirmação quando já há análises concluídas ou investigações.
+              Abrir uma investigação existente não gera outra. Após registrar a
+              conclusão, você também pode solicitar outra investigação daquele
+              grupo com confirmação. A conclusão anterior é preservada e pode
+              ser consultada a partir da nova investigação.
             </p>
           </Expandable>
           <Expandable>
@@ -456,25 +459,29 @@ export function Methodology({
           </p>
           <ol className="workflow-steps">
             <li>
-              <b>Sinal do sistema:</b> regras identificam concentrações na base
-              de exceções. “Ver detalhes do sinal” mostra grupo, quantidade de
-              casos e referências. Isso ainda não é uma conclusão da IA.
+              <b>Análise da base:</b> clique em “Analisar recorrências com IA”.
+              O sistema calcula agrupamentos e indicadores; o agente compara as
+              evidências e as investigações anteriores.
             </li>
             <li>
-              <b>Análise do agente:</b> “Investigar recorrência com IA” consulta
-              uma amostra e cria uma investigação com hipótese e verificação
-              recomendada. Ela fica disponível em Recorrências e Pendências.
+              <b>Seleção do agente:</b> a IA escolhe até três achados por
+              análise e cria os cards com título, hipótese e verificação
+              recomendada. Quantidades e referências vêm do sistema. Se não
+              houver novos achados suficientes, a análise explica isso sem criar
+              cards artificiais.
             </li>
             <li>
-              <b>Verificação da equipe:</b> confira ao menos dois pedidos
-              relacionados e as condições reais da operação. Registre
-              referências, observações e se a hipótese foi confirmada,
-              descartada ou ficou inconclusiva, além do próximo encaminhamento.
+              <b>Verificação da equipe:</b> abra uma investigação, confira ao
+              menos dois pedidos e as condições reais da operação. Registre as
+              evidências, a conclusão sobre a hipótese e o próximo
+              encaminhamento.
             </li>
             <li>
               <b>Continuidade:</b> a conclusão sai de Pendências e continua
-              acessível pelo sinal. Uma nova análise exige confirmação, preserva
-              a conclusão anterior e usa a cota da IA.
+              acessível em Recorrências. Uma nova análise geral considera o que
+              já foi registrado e não recria automaticamente grupos existentes.
+              Para retomar um grupo concluído, use “Investigar este grupo
+              novamente”.
             </li>
           </ol>
           <p>
@@ -484,12 +491,19 @@ export function Methodology({
             caminhos de investigação, não causas comprovadas.
           </p>
           <Expandable>
-            <summary>Como os sinais são selecionados?</summary>
+            <summary>Quais dados o agente recebe?</summary>
             <p>
               Usamos grupos pertinentes à etapa do problema. A triagem comum
               exige ao menos dez casos, participação mínima de 15% e associação
               relativa de 1,5 vez a participação na base elegível. A divergência
               entre promessa e contrato tem uma verificação própria.
+            </p>
+            <p>
+              Para limitar o uso da cota, cada análise compara até dezesseis
+              agrupamentos de maior relevância, com amostras de até três pedidos
+              e os registros anteriores relacionados. O agente pode propor até
+              três investigações ou justificar que não há novos achados. O
+              servidor valida as referências e evita grupos quase idênticos.
             </p>
             <p>
               São critérios exploratórios, sem teste de significância. A

@@ -7,11 +7,10 @@ import {
   type Task,
   type Investigation,
 } from "@/domain/types";
-import { insightGroupLabel } from "@/lib/utils";
+import { generatedTextLabel, insightGroupLabel } from "@/lib/utils";
 import { paginate } from "@/lib/pagination";
 import { Button } from "./ui/button";
 import { Expandable } from "./ui/expandable";
-import { SignalContext } from "./signal-context";
 import { Pagination } from "./ui/pagination";
 import {
   Dialog,
@@ -19,44 +18,15 @@ import {
   DialogTitle,
   DialogDescription,
 } from "./ui/dialog";
-function recurrenceQuestion(p: Insight) {
-  if (p.dimension === "promise_rule")
-    return "Por que a promessa difere do contrato?";
-  const problem: Record<string, string> = {
-    vazamento_produto: "há vazamentos",
-    atraso_entrega: "há atrasos",
-    item_faltante: "faltam itens",
-    falha_personalizacao: "a personalização falha",
-    avaria_transporte: "há avarias",
-    extravio: "há extravios",
-    rastreio_parado: "o rastreio fica parado",
-    devolvido_transportadora: "há devoluções",
-  };
-  const group = p.group.replaceAll("|", " / ");
-  const where =
-    (
-      {
-        lot: `no lote ${group}`,
-        machine: `na máquina ${group}`,
-        carrier: `com a transportadora ${group}`,
-        shift: `no turno ${group}`,
-        dc: `no CD ${group}`,
-        gift:
-          p.group === "true"
-            ? "nos pedidos com brinde"
-            : "nos pedidos sem brinde",
-      } as Record<string, string>
-    )[p.dimension] || `no grupo ${group}`;
-  return `Por que ${problem[p.exception] || "este problema se repete"} ${where}?`;
-}
 
 export function ImprovementsWorkspace({
   patterns,
   tasks,
   runs,
   busy,
-  activePatternId,
+  analyzing,
   activity,
+  onAnalyze,
   onInvestigate,
   onProcess,
   onPending,
@@ -65,27 +35,45 @@ export function ImprovementsWorkspace({
   tasks: Task[];
   runs: Investigation[];
   busy: boolean;
-  activePatternId?: string;
+  analyzing: boolean;
   activity: ReactNode;
+  onAnalyze: () => Promise<void>;
   onInvestigate: (id: string, previousTaskId?: string) => Promise<void>;
   onProcess: (id: string) => void;
   onPending: () => void;
 }) {
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(6);
-  const [confirm, setConfirm] = useState<Task>();
-  const [selected, setSelected] = useState<Insight>();
-  const selectedTask = selected
-    ? latestPatternTask(tasks, selected.id)
-    : undefined;
+  const [confirmAnalysis, setConfirmAnalysis] = useState(false);
+  const [confirmTask, setConfirmTask] = useState<Task>();
   const region = useRef<HTMLElement>(null);
   const analysis = useRef<HTMLDivElement>(null);
   const starting = useRef(false);
-  const view = paginate(
-    patterns.filter((pattern) => pattern.scope === "process"),
-    page,
-    size,
+  const locked =
+    busy ||
+    runs.some(
+      (run) =>
+        run.status === "running" &&
+        Date.now() - Date.parse(run.updatedAt) < 70000,
+    );
+  const reviewed = runs.find(
+    (run) =>
+      run.type === "recurrences" &&
+      run.status === "completed" &&
+      run.recurrenceReview,
   );
+  const investigations = tasks
+    .filter(
+      (task) =>
+        task.scope === "process" &&
+        (!task.insightId ||
+          latestPatternTask(tasks, task.insightId)?.id === task.id),
+    )
+    .sort(
+      (a, b) =>
+        b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id),
+    );
+  const view = paginate(investigations, page, size);
   const changePage = (next: number) => {
     setPage(next);
     region.current?.focus({ preventScroll: true });
@@ -97,7 +85,7 @@ export function ImprovementsWorkspace({
     });
   };
   useEffect(() => {
-    if (!busy || !activePatternId) return;
+    if (!analyzing) return;
     const frame = requestAnimationFrame(() => {
       starting.current = false;
       analysis.current?.focus({ preventScroll: true });
@@ -109,123 +97,161 @@ export function ImprovementsWorkspace({
       });
     });
     return () => cancelAnimationFrame(frame);
-  }, [busy, activePatternId]);
+  }, [analyzing]);
+  const startAnalysis = () => {
+    setPage(1);
+    starting.current = true;
+    setConfirmAnalysis(false);
+    void onAnalyze();
+  };
   return (
     <section
       className="improvements-workspace paged-workspace"
       ref={region}
       tabIndex={-1}
-      aria-label="Sinais de recorrência"
+      aria-label="Investigações de recorrência"
     >
       <div className="panel prose">
-        <h2>Sinais de problemas repetidos</h2>
+        <h2>Quais problemas merecem uma investigação?</h2>
         <p>
-          Abra os detalhes de um sinal e solicite a análise com IA. O agente
-          consulta uma amostra e propõe uma hipótese; a equipe verifica e
-          registra a conclusão.
+          O agente compara os agrupamentos de maior relevância na base e propõe
+          até três investigações por análise, com evidências, hipótese e próximo
+          passo. A equipe verifica e registra a conclusão.
         </p>
-        <p>
-          Sinais calculados na base de pedidos com problemas, em ordem de
-          relevância. Não representam a taxa de falha de todas as vendas.
-        </p>
-        <Button variant="outline" onClick={onPending}>
-          Acompanhar investigações abertas
-        </Button>
-      </div>
-      {activity &&
-        (busy ||
-          view.items.some((pattern) => pattern.id === activePatternId)) && (
-          <div
-            className="pattern-analysis"
-            ref={analysis}
-            tabIndex={-1}
-            aria-label="Análise da recorrência"
+        <div className="task-actions">
+          <Button
+            disabled={locked}
+            onClick={() => {
+              if (reviewed || investigations.length) setConfirmAnalysis(true);
+              else startAnalysis();
+            }}
           >
-            {busy ? (
-              <>
-                <p className="list-count">
-                  Analisando:{" "}
-                  {
-                    patterns.find((pattern) => pattern.id === activePatternId)
-                      ?.title
-                  }
-                </p>
-                {activity}
-              </>
-            ) : (
-              <Expandable className="panel prose">
-                <summary>
-                  Atividade da análise:{" "}
-                  {
-                    patterns.find((pattern) => pattern.id === activePatternId)
-                      ?.title
-                  }
-                </summary>
-                {activity}
-              </Expandable>
-            )}
-          </div>
-        )}
-      <p className="list-count">
-        {view.total} sinais disponíveis · {view.start}–{view.end} nesta página
-      </p>
+            {analyzing
+              ? "Analisando recorrências…"
+              : reviewed
+                ? "Analisar a base novamente com IA"
+                : "Analisar recorrências com IA"}
+          </Button>
+          <Button variant="outline" onClick={onPending}>
+            Acompanhar investigações abertas
+          </Button>
+        </div>
+        <p className="muted">
+          A análise usa a cota da IA. A base contém pedidos com problemas;
+          concentrações não comprovam causas nem taxas de falha de todas as
+          vendas.
+        </p>
+      </div>
+      {activity && (
+        <div
+          className="pattern-analysis"
+          ref={analysis}
+          tabIndex={-1}
+          aria-label="Atividade da análise de recorrências"
+        >
+          {analyzing ? (
+            activity
+          ) : (
+            <Expandable className="panel prose">
+              <summary>Atividade da análise</summary>
+              {activity}
+            </Expandable>
+          )}
+        </div>
+      )}
+      {reviewed?.recurrenceReview && (
+        <section className="panel prose">
+          <h3>
+            {reviewed.taskIds.length
+              ? reviewed.taskIds.length ===
+                reviewed.recurrenceReview.reusedTaskIds.length
+                ? "Investigações existentes mantidas"
+                : "Seleção do agente"
+              : "Nenhuma nova investigação proposta"}
+          </h3>
+          <p>{generatedTextLabel(reviewed.recurrenceReview.reason)}</p>
+          <p className="list-count">
+            Análise de {new Date(reviewed.createdAt).toLocaleString("pt-BR")} ·
+            Os registros anteriores foram preservados.
+          </p>
+        </section>
+      )}
+      {!view.total && !analyzing && (
+        <div className="panel prose workspace-empty">
+          <h3>
+            {reviewed
+              ? "Nenhuma investigação registrada"
+              : "Comece pela análise da base"}
+          </h3>
+          <p>
+            {reviewed
+              ? "A análise não encontrou novos achados suficientes para abrir uma investigação. Você pode continuar pelas tratativas individuais em Pedidos."
+              : "Clique em “Analisar recorrências com IA”. Os cards aparecerão quando o agente registrar suas propostas."}
+          </p>
+        </div>
+      )}
+      {view.total > 0 && (
+        <p className="list-count">
+          {view.total} {view.total === 1 ? "investigação" : "investigações"} ·{" "}
+          {view.start}–{view.end} nesta página
+        </p>
+      )}
       <div className="insight-grid">
-        {view.items.map((pattern) => {
-          const existing = latestPatternTask(tasks, pattern.id);
+        {view.items.map((task) => {
+          const pattern = patterns.find((item) => item.id === task.insightId);
           const completed =
-            existing?.status === "concluida" && Boolean(existing.conclusion);
-          const lastRun = runs.find(
-            (run) => run.type === "pattern" && run.target === pattern.id,
-          );
+            task.status === "concluida" && Boolean(task.conclusion);
           return (
-            <article className="panel prose signal-card" key={pattern.id}>
+            <article className="panel prose signal-card" key={task.id}>
               <div className="signal-badges">
                 <span className="badge">
-                  {exceptionLabels[pattern.exception] || "Prazo prometido"}
+                  {pattern
+                    ? exceptionLabels[pattern.exception] || "Prazo prometido"
+                    : "Recorrência"}
                 </span>
-                {existing && (
-                  <span className="badge">
-                    {completed ? "Conclusão registrada" : "Investigação aberta"}
-                  </span>
-                )}
+                <span className="badge">
+                  {completed ? "Conclusão registrada" : "Investigação aberta"}
+                </span>
               </div>
-              <h3>{recurrenceQuestion(pattern)}</h3>
+              <h3>{generatedTextLabel(task.title)}</h3>
               <p className="signal-group">
-                <strong>Grupo:</strong> {insightGroupLabel(pattern.group)}
+                <strong>Grupo:</strong>{" "}
+                {pattern
+                  ? insightGroupLabel(pattern.group)
+                  : "Consulte as evidências"}
               </p>
               <p>
-                <strong>{pattern.count}</strong> casos na base com esse sinal.
+                <strong>
+                  {pattern?.count ??
+                    task.affectedOrderIds?.length ??
+                    task.evidenceIds.length}
+                </strong>{" "}
+                casos relacionados na base.
               </p>
-              {lastRun?.status === "failed" && (
-                <p className="signal-feedback">
-                  {existing
-                    ? completed
-                      ? "A nova análise foi interrompida. Consulte a investigação disponível para verificar o que foi registrado."
-                      : "A execução foi interrompida, mas a investigação registrada está disponível para acompanhamento."
-                    : "A tentativa anterior não concluiu uma investigação. Você pode tentar novamente; a nova chamada usa a cota da IA."}
-                </p>
-              )}
+              <p className="list-count">Proposta pelo agente · {task.area}</p>
               <div className="signal-actions">
-                <Button disabled={busy} onClick={() => setSelected(pattern)}>
-                  Ver detalhes do sinal
+                <Button disabled={locked} onClick={() => onProcess(task.id)}>
+                  {completed
+                    ? "Ver conclusão da investigação"
+                    : "Abrir investigação"}
                 </Button>
+                {completed && task.insightId && (
+                  <Button
+                    variant="outline"
+                    disabled={locked}
+                    onClick={() => setConfirmTask(task)}
+                  >
+                    Investigar este grupo novamente
+                  </Button>
+                )}
               </div>
             </article>
           );
         })}
       </div>
-      {!view.total && (
-        <div className="panel prose workspace-empty">
-          <h3>Nenhum sinal suficiente nesta base</h3>
-          <p>
-            Continue pelas tratativas individuais. Novas evidências podem
-            sustentar uma investigação de recorrência.
-          </p>
-        </div>
-      )}
       <Pagination
         {...view}
-        noun="sinais"
+        noun={view.total === 1 ? "investigação" : "investigações"}
         pageSize={size}
         sizes={[6, 12, 24, 48, 96]}
         onPage={changePage}
@@ -234,116 +260,66 @@ export function ImprovementsWorkspace({
           changePage(1);
         }}
       />
-      <Dialog
-        open={Boolean(selected)}
-        onOpenChange={(open) => {
-          if (!open) setSelected(undefined);
-        }}
-      >
+      <Dialog open={confirmAnalysis} onOpenChange={setConfirmAnalysis}>
         <DialogContent
-          className="signal-dialog"
+          className="new-plan-dialog"
           onCloseAutoFocus={(event) => {
-            if (starting.current || busy) event.preventDefault();
+            if (starting.current) event.preventDefault();
           }}
         >
-          <DialogTitle>
-            {selected ? recurrenceQuestion(selected) : "Detalhes do sinal"}
-          </DialogTitle>
+          <DialogTitle>Analisar a base novamente?</DialogTitle>
           <DialogDescription>
-            {selectedTask
-              ? "Consulte o sinal e abra a investigação para ver a análise do agente."
-              : "Dados da base. Inicie a análise para receber uma hipótese do agente."}
+            O agente compara os agrupamentos e considera as investigações e
+            conclusões existentes. A análise usa a cota da IA e pode não
+            encontrar novos achados.
           </DialogDescription>
-          {selected && (
-            <>
-              <div className="signal-dialog-summary">
-                <span className="badge">
-                  {exceptionLabels[selected.exception] || "Prazo prometido"}
-                </span>
-              </div>
-              <SignalContext pattern={selected} />
-              <div className="signal-dialog-actions">
-                <Button
-                  disabled={busy}
-                  onClick={() => {
-                    const pattern = selected;
-                    setSelected(undefined);
-                    if (selectedTask) onProcess(selectedTask.id);
-                    else {
-                      starting.current = true;
-                      void onInvestigate(pattern.id);
-                    }
-                  }}
-                >
-                  {selectedTask
-                    ? selectedTask.status === "concluida" &&
-                      selectedTask.conclusion
-                      ? "Ver conclusão da investigação"
-                      : "Abrir investigação"
-                    : "Investigar recorrência com IA"}
-                </Button>
-                {selectedTask?.status === "concluida" &&
-                  selectedTask.conclusion && (
-                    <Button
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => {
-                        setSelected(undefined);
-                        setConfirm(selectedTask);
-                      }}
-                    >
-                      Iniciar nova análise com IA
-                    </Button>
-                  )}
-              </div>
-              {!selectedTask && (
-                <p className="list-count">
-                  A análise usa a cota da IA. Os pedidos continuam com
-                  tratativas individuais.
-                </p>
-              )}
-            </>
-          )}
+          <p>
+            As investigações anteriores serão preservadas. Grupos já registrados
+            não serão recriados automaticamente.
+          </p>
+          <div className="new-plan-footer">
+            <Button variant="outline" onClick={() => setConfirmAnalysis(false)}>
+              Cancelar
+            </Button>
+            <Button disabled={locked} onClick={startAnalysis}>
+              Confirmar nova análise
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
       <Dialog
-        open={Boolean(confirm)}
+        open={Boolean(confirmTask)}
         onOpenChange={(open) => {
-          if (!open) setConfirm(undefined);
+          if (!open) setConfirmTask(undefined);
         }}
       >
         <DialogContent
           className="new-plan-dialog"
           onCloseAutoFocus={(event) => {
-            if (starting.current || busy) event.preventDefault();
+            if (starting.current) event.preventDefault();
           }}
         >
-          <DialogTitle>Iniciar outra investigação deste sinal?</DialogTitle>
+          <DialogTitle>Investigar este grupo novamente?</DialogTitle>
           <DialogDescription>
-            A investigação anterior já foi concluída. A nova chamada à IA usa a
-            cota disponível e cria outro registro para a equipe verificar. A
-            conclusão anterior será preservada.
+            A conclusão anterior será preservada. A nova análise consulta o
+            mesmo grupo, considera a conclusão e cria outra etapa para
+            verificação. Essa chamada usa a cota da IA.
           </DialogDescription>
-          <p>
-            {confirm?.conclusion?.outcome === "inconclusiva"
-              ? "A conclusão anterior foi inconclusiva. A nova investigação deve apoiar a continuidade da verificação."
-              : "Repita a investigação quando houver motivo ou novas verificações a realizar. A análise usa os dados disponíveis nesta sessão."}
-          </p>
           <div className="new-plan-footer">
-            <Button variant="outline" onClick={() => setConfirm(undefined)}>
+            <Button variant="outline" onClick={() => setConfirmTask(undefined)}>
               Cancelar
             </Button>
             <Button
-              disabled={busy}
+              disabled={locked}
               onClick={() => {
-                const previous = confirm;
+                const task = confirmTask;
+                setConfirmTask(undefined);
                 starting.current = true;
-                setConfirm(undefined);
-                if (previous?.insightId)
-                  void onInvestigate(previous.insightId, previous.id);
+                if (task?.insightId)
+                  void onInvestigate(task.insightId, task.id);
               }}
             >
-              Confirmar nova análise
+              Confirmar nova investigação
             </Button>
           </div>
         </DialogContent>

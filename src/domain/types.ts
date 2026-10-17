@@ -194,7 +194,7 @@ export type ToolEvent = {
 export type Investigation = {
   id: string;
   target: string;
-  type: "order" | "pattern" | "daily";
+  type: "order" | "pattern" | "daily" | "recurrences";
   status: "running" | "completed" | "failed";
   summary: string;
   events: ToolEvent[];
@@ -202,6 +202,11 @@ export type Investigation = {
   createdAt: string;
   updatedAt: string;
   planId?: string;
+  recurrenceReview?: {
+    reason: string;
+    selectedInsightIds: string[];
+    reusedTaskIds: string[];
+  };
 };
 export type Workstream = {
   area: string;

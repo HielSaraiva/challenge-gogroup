@@ -14,7 +14,7 @@ Projeto demonstrativo desenvolvido para um desafio técnico, com identidade visu
 | Pedidos      | Carteira completa ou seleção do plano, filtros, investigação individual e histórico do caso |
 | Pendências   | Tratativas iniciadas e investigações ainda abertas, com próximo passo e paginação           |
 | Resultados   | Dashboard da situação atual, problemas abertos, soluções registradas e valores informados   |
-| Recorrências | Sinais calculados pelo sistema e investigação de hipóteses pelo agente e pela equipe        |
+| Recorrências | Seleção de achados pelo agente, com hipótese, evidências calculadas e conclusão da equipe   |
 | Dados        | Origem da base, importação validada por sessão e reinício da demonstração                   |
 | Metodologia  | Fluxo de uso, critérios de priorização, conceitos financeiros e limites do piloto           |
 
@@ -113,17 +113,19 @@ Sem banco ou importação, a interface orienta a configuração e oferece a áre
 
 O modelo recebe ferramentas restritas conforme a etapa:
 
-| Ferramenta              | Resultado                                                                   |
-| ----------------------- | --------------------------------------------------------------------------- |
-| `consultar_pedido`      | Fatos, indicadores calculados, ações admitidas e IDs válidos de evidência   |
-| `consultar_padroes`     | Concentração observada e amostra de pedidos relacionados                    |
-| `simular_tratativa`     | Custo indicativo de uma alternativa, sem execução financeira                |
-| `criar_tarefa`          | Tarefa persistida com justificativa, evidências, responsável e prazo        |
-| `consultar_diagnostico` | Diagnóstico da carteira e métricas das alternativas de estratégia           |
-| `comparar_estrategias`  | Escolha justificada e consulta das frentes da estratégia aplicada           |
-| `consultar_fila`        | Seleção calculada, capacidade, comparação com FIFO e frentes de trabalho    |
-| `registrar_plano_dia`   | Plano persistido com orientação para cada área da seleção calculada         |
-| `criar_acao_processo`   | Investigação de recorrência vinculada a um sinal e a evidências consultadas |
+| Ferramenta                       | Resultado                                                                                |
+| -------------------------------- | ---------------------------------------------------------------------------------------- |
+| `consultar_pedido`               | Fatos, indicadores calculados, ações admitidas e IDs válidos de evidência                |
+| `consultar_padroes`              | Concentração observada e amostra de pedidos relacionados                                 |
+| `simular_tratativa`              | Custo indicativo de uma alternativa, sem execução financeira                             |
+| `criar_tarefa`                   | Tarefa persistida com justificativa, evidências, responsável e prazo                     |
+| `consultar_diagnostico`          | Diagnóstico da carteira e métricas das alternativas de estratégia                        |
+| `comparar_estrategias`           | Escolha justificada e consulta das frentes da estratégia aplicada                        |
+| `consultar_fila`                 | Seleção calculada, capacidade, comparação com FIFO e frentes de trabalho                 |
+| `registrar_plano_dia`            | Plano persistido com orientação para cada área da seleção calculada                      |
+| `criar_acao_processo`            | Investigação de recorrência vinculada a um sinal e a evidências consultadas              |
+| `consultar_recorrencias`         | Agrupamentos calculados, amostras e investigações anteriores para comparação pelo agente |
+| `registrar_analise_recorrencias` | Seleção justificada de até três investigações ou registro de ausência de novos achados   |
 
 Consultar o pedido é obrigatório antes de criar uma tarefa. Propostas financeiras exigem simulação prévia e avaliação humana. Após aprovar, o operador precisa registrar a execução; aprovação sozinha não permite encerrar a exceção. Um conflito de status bloqueia outras tratativas até uma revisão explícita. A justificativa é identificada como hipótese do agente; fatos e números verificados aparecem separadamente.
 
@@ -137,7 +139,8 @@ As execuções têm orçamento de tempo, limite de chamadas e controle de concor
 
 - A base importada permanece imutável. Revisões, encerramentos e reaberturas são sobreposições exclusivas da sessão.
 - Pendências mostra apenas trabalho em aberto, com uma entrada por pedido e investigações de processo ainda não concluídas. A lista é paginada e não mistura históricos de análises ou planos. Resultados mostra a situação atual da base, problemas abertos, tipos de solução e valores registrados, sem lista individual de encerramentos. Os detalhes ficam em Pedidos; custo desconhecido continua distinto de zero.
-- Recorrências pagina os sinais. Os cards padronizados abrem detalhes com o sinal observado, grupo, quantidade e pedidos de referência. Essas informações vêm das regras do sistema, sem IA. Solicitar análise cria a hipótese e a verificação recomendada do agente; a equipe registra a conclusão após conferir as evidências. A interface distingue abrir uma investigação já registrada de iniciar outra análise. Reabrir o registro existente não usa a IA. Uma nova análise de um sinal já concluído exige confirmação, preserva a conclusão anterior e cria uma nova etapa vinculada à anterior; tentativas repetidas não duplicam uma investigação aberta. Uma investigação de processo pode consultar pedidos já encerrados sem reabri-los ou alterar seus resultados.
+- Recorrências começa com “Analisar recorrências com IA”. O agente consulta até 16 agrupamentos calculados com amostras de até três pedidos e registros anteriores, compara as evidências e propõe até três investigações por análise. Título, hipótese, justificativa da seleção e verificação recomendada são produzidos pelo agente; números e referências são validados pelo servidor. Uma seleção vazia é aceita com justificativa, sem cards artificiais. Os cards são tarefas persistidas, com paginação, e só surgem após o registro do agente. Investigações antigas permanecem acessíveis.
+- Uma nova análise geral exige confirmação e preserva o trabalho anterior: sinais já registrados ou conjuntos praticamente idênticos são reutilizados, sem sobrescrever conclusões. Para investigar novamente um grupo já concluído, há uma ação explícita que cria uma etapa vinculada à anterior. Abrir um registro não usa a IA. Uma investigação de processo pode consultar pedidos encerrados sem reabri-los ou alterar seus resultados.
 - Propostas de reenvio e reembolso exigem aprovação humana. A decisão não executa ações externas; a rejeição exige motivo e mantém o pedido em acompanhamento. Uma nova proposta após rejeição recebe uma identidade própria, mantendo a idempotência das repetições. Reenvio despachado aguarda recebimento; o comprovante do despacho não serve como evidência de recebimento. A validação de status conclui automaticamente a tarefa de revisão correspondente, sem encerrar a exceção original.
 - Reabrir inicia uma nova etapa de atendimento: o pedido fica em Pendências aguardando investigação, os eventos de encerramento e reabertura permanecem no histórico do caso, os encaminhamentos da etapa anterior não entram na etapa atual e o novo encerramento exige tarefa e execução posteriores à reabertura. Repetir a criação da mesma tarefa dentro da etapa preserva a idempotência. Os indicadores operacionais consideram a situação atual do pedido. Custos declarados e reembolsos são acumulados pelas etapas registradas, inclusive após reabertura, sem contar novamente a projeção do encerramento atual. Em uma nova etapa, informe somente novos valores; o total de reembolsos não pode ultrapassar o valor do pedido. Estimativas dos encerramentos atuais ficam separadas de despesas declaradas.
 - Um cookie aleatório `HttpOnly`, `SameSite=Lax` e seguro em produção identifica o visitante. O servidor armazena seu hash.

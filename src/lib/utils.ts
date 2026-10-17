@@ -73,6 +73,8 @@ const generatedLabels: Record<string, string> = {
   proposta_reenvio: "Proposta de reenvio",
   proposta_reembolso: "Proposta de reembolso",
   melhoria_processo: "Investigação de recorrência",
+  consultar_recorrencias: "Comparação de recorrências",
+  registrar_analise_recorrencias: "Seleção de investigações",
   consultar_diagnostico: "Diagnóstico da carteira",
   comparar_estrategias: "Comparação de estratégias",
   registrar_plano_dia: "Registro do plano do dia",

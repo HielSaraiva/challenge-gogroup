@@ -189,6 +189,7 @@ export function OperationsApp() {
     if (busy) return;
     setBusy(true);
     if (type === "pattern") setActivePatternId(target);
+    if (type === "recurrences") setActivePatternId(undefined);
     setEvents([]);
     setNotice("");
     let completed = false;
@@ -261,6 +262,10 @@ export function OperationsApp() {
       }
       await refresh();
       if (processToOpen && type === "pattern") setProcessId(processToOpen);
+      if (completed && type === "recurrences")
+        setNotice(
+          "Análise concluída. Confira a seleção do agente e as investigações abaixo.",
+        );
       if (completed && type === "pattern")
         setNotice(
           "Investigação registrada. Confira a hipótese e documente a verificação pela equipe.",
@@ -911,11 +916,16 @@ export function OperationsApp() {
                   tasks={tasks}
                   runs={runs}
                   busy={busy}
-                  activePatternId={activePatternId}
+                  analyzing={
+                    busy &&
+                    (activeRun?.type === "recurrences" ||
+                      activeRun?.type === "pattern")
+                  }
+                  onAnalyze={() => investigate("base", "recurrences")}
                   activity={
-                    activePatternId
+                    activeRun?.type === "pattern" && activePatternId
                       ? activity("pattern", activePatternId)
-                      : null
+                      : activity("recurrences")
                   }
                   onInvestigate={(id, previousId) =>
                     investigate(id, "pattern", previousId)

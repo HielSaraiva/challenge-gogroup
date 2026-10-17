@@ -4,6 +4,14 @@ import { Expandable } from "./ui/expandable";
 import type { Investigation, ToolEvent } from "@/domain/types";
 
 const toolDescriptions: Record<string, [string, string]> = {
+  consultar_recorrencias: [
+    "Comparação de recorrências",
+    "Comparou os agrupamentos, as amostras e as investigações anteriores.",
+  ],
+  registrar_analise_recorrencias: [
+    "Seleção de investigações",
+    "Registrou a seleção justificada do agente e preservou as investigações existentes.",
+  ],
   agente: ["Coordenação da análise", "Acompanhamento da execução do agente."],
   consultar_diagnostico: [
     "Diagnóstico da carteira",
@@ -40,6 +48,10 @@ const toolDescriptions: Record<string, [string, string]> = {
 };
 
 const stageResults: Record<string, string> = {
+  consultar_recorrencias:
+    "Agrupamentos e registros anteriores consultados para comparação.",
+  registrar_analise_recorrencias:
+    "Seleção registrada. Consulte os achados em Recorrências, inclusive quando não houver novas propostas.",
   consultar_diagnostico:
     "Carteira conferida. As alternativas de priorização estão prontas para comparação.",
   comparar_estrategias:

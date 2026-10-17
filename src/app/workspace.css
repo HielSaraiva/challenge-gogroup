@@ -1389,8 +1389,12 @@ main > .panel {
   font-weight: 600;
   color: #285caf;
 }
+.improvements-workspace {
+  display: grid;
+  gap: 20px;
+}
 .improvements-workspace > .insight-grid {
-  margin-top: 20px;
+  margin-top: 0;
   align-items: stretch;
 }
 .signal-card {
