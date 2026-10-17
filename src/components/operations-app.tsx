@@ -83,6 +83,8 @@ export function OperationsApp() {
   const [tab, setActive] = useState<Tab>("overview");
   const [menu, setMenu] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
+  const dailyActivity = useRef<HTMLDivElement>(null);
+  const scrollToDailyActivity = useRef(false);
   const [summary, setSummary] = useState<ReturnType<typeof dashboard>>();
   const [day, setDay] = useState<ReturnType<typeof planQueue>>();
   const [financial, setFinancial] =
@@ -97,6 +99,23 @@ export function OperationsApp() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [activeRun, setActiveRun] = useState<Investigation>();
+  useEffect(() => {
+    if (!scrollToDailyActivity.current || activeRun?.type !== "daily" || !busy)
+      return;
+    const frame = requestAnimationFrame(() => {
+      const target = dailyActivity.current;
+      if (!target) return;
+      scrollToDailyActivity.current = false;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({
+        block: "start",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeRun?.id, activeRun?.type, busy]);
   const [events, setEvents] = useState<ToolEvent[]>([]);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -548,7 +567,13 @@ export function OperationsApp() {
                       externas e documenta o resultado.
                     </p>
                   </section>
-                  {activity("daily")}
+                  <div
+                    ref={dailyActivity}
+                    className="daily-activity"
+                    tabIndex={-1}
+                  >
+                    {activity("daily")}
+                  </div>
                   {ready && day.plan && (
                     <OperationsSummary
                       plan={day.plan}
@@ -1088,7 +1113,12 @@ export function OperationsApp() {
         </DialogContent>
       </Dialog>
       <Dialog open={confirmNewPlan} onOpenChange={setConfirmNewPlan}>
-        <DialogContent className="new-plan-dialog">
+        <DialogContent
+          className="new-plan-dialog"
+          onCloseAutoFocus={(event) => {
+            if (scrollToDailyActivity.current || busy) event.preventDefault();
+          }}
+        >
           <span className="new-plan-icon" aria-hidden="true">
             <Bot size={24} />
           </span>
@@ -1156,6 +1186,7 @@ export function OperationsApp() {
               }
               onClick={() => {
                 setConfirmNewPlan(false);
+                scrollToDailyActivity.current = true;
                 void investigate("day", "daily");
               }}
             >

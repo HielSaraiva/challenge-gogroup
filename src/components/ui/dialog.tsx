@@ -8,9 +8,11 @@ export const DialogDescription = DialogPrimitive.Description;
 export function DialogContent({
   children,
   className = "",
+  onCloseAutoFocus,
 }: {
   children: React.ReactNode;
   className?: string;
+  onCloseAutoFocus?: (event: Event) => void;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   return (
@@ -19,6 +21,7 @@ export function DialogContent({
       <DialogPrimitive.Content
         ref={contentRef}
         className={`dialog-content ${className}`}
+        onCloseAutoFocus={onCloseAutoFocus}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           const content = contentRef.current;

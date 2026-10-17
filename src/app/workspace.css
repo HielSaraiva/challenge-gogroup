@@ -382,6 +382,12 @@ main > .panel {
 .page-heading h1:focus {
   outline: none;
 }
+.daily-activity {
+  scroll-margin-top: 96px;
+}
+.daily-activity:focus {
+  outline: none;
+}
 .sidebar {
   min-height: 72px;
   padding: 12px 28px;
