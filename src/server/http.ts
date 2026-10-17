@@ -2,12 +2,7 @@ import { cookies } from "next/headers";
 import { createHash, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import {
-  AppError,
-  createSession,
-  getSession,
-  saveSessionDataset,
-} from "./store";
+import { AppError, createSession, getSession } from "./store";
 const cookieName = "operations_demo";
 export const hashToken = (token: string) =>
   createHash("sha256").update(token).digest("hex");
@@ -32,12 +27,8 @@ export async function session() {
   return { id, state };
 }
 export async function resetSession() {
-  const previous = await session();
   (await cookies()).delete(cookieName);
-  const next = await session();
-  if (previous.state.importedDataset)
-    await saveSessionDataset(next.id, previous.state.importedDataset);
-  return next;
+  return session();
 }
 export function verifyOrigin(request: Request) {
   const origin = request.headers.get("origin");

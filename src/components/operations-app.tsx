@@ -311,7 +311,7 @@ export function OperationsApp() {
       setProcessId(undefined);
       setActivePatternId(undefined);
       await load();
-      setNotice("Tratativas reiniciadas. A base escolhida foi preservada.");
+      setNotice("Demonstração reiniciada com a base padrão de 30/09/2026.");
     } catch (e) {
       setError((e as Error).message);
     }
@@ -490,9 +490,9 @@ export function OperationsApp() {
               <section className="panel prose reset-panel">
                 <h2>Reiniciar a demonstração</h2>
                 <p>
-                  Inicie outra avaliação com a mesma base. Planos, tarefas,
-                  investigações e resultados deixarão de aparecer na nova
-                  sessão.
+                  Volte à base padrão de 30/09/2026. A importação desta sessão,
+                  os planos, as tarefas, as investigações e os resultados não
+                  serão mantidos na nova demonstração.
                 </p>
                 <Button
                   variant="outline"
@@ -1425,8 +1425,9 @@ export function OperationsApp() {
           <DialogTitle>Reiniciar esta demonstração?</DialogTitle>
           <DialogDescription>
             A nova sessão não terá planos, tarefas, investigações ou resultados.
-            A base escolhida será preservada. Os registros anteriores não são
-            copiados para a nova avaliação.
+            A base padrão de 30/09/2026 será restaurada. A base importada nesta
+            sessão e os registros anteriores não serão copiados para a nova
+            avaliação.
           </DialogDescription>
           <div className="task-actions">
             <Button variant="outline" onClick={() => setResetting(false)}>

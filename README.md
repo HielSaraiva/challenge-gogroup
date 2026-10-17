@@ -83,7 +83,7 @@ pnpm import:data "/caminho/privado/operacoes"
 pnpm dev
 ```
 
-Acesse [localhost:3000](http://localhost:3000). Também é possível abrir **Dados**, selecionar os três CSVs, validar a prévia e confirmar a importação. Essa carga é exclusiva da sessão; não substitui a base administrativa nem afeta outros visitantes. Use somente dados sintéticos na demonstração pública. O limite é 2 MB no total, até 10 mil pedidos, 10 mil clientes e 2 mil contratos. Pedidos e eventos posteriores à referência fixa de 30/09/2026 são bloqueados. Não é aceita troca de base com tratativas ativas: reinicie a demonstração antes. Reiniciar preserva a base escolhida.
+Acesse [localhost:3000](http://localhost:3000). Também é possível abrir **Dados**, selecionar os três CSVs, validar a prévia e confirmar a importação. Essa carga é exclusiva da sessão; não substitui a base administrativa nem afeta outros visitantes. Use somente dados sintéticos na demonstração pública. O limite é 2 MB no total, até 10 mil pedidos, 10 mil clientes e 2 mil contratos. Pedidos e eventos posteriores à referência fixa de 30/09/2026 são bloqueados. Não é aceita troca de base com tratativas ativas: reinicie a demonstração antes. Reiniciar restaura a base padrão de 30/09/2026 e começa uma sessão sem importações ou tratativas.
 
 O importador valida campos, contratos, relacionamentos e conflitos antes de salvar. O comando administrativo continua disponível para preparar a base inicial do servidor. Arquivos e base importada ficam fora do Git.
 
