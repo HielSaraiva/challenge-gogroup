@@ -216,7 +216,7 @@ export function ResolutionFields({
       </label>
       {value.cost.trim() && (
         <label>
-          Origem do custo
+          Como o custo foi apurado?
           <select
             value={value.costKind}
             onChange={(event) =>
@@ -226,7 +226,9 @@ export function ResolutionFields({
             }
           >
             <option value="estimated">Estimativa, ainda não confirmada</option>
-            <option value="declared">Informado pelo operador</option>
+            <option value="declared">
+              Custo realizado, informado pela equipe
+            </option>
           </select>
         </label>
       )}

@@ -286,13 +286,17 @@ export function TaskResult({
                               {statusLabel(o.status)}
                             </p>
                             <p>
-                              Exceção aberta em {o.openedAt}; promessa{" "}
-                              {o.promisedAt}; entrega{" "}
-                              {o.deliveredAt || "não registrada"}.
+                              Exceção aberta em {shortDate(o.openedAt)};
+                              promessa {shortDate(o.promisedAt)}; entrega{" "}
+                              {o.deliveredAt
+                                ? shortDate(o.deliveredAt)
+                                : "não registrada"}
+                              .
                             </p>
                             <p>
-                              CD {o.dc}, turno {o.shift}, máquina{" "}
-                              {o.machine || "não informada"}, lote {o.lot}.
+                              Centro de distribuição: {o.dc}; turno {o.shift};
+                              máquina {o.machine || "não informada"}, lote{" "}
+                              {o.lot}.
                             </p>
                           </Expandable>
                         )}
@@ -499,7 +503,7 @@ export function TaskResult({
             {task.conclusion && (
               <>
                 <div>
-                  <dt>Resultado da hipótese</dt>
+                  <dt>Conclusão registrada pela equipe</dt>
                   <dd>
                     {
                       {

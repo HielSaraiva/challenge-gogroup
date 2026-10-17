@@ -9,6 +9,7 @@ const sections = [
   ["method-agent", "Papel da IA"],
   ["method-priority", "Priorização"],
   ["method-outcomes", "Execução e resultados"],
+  ["method-recurrences", "Recorrências"],
   ["method-data", "Dados e tecnologia"],
   ["method-pilot", "Limites e validação"],
 ] as const;
@@ -99,119 +100,138 @@ export function Methodology({
       <div className="method-content">
         <section className="panel prose" id="method-flow">
           <h2>Do diagnóstico ao resultado</h2>
+          <p>
+            A central apoia a operação da Gocase e da GoBeauté em duas frentes:
+            tratar pedidos com problemas e investigar ocorrências que se
+            repetem. O objetivo é usar a capacidade da equipe com critério e
+            acompanhar soluções comprovadas, sem confundir estimativas com
+            dinheiro recuperado.
+          </p>
           <ol className="workflow-steps">
             <li>
-              <b>Dados:</b> importe os três CSVs da mesma extração e confira a
-              prévia.
+              <b>Dados:</b> confira a base disponível. Para usar outra base,
+              valide e importe os três CSVs da mesma extração.
             </li>
             <li>
-              <b>Hoje:</b> peça para a IA preparar o dia. O agente consulta a
-              carteira, compara estratégias e registra um plano com orientações.
+              <b>Hoje:</b> escolha o foco e prepare um plano com IA para a
+              capacidade disponível. Esta etapa é opcional: você pode investigar
+              um pedido diretamente em Pedidos.
             </li>
             <li>
-              <b>Pedidos:</b> siga a sugestão, confira os fatos e investigue o
-              pedido com IA. A investigação cria uma tarefa persistida.
+              <b>Pedidos:</b> consulte toda a carteira ou a seleção do plano.
+              Abra uma linha, confira os fatos e investigue com IA para obter um
+              encaminhamento. Se houver conflito de status, valide a fonte antes
+              de continuar.
             </li>
             <li>
-              <b>Execução:</b> revise propostas, aprove quando necessário e
-              registre a ação e a evidência uma vez. Se a pendência foi
-              resolvida, confirme o resultado no mesmo formulário; caso
-              contrário, mantenha o pedido aberto para acompanhamento.
+              <b>Pendências:</b> acompanhe tratativas iniciadas, propostas,
+              reenvios aguardando recebimento e pedidos aguardando resultado.
+              Investigações de recorrência abertas também aparecem aqui.
             </li>
             <li>
-              <b>Resultados:</b> acompanhe casos resolvidos, pendências,
-              reembolsos e custos registrados.
+              <b>Resultados:</b> veja o resumo de pedidos abertos, resolvidos e
+              reabertos, os tipos de solução e os valores registrados. Para
+              consultar um pedido específico, use Pedidos.
             </li>
             <li>
-              <b>Recorrências:</b> investigue recorrências separadamente. Uma
-              conclusão sobre o processo não encerra os pedidos relacionados.
+              <b>Recorrências:</b> abra um sinal de problema repetido, solicite
+              a análise com IA e registre a conclusão da equipe. Essa
+              investigação não encerra os pedidos relacionados.
             </li>
           </ol>
           <p>
-            Este piloto usa dados sintéticos e não executa ações externas. A
-            equipe confirma o que realizou; o agente não inventa comprovantes.
+            Esta demonstração usa dados sintéticos. A IA registra planos e
+            encaminhamentos; a equipe executa as ações fora da aplicação e
+            documenta as evidências. Não há envio de produtos, mensagens ou
+            pagamentos por esta ferramenta.
           </p>
         </section>
-
         <section className="panel prose" id="method-agent">
-          <h2>Por que o agente é parte do trabalho?</h2>
+          <h2>O que a IA faz e o que cabe à equipe?</h2>
           <p>
-            Você escolhe o foco do plano: equilíbrio, urgência ou
-            relacionamento. A IA compara as alternativas calculadas, aplica a
-            estratégia escolhida e explica seus efeitos. Depois consulta
-            amostras da seleção e registra por onde começar em cada área, com
-            motivo e próximo passo. O servidor calcula números e verifica os
-            vínculos, inclusive se a estratégia aplicada corresponde à escolha
-            do usuário.
+            O sistema calcula prioridades, prazos, custos indicativos e sinais
+            de recorrência. O agente consulta esses dados e registra um
+            encaminhamento com hipótese, área responsável e próximo passo. A
+            equipe confere os fatos, aprova propostas quando necessário e
+            confirma o resultado real.
           </p>
           <Expandable open>
-            <summary>O que cada execução produz?</summary>
+            <summary>O que cada análise entrega?</summary>
             <ul>
               <li>
-                <b>Plano diário:</b> estratégia, justificativa, pedidos
-                selecionados, comparação com FIFO e orientações para todas as
-                áreas. O agente consulta amostras; não investigou
-                individualmente todos os pedidos.
+                <b>Plano do dia:</b> aplica o foco escolhido por você, compara
+                estratégias e registra a seleção de pedidos e orientações por
+                área. O agente consulta amostras; o plano não cria tarefas para
+                todos os pedidos selecionados.
               </li>
               <li>
-                <b>Pedido:</b> encaminhamento interno com evidências,
-                responsável por área e prazo. A proposta de reenvio ou reembolso
-                exige simulação do custo antes de ser registrada.
+                <b>Pedido:</b> consulta o caso e cria uma tarefa compatível com
+                o problema. Propostas de reenvio e reembolso exigem simulação de
+                valor e aprovação humana antes da execução.
               </li>
               <li>
-                <b>Recorrência:</b> hipótese, evidências de pedidos relacionados
-                e verificação de campo. A equipe registra se a hipótese foi
-                confirmada, descartada ou permanece inconclusiva.
+                <b>Recorrência:</b> consulta uma amostra do grupo e registra uma
+                hipótese com verificação recomendada. A conclusão só vem depois
+                das verificações documentadas pela equipe.
               </li>
             </ul>
           </Expandable>
           <Expandable>
-            <summary>
-              Por que as ferramentas e os registros são necessários?
-            </summary>
+            <summary>Repetir uma análise usa a IA novamente?</summary>
             <p>
-              Um texto dizendo “plano pronto” não conclui uma execução. É
-              obrigatório consultar o diagnóstico e comparar estratégias antes
-              de registrar o plano. Consultar o pedido é obrigatório antes de
-              criar tarefa. O servidor rejeita IDs, áreas e evidências
-              inválidos.
+              Abrir pedidos, sinais ou investigações já registradas não usa a
+              IA. Investigar um pedido novamente ou preparar outro plano faz uma
+              nova chamada e exige confirmação quando já existe análise ou
+              plano.
             </p>
             <p>
-              Groq é o provedor de inferência, com credencial apenas no
-              servidor. Evidências selecionadas são enviadas a ele na
-              investigação. Não exibimos raciocínio interno: mostramos fatos
-              consultados, decisões registradas e efeitos persistidos.
-            </p>
-            <p>
-              Há limites de seis rodadas, doze ferramentas e duas tarefas por
-              investigação, além de tempo, uso diário e controle de
-              concorrência. Idempotência evita duplicação. Falha ou erro 429
-              preserva os efeitos registrados, mostra o problema e não gera uma
-              resposta simulada de sucesso.
+              Em Recorrências, abrir a investigação existente não gera outra.
+              Após registrar a conclusão, você pode solicitar uma nova análise
+              com confirmação. A conclusão anterior é preservada e pode ser
+              consultada a partir da nova investigação.
             </p>
           </Expandable>
           <Expandable>
-            <summary>Como ler a atividade do agente?</summary>
+            <summary>Como acompanhar a atividade do agente?</summary>
             <p>
-              As tentativas entram na pilha ao terminar, com sucesso ou erro e a
-              mais recente no topo e o horário da conclusão. Um indicador
-              separado acompanha o trabalho em andamento. Preparar os
-              encaminhamentos e salvar o plano aparecem como um único registro,
-              pois são concluídos pela mesma ferramenta. As chamadas de
-              ferramentas ficam em detalhes técnicos, agrupadas por
-              identificador de chamada; registros antigos sem esse identificador
-              são marcados como legados.
+              A atividade mostra as etapas em andamento e as tentativas
+              finalizadas, da mais recente para a mais antiga. “Análise
+              concluída” significa que o agente registrou seu encaminhamento;
+              não que o pedido foi resolvido ou que a causa foi comprovada.
+            </p>
+            <p>
+              As tarefas ficam no pedido e as investigações de recorrência ficam
+              em Recorrências e, enquanto abertas, em Pendências. “Histórico
+              deste caso” reúne validações de status, encerramentos e
+              reaberturas; não é a lista de chamadas da IA.
+            </p>
+          </Expandable>
+          <Expandable>
+            <summary>Validação, falhas e limites de uso</summary>
+            <p>
+              Um texto de sucesso não basta: o servidor exige consultas e um
+              plano ou tarefa salvo, além de validar áreas, referências e
+              compatibilidade com o pedido. Repetir a mesma ação não deve criar
+              tarefas duplicadas.
+            </p>
+            <p>
+              Há limites de tempo, chamadas e uso diário. Uma falha preserva o
+              que já foi registrado e não produz sucesso simulado. Confira os
+              registros antes de tentar novamente. O Groq processa as evidências
+              selecionadas; a credencial fica apenas no servidor. Os detalhes
+              técnicos mostram chamadas e resultados, não raciocínio interno do
+              modelo.
             </p>
           </Expandable>
         </section>
         <section className="panel prose" id="method-priority">
-          <h2>Por que estes pedidos foram selecionados?</h2>
+          <h2>Como os pedidos são priorizados?</h2>
           <p>
-            Capacidade fornecida: 150 tratativas por dia para toda a equipe, com
-            12 minutos em média por tratativa. Antes de cada geração, o usuário
-            escolhe entre três estratégias iniciais. Os pesos são heurísticas
-            deste projeto; não são política oficial nem uma previsão de
-            recuperação financeira.
+            A capacidade de referência é de 150 tratativas por dia para toda a
+            equipe, com média de 12 minutos por tratativa. Antes de preparar o
+            plano, você escolhe o foco. Os pesos abaixo são escolhas deste
+            piloto, não uma política oficial ou previsão de recuperação
+            financeira.
           </p>
           <table>
             <thead>
@@ -234,17 +254,17 @@ export function Methodology({
             </tbody>
           </table>
           <p>
-            Pesos do plano ativo: {weights.value}/{weights.urgency}/
-            {weights.relationship}. O operador recebe motivos concretos para
-            agir; não precisa interpretar porcentagens normalizadas para usar a
-            ferramenta.
+            Pesos usados como referência nesta tela: valor {weights.value}%,
+            urgência {weights.urgency}% e relacionamento {weights.relationship}
+            %. Com um plano disponível, são os pesos dele; sem plano, são os
+            padrões.
           </p>
           <Expandable>
-            <summary>Fórmulas e escolha da normalização</summary>
+            <summary>Como a pontuação é calculada?</summary>
             <p>
-              Pontuação = 100 × soma de cada componente normalizado multiplicado
-              por seu peso ÷ soma dos pesos. Empates seguem abertura mais antiga
-              e depois identificador. Cada componente fica limitado a 1.
+              Pontuação = 100 × soma dos componentes normalizados multiplicados
+              por seus pesos ÷ soma dos pesos. Cada componente é limitado a 1.
+              Empates seguem abertura mais antiga e depois código do pedido.
             </p>
             <ul>
               <li>
@@ -253,282 +273,323 @@ export function Methodology({
               </li>
               <li>
                 <b>Urgência:</b> maior número entre dias úteis de atraso e idade
-                da exceção, dividido pelo percentil 95 dessa medida na base. O
-                percentil substitui o teto antigo de dez dias, que saturava
-                muitos pedidos e escondia diferenças de espera.
+                da exceção, dividido pelo percentil 95 dessa medida na base.
               </li>
               <li>
-                <b>Relacionamento:</b> ticket médio histórico × probabilidade de
-                recompra × 50% de redução por exceção mal resolvida, dividido
-                pelo percentil 95 dessa medida. Usa 70% de recompra para receita
-                acumulada acima de R$ 1.500 e 28% nos demais casos.
+                <b>Relacionamento:</b> valor médio das compras do cliente ×
+                probabilidade de recompra × redução de 50% por exceção mal
+                resolvida, normalizado pelo percentil 95. Usa 70% de recompra
+                para receita acumulada acima de R$ 1.500 e 28% nos demais casos.
               </li>
             </ul>
             <p>
-              É uma aproximação por pedido. Não somamos o componente de
-              relacionamento para alegar perda futura da carteira, pois um
-              cliente pode ter várias exceções.
+              O componente de relacionamento é uma aproximação por pedido. Não
+              representa receita futura comprovada nem deve ser somado como
+              perda de toda a carteira.
             </p>
           </Expandable>
           <Expandable>
-            <summary>
-              Reserva para antigos, capacidade e comparação com FIFO
-            </summary>
+            <summary>Capacidade, pedidos antigos e ordem de chegada</summary>
             <p>
               Reservamos 20% das vagas restantes aos casos mais antigos,
-              arredondando para cima. Isso reduz adiamento contínuo de pedidos
-              de menor valor. As demais vagas seguem a pontuação da estratégia
-              escolhida. A proporção é uma escolha do piloto e precisa ser
-              validada com a equipe.
+              arredondando para cima. As demais vagas seguem a pontuação. Isso
+              reduz o adiamento de pedidos de menor valor.
             </p>
             <p>
-              Na demonstração, um encerramento consome uma vaga; reabrir não
-              devolve esforço. Este contador não mede contatos, investigações ou
-              tempo real. Ações de melhoria precisam de esforço dimensionado à
-              parte. Produção exige capacidade por especialidade e registro de
-              esforço.
+              Na demonstração, cada encerramento consome uma vaga. Reabrir não
+              devolve a vaga, pois houve trabalho realizado. O contador não mede
+              contatos, investigações ou tempo real; investigações de
+              recorrência precisam de dimensionamento separado.
             </p>
             <p>
-              O plano e a comparação com FIFO são fotografias salvas da mesma
-              base, na mesma capacidade. Encerrar um caso atualiza o progresso,
-              sem colocar outro pedido silenciosamente. Para outra seleção,
-              prepare novo plano. Mudança da base, revisão de status ou política
-              antiga exige revisão; o histórico é preservado.
+              O plano é comparado com FIFO, isto é, atender pela ordem de
+              abertura, usando a mesma base e capacidade. Encerrar um caso
+              atualiza o progresso sem repor pedidos automaticamente. Outra
+              seleção exige um novo plano. Revisões de status ou mudanças na
+              base podem exigir sua atualização.
             </p>
             <p>
-              Maior valor coberto não demonstra recuperação, produtividade nem
-              efeito causal. O agente compara valor, exposição e espera, sem
-              prometer que uma única métrica represente sucesso.
+              Sem plano, Pedidos mostra a carteira por abertura mais antiga, com
+              desempate pelo código. Com plano, a seleção segue a prioridade
+              calculada. Os filtros preservam a ordem da lista consultada.
             </p>
           </Expandable>
           <Expandable>
-            <summary>Calendário e promessa ao cliente</summary>
+            <summary>Prazos e data de referência</summary>
             <p>
-              A referência é fixa: 30/09/2026. Sábados, domingos e os feriados
-              nacionais de 07/09 e 12/10 não contam como dias úteis. O primeiro
-              dia útil após o pedido é o dia de separação; depois contam-se os
-              dias do SLA da transportadora por UF.
+              Os cálculos usam 30/09/2026, não a data de hoje. Sábados, domingos
+              e os feriados nacionais de 07/09 e 12/10 não contam como dias
+              úteis. O primeiro dia útil após o pedido é o de separação; depois
+              contam-se os dias contratados com a transportadora por UF.
             </p>
             <p>
-              A promessa original é preservada para calcular o atraso perante o
-              cliente. O contrato calculado aparece ao lado para verificar
-              divergências. Para entregues, o atraso termina na entrega. Uma
-              entrega não encerra automaticamente exceções como item faltante ou
-              avaria.
+              A promessa original mede o atraso percebido pelo cliente. O prazo
+              calculado pelo contrato aparece ao lado para conferir
+              divergências. Para pedidos entregues, o atraso termina na entrega,
+              mas a exceção pode continuar aberta, como no caso de item
+              faltante.
             </p>
           </Expandable>
         </section>
         <section className="panel prose" id="method-outcomes">
-          <h2>Por que aprovação, execução e resultado são separados?</h2>
+          <h2>Da execução ao encerramento</h2>
           <p>
-            Aprovar um reenvio autoriza a ação; não comprova que o item foi
-            enviado. A equipe precisa registrar a execução e sua evidência.
-            Depois, o encerramento exige resultado compatível com a exceção e
-            ausência de tarefas pendentes. Revisar um status, sozinho, não
-            resolve a pendência original.
-          </p>
-          <p>
-            Execução e encerramento podem ser confirmados juntos, mas continuam
-            sendo registros distintos. O operador escolhe se a ação resolveu a
-            exceção e pode confirmar que a mesma evidência comprova o resultado.
-            Nesse caso, a referência da tarefa fica vinculada ao encerramento.
-            Se faltou confirmação, o pedido permanece em Pendências como
-            “Aguardando resultado do pedido”. Uma execução já salva não precisa
-            ser descrita de novo: informe apenas o resultado e, se necessário,
-            uma evidência complementar. No salvamento conjunto, o servidor grava
-            a execução e o encerramento de forma atômica.
-          </p>
-          <p>
-            Para reenvio, registre primeiro o despacho e aguarde a confirmação
-            de recebimento. O comprovante de despacho não pode ser reutilizado
-            como prova de recebimento. Uma proposta rejeitada mantém o pedido em
-            acompanhamento, com motivo registrado e possibilidade de outra
-            investigação. A validação de status conclui a tarefa de revisão
-            correspondente, mas exige uma tratativa real para encerrar a
-            exceção.
+            Aprovar uma proposta autoriza a ação; não envia um produto nem
+            movimenta dinheiro. Para encerrar um pedido, é preciso uma tarefa
+            executada e documentada, um resultado compatível com o problema e
+            nenhuma tarefa pendente na etapa atual. Validar o status, sozinho,
+            não resolve a exceção.
           </p>
           <Expandable open>
-            <summary>Quando há resultado sem dinheiro?</summary>
+            <summary>Como registrar sem repetir informações?</summary>
             <p>
-              Exemplo sintético: um pedido está bloqueado por endereço
-              divergente. O operador confirma o endereço, registra a referência
-              e encerra essa exceção como “endereço corrigido”. Não houve
-              reembolso, e o efeito financeiro pode não ter sido mensurado. Isso
-              é um resultado operacional útil.
+              Informe a ação e sua evidência na execução. Se o problema já foi
+              resolvido, confirme o resultado no mesmo formulário. Você pode
+              reutilizar a evidência quando ela também comprovar a solução.
             </p>
             <p>
-              Em reembolso, são obrigatórios valor positivo, limitado ao pedido,
-              e evidência. Custos podem ser estimados ou informados pelo
-              operador. Valor desconhecido permanece “não informado”; não é
-              convertido em zero.
+              Se ainda faltar confirmação, salve apenas a execução. O pedido
+              continua aberto em Pendências. Depois, registre o resultado sem
+              descrever a ação novamente e acrescente apenas a evidência que
+              faltar.
             </p>
           </Expandable>
           <Expandable>
-            <summary>Significado de cada valor</summary>
+            <summary>Reenvio, rejeição e revisão de status</summary>
+            <p>
+              Após aprovar o reenvio, registre o despacho. O pedido fica aberto
+              até a confirmação de recebimento e de resolução do problema. A
+              prova do despacho não serve como confirmação de recebimento.
+            </p>
+            <p>
+              Uma proposta rejeitada exige motivo e mantém o pedido em
+              acompanhamento para outro encaminhamento. A validação de status
+              conclui a tarefa de revisão, mas ainda é necessário tratar a
+              exceção original.
+            </p>
+          </Expandable>
+          <Expandable>
+            <summary>O que acontece ao reabrir?</summary>
+            <p>
+              O pedido sai de resolvidos, volta aos abertos e aparece em
+              Pendências aguardando nova investigação. “Reabertos” é parte dos
+              abertos, não um total adicional. O novo encerramento exige
+              investigação e execução da nova etapa.
+            </p>
+            <p>
+              Encerramentos e reaberturas permanecem no histórico do caso.
+              Reembolsos e custos informados anteriormente continuam nos totais;
+              a reabertura não desfaz esses valores. Registre somente novos
+              valores na nova etapa.
+            </p>
+          </Expandable>
+          <Expandable>
+            <summary>Como ler o dashboard de Resultados?</summary>
             <ul>
               <li>
-                <b>Valor de carteira:</b> soma dos pedidos, sem duplicatas; não
-                é prejuízo.
+                <b>Resumo:</b> situação atual dos pedidos. O percentual
+                resolvido é a quantidade resolvida dividida pelo total da base.
               </li>
               <li>
-                <b>Exposição:</b> valor × probabilidade de cancelamento, somente
-                para logística ainda não entregue. Atraso de 1–2 dias úteis: 4%;
-                3–5: 10%; 6–10: 22%; mais de 10: 40%. Sem atraso: zero. Não
-                extrapolamos esses parâmetros para outras exceções.
+                <b>Valores registrados:</b> reembolsos e custos informados
+                acumulados, inclusive após reabertura. Estimativas são previsões
+                registradas nos encerramentos atuais e ficam separadas.
               </li>
               <li>
-                <b>Reenvio ou reprodução estimada:</b> 24% do valor do pedido +
-                frete médio contratado. Para item faltante, o pedido integral é
-                uma aproximação, pois não há preço por item.
+                <b>Problemas em aberto:</b> quantidade de pedidos ainda não
+                resolvidos por tipo de exceção.
               </li>
               <li>
-                <b>Reembolso estimado:</b> valor pago pelo cliente. Contato: R$
-                9, sem atribuir todo o histórico anual a uma exceção.
-              </li>
-              <li>
-                <b>Volume tratado:</b> valor dos pedidos resolvidos, sem alegar
-                receita preservada.
-              </li>
-              <li>
-                <b>Reembolsos e custos registrados:</b> declarações do operador,
-                com custos estimados separados dos informados. Não calculamos
-                saldo entre receita, reembolso e custo como se fosse lucro.
+                <b>Soluções registradas:</b> tipos de resultado dos pedidos
+                atualmente resolvidos. Só aparecem categorias com registros.
               </li>
             </ul>
             <p>
-              O simulador genérico de eficácia foi retirado porque não havia
-              medida que sustentasse aquela porcentagem. A estimativa permanece
-              junto da proposta concreta, para apoiar a avaliação antes da
-              execução.
+              Os detalhes individuais ficam em Pedidos. Os registros são
+              declarados pela equipe e não são conciliados automaticamente com
+              sistemas de pagamento ou logística.
             </p>
           </Expandable>
           <Expandable>
-            <summary>
-              Por que uma investigação de melhoria não encerra pedidos?
-            </summary>
+            <summary>Valor em risco, estimativas e despesas</summary>
+            <ul>
+              <li>
+                <b>Valor da carteira:</b> soma dos valores dos pedidos únicos;
+                não representa prejuízo ou receita recuperada.
+              </li>
+              <li>
+                <b>Exposição estimada:</b> valor × probabilidade de
+                cancelamento, apenas para exceções logísticas ainda não
+                entregues. Para atrasos de 1–2 dias úteis: 4%; 3–5: 10%; 6–10:
+                22%; mais de 10: 40%. Sem atraso: zero.
+              </li>
+              <li>
+                <b>Reenvio ou reprodução:</b> estimativa de 24% do valor do
+                pedido mais frete médio contratado. Para item faltante, é uma
+                aproximação: a base não informa o preço de cada item.
+              </li>
+              <li>
+                <b>Reembolso:</b> valor efetivo informado com evidência. A soma
+                de reembolsos de todas as etapas não pode superar o valor do
+                pedido.
+              </li>
+              <li>
+                <b>Custo da tratativa:</b> despesa adicional, como novo frete ou
+                reprodução. Não inclui o pedido original nem o reembolso. Marque
+                se é previsão ou custo realizado informado pela equipe.
+              </li>
+            </ul>
             <p>
-              Exemplo sintético: uma amostra sugere problema de embalagem em um
-              lote. A equipe confere pedidos e registros de campo, documenta a
-              conclusão e encaminha inspeção. Isso conclui o diagnóstico; os
-              clientes continuam precisando de tratativas individuais.
-            </p>
-            <p>
-              Finalizar a investigação exige conclusão, observações, referências
-              de ao menos dois pedidos relacionados e próximo encaminhamento.
-              Não basta abrir um pedido ou clicar em concluir. Uma hipótese
-              confirmada pelo operador não comprova implantação ou eficácia da
-              melhoria.
-            </p>
-            <p>
-              Usamos dimensões pertinentes à etapa. Sinais precisam de ao menos
-              dez casos; a triagem de processo usa participação mínima de 15% e
-              associação relativa de 1,5 vez a participação na base elegível.
-              São heurísticas sem teste de significância. A divergência de prazo
-              segue verificação contratual própria. Sem todas as vendas ou
-              produção, não há taxa real de falha nem causalidade demonstrada.
+              Deixe custos desconhecidos em branco; informe zero apenas quando
+              não houve custo. Resolver um endereço, por exemplo, pode produzir
+              um resultado operacional sem reembolso. Não calculamos lucro ou
+              receita recuperada a partir desses registros.
             </p>
           </Expandable>
         </section>
+        <section className="panel prose" id="method-recurrences">
+          <h2>Como investigar recorrências?</h2>
+          <p>
+            Tratar um pedido resolve um caso. Investigar uma recorrência busca
+            entender por que o mesmo problema aparece em vários pedidos e qual
+            processo merece revisão.
+          </p>
+          <ol className="workflow-steps">
+            <li>
+              <b>Sinal do sistema:</b> regras identificam concentrações na base
+              de exceções. “Ver detalhes do sinal” mostra grupo, quantidade de
+              casos e referências. Isso ainda não é uma conclusão da IA.
+            </li>
+            <li>
+              <b>Análise do agente:</b> “Investigar recorrência com IA” consulta
+              uma amostra e cria uma investigação com hipótese e verificação
+              recomendada. Ela fica disponível em Recorrências e Pendências.
+            </li>
+            <li>
+              <b>Verificação da equipe:</b> confira ao menos dois pedidos
+              relacionados e as condições reais da operação. Registre
+              referências, observações e se a hipótese foi confirmada,
+              descartada ou ficou inconclusiva, além do próximo encaminhamento.
+            </li>
+            <li>
+              <b>Continuidade:</b> a conclusão sai de Pendências e continua
+              acessível pelo sinal. Uma nova análise exige confirmação, preserva
+              a conclusão anterior e usa a cota da IA.
+            </li>
+          </ol>
+          <p>
+            Por exemplo, uma falha de personalização pode exigir conferir
+            impressora e turno na Gocase; uma falta de item pode exigir conferir
+            separação e brinde; um vazamento pode exigir investigar o lote. São
+            caminhos de investigação, não causas comprovadas.
+          </p>
+          <Expandable>
+            <summary>Como os sinais são selecionados?</summary>
+            <p>
+              Usamos grupos pertinentes à etapa do problema. A triagem comum
+              exige ao menos dez casos, participação mínima de 15% e associação
+              relativa de 1,5 vez a participação na base elegível. A divergência
+              entre promessa e contrato tem uma verificação própria.
+            </p>
+            <p>
+              São critérios exploratórios, sem teste de significância. A
+              quantidade de exceções de uma transportadora não diz sua taxa de
+              falha: faltam todas as entregas para comparação. Concentração não
+              demonstra causa.
+            </p>
+          </Expandable>
+          <p>
+            Concluir a investigação não encerra os pedidos, implanta uma mudança
+            ou comprova sua eficácia. A aplicação registra diagnóstico e
+            encaminhamento; a execução da melhoria precisa de acompanhamento
+            fora deste piloto.
+          </p>
+        </section>
         <section className="panel prose" id="method-data">
-          <h2>Por que esta arquitetura e esta entrada de dados?</h2>
+          <h2>Dados e tecnologia</h2>
           {summary && (
             <p>
-              Base atual: {summary.sourceRows} linhas, {summary.totalCount}{" "}
-              pedidos únicos. Conflitos de status e promessas divergentes são
-              preservados para revisão.
+              Base atual: {summary.sourceRows} linhas de origem e
+              {summary.totalCount} pedidos únicos.
             </p>
           )}
           <Expandable open>
-            <summary>CSV no piloto; integração no uso interno</summary>
+            <summary>Importação e conferência dos dados</summary>
             <p>
-              A importação valida campos, relações e duplicatas; exibe prévia e
-              só grava com confirmação. Status conflitantes não são resolvidos
-              automaticamente porque falta timestamp da origem. Outros conflitos
-              do mesmo pedido bloqueiam a carga. A data fixa impede importar
-              eventos posteriores à referência sem revisar a política.
+              Use os CSVs de pedidos com exceção, clientes e transportadoras da
+              mesma extração. A prévia confere campos, relações e duplicatas; a
+              base muda apenas depois da confirmação. Linhas repetidas são
+              consolidadas para não contar o mesmo pedido mais de uma vez.
             </p>
             <p>
-              A carga pela interface é exclusiva da sessão. Trocar a base com
-              tratativas ativas é bloqueado. Reiniciar em Dados cria nova sessão
-              sem tratativas e preserva a base escolhida. Os arquivos e
-              credenciais ficam fora do Git.
+              Status conflitantes são preservados para revisão humana, pois a
+              origem não informa qual é o mais recente. Outros conflitos no
+              mesmo pedido bloqueiam a carga. Promessas divergentes são
+              sinalizadas, sem substituir a data original.
             </p>
             <p>
-              Para o dia a dia interno, a atualização automática é recomendada
-              depois de mapear ERP, atendimento e logística. São necessários
-              responsáveis, IDs estáveis, atualização de status, carga
-              incremental, conciliação, monitoramento e reprocessamento. Não
-              presumimos quais serviços a Gogroup usa.
+              A importação pela interface vale apenas para sua sessão. Trocar a
+              base com tratativas ativas é bloqueado. Reiniciar em Dados cria
+              uma nova sessão sem tratativas e mantém a base escolhida.
             </p>
           </Expandable>
           <Expandable>
-            <summary>Escolhas técnicas e seus limites</summary>
-            <ul>
-              <li>
-                <b>Next.js, React e TypeScript:</b> interface e endpoints no
-                mesmo projeto, com contratos tipados e domínio separado da
-                interface e do modelo.
-              </li>
-              <li>
-                <b>Zod:</b> validação no servidor de entradas, evidências e
-                transições. A interface não é a única barreira.
-              </li>
-              <li>
-                <b>Decimal.js:</b> evita imprecisão de ponto flutuante em
-                valores monetários.
-              </li>
-              <li>
-                <b>Groq com ferramentas:</b> IA aplica a estratégia escolhida e
-                encaminhamentos, enquanto cálculos e efeitos são controlados
-                pelo servidor.
-              </li>
-              <li>
-                <b>Neon PostgreSQL e Drizzle:</b> persistência hospedada,
-                versões e atualizações atômicas. Arquivos .local são alternativa
-                de desenvolvimento em uma instância.
-              </li>
-              <li>
-                <b>JSON versionado:</b> novos planos registram estratégia, base
-                e comparação. Registros antigos são legados, sem evidências
-                fabricadas.
-              </li>
-              <li>
-                <b>Radix UI e fontes locais:</b> diálogos com gestão de foco,
-                identidade visual consistente e menor dependência de fontes
-                externas.
-              </li>
-            </ul>
+            <summary>Persistência, acesso e integrações</summary>
             <p>
-              Tarefas individuais têm prazo de um dia útil; investigações de
-              melhoria, dois após a referência. São escolhas a homologar por
-              área. Sessões independentes por cookie expiram em sete dias.
-              Acesso expirado não representa uma política de descarte auditada
-              para produção.
+              O piloto usa Next.js, React e TypeScript, com validação no
+              servidor, cálculos monetários em Decimal.js, IA pelo Groq e
+              persistência em Neon PostgreSQL com Drizzle. Armazenamento em
+              arquivos é alternativa apenas para desenvolvimento local.
+            </p>
+            <p>
+              Cada visitante tem uma sessão independente, identificada por
+              cookie, com acesso por sete dias. A sessão não é uma fila
+              compartilhada. Expiração de acesso não deve ser confundida com uma
+              política homologada de retenção e descarte para produção.
+            </p>
+            <p>
+              A atualização de dados é manual. Para uso diário na Gocase e na
+              GoBeauté, é preciso mapear os sistemas de pedidos, atendimento,
+              estoque, produção e logística, definir responsáveis e integrar
+              atualizações com conciliação, monitoramento e reprocessamento.
+            </p>
+          </Expandable>
+          <Expandable>
+            <summary>Premissas do piloto</summary>
+            <p>
+              A data operacional é fixa em 30/09/2026; eventos posteriores são
+              bloqueados na importação. Tarefas individuais recebem prazo de um
+              dia útil após essa referência; investigações de recorrência, dois.
+              Esses prazos são escolhas do projeto a validar por área.
+            </p>
+            <p>
+              Os dados são sintéticos e devem ser tratados com cuidado.
+              Investigar com IA envia evidências selecionadas ao provedor.
+              Arquivos de origem e credenciais não fazem parte do repositório.
             </p>
           </Expandable>
         </section>
         <section className="panel prose" id="method-pilot">
-          <h2>O que falta provar no piloto?</h2>
+          <h2>Limites e validação</h2>
           <p>
-            Observe se um operador novo consegue preparar o dia, entender a
-            sugestão, registrar a execução e encerrar com resultado sem ajuda.
-            Compare com FIFO usando capacidade e carteiras equivalentes. Meça
-            tempo de triagem, pedidos tratados por hora, espera, reaberturas,
-            tarefas aceitas sem correção e sucesso do agente com efeito
-            persistido.
+            O piloto demonstra priorização, investigação e registro de
+            encaminhamentos. Para avaliar sua utilidade, observe operadores
+            executando o fluxo e meça tempo de triagem, espera, pedidos
+            tratados, reaberturas e encaminhamentos aceitos sem correção.
+            Compare com ordem de chegada usando capacidade e carteiras
+            equivalentes.
           </p>
           <p>
-            Para produção interna faltam autenticação, papéis, atribuição por
-            pessoa, fila compartilhada, histórico durável, calendário
-            atualizado, integrações e capacidade medida por esforço. Também
-            devem ser homologados acesso, retenção e envio de dados ao provedor
-            de IA.
+            Para operação interna, ainda são necessários autenticação, papéis,
+            atribuição por pessoa, fila compartilhada, calendário atualizado,
+            integrações e capacidade medida pelo esforço real. Acesso, retenção
+            de dados e envio ao provedor de IA precisam ser homologados.
           </p>
           <p>
-            Resultados financeiros precisam de conciliação com pagamentos,
-            retenções e custos externos. Sem isso, não alegamos receita
-            recuperada, lucro ou retorno incremental. Defina metas e período com
-            a equipe antes de concluir eficácia.
+            Resultados financeiros exigem conciliação com pagamentos e custos
+            externos. Sem essa confirmação e uma comparação adequada, os
+            indicadores não comprovam lucro, receita recuperada ou benefício
+            incremental da solução.
           </p>
         </section>
       </div>

@@ -118,17 +118,15 @@ export function ImprovementsWorkspace({
       aria-label="Sinais de recorrência"
     >
       <div className="panel prose">
-        <h2>Qual problema pode estar se repetindo?</h2>
+        <h2>Sinais de problemas repetidos</h2>
         <p>
-          Escolha um sinal para a IA consultar uma amostra e registrar uma
-          investigação. Depois, a equipe confere as evidências e documenta a
-          conclusão. Isso não resolve pedidos em lote nem implanta uma melhoria
-          automaticamente.
+          Abra os detalhes de um sinal e solicite a análise com IA. O agente
+          consulta uma amostra e propõe uma hipótese; a equipe verifica e
+          registra a conclusão.
         </p>
         <p>
-          Os sinais usam a base de exceções e não indicam taxa de falha sobre
-          todas as vendas. Ordem: relevância do sinal calculada a partir da
-          concentração observada.
+          Sinais calculados na base de pedidos com problemas, em ordem de
+          relevância. Não representam a taxa de falha de todas as vendas.
         </p>
         <Button variant="outline" onClick={onPending}>
           Acompanhar investigações abertas
@@ -157,7 +155,7 @@ export function ImprovementsWorkspace({
             ) : (
               <Expandable className="panel prose">
                 <summary>
-                  Análise registrada:{" "}
+                  Atividade da análise:{" "}
                   {
                     patterns.find((pattern) => pattern.id === activePatternId)
                       ?.title
@@ -187,9 +185,7 @@ export function ImprovementsWorkspace({
                 </span>
                 {existing && (
                   <span className="badge">
-                    {completed
-                      ? "Investigação concluída"
-                      : "Investigação aberta"}
+                    {completed ? "Conclusão registrada" : "Investigação aberta"}
                   </span>
                 )}
               </div>
@@ -198,14 +194,13 @@ export function ImprovementsWorkspace({
                 <strong>Grupo:</strong> {insightGroupLabel(pattern.group)}
               </p>
               <p>
-                <strong>{pattern.count}</strong> casos relacionados nesta
-                análise.
+                <strong>{pattern.count}</strong> casos na base com esse sinal.
               </p>
               {lastRun?.status === "failed" && (
                 <p className="signal-feedback">
                   {existing
                     ? completed
-                      ? "A nova análise não foi concluída. A conclusão anterior foi preservada."
+                      ? "A nova análise foi interrompida. Consulte a investigação disponível para verificar o que foi registrado."
                       : "A execução foi interrompida, mas a investigação registrada está disponível para acompanhamento."
                     : "A tentativa anterior não concluiu uma investigação. Você pode tentar novamente; a nova chamada usa a cota da IA."}
                 </p>

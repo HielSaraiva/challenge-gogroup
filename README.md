@@ -2,23 +2,21 @@
 
 **Uma central de operações que transforma exceções em encaminhamentos rastreáveis.**
 
-Go Operations responde quais pedidos tratar hoje, como encaminhá-los e quais sinais exigem investigar o processo. O agente consulta evidências e usa ferramentas do servidor para registrar um plano diário, tarefas individuais e ações de melhoria. Cada visitante recebe uma demonstração independente, sem login.
+Go Operations responde quais pedidos tratar hoje, como encaminhá-los e quais sinais exigem investigar o processo. O agente consulta evidências e usa ferramentas do servidor para registrar um plano diário, tarefas individuais e investigações de recorrência. Cada visitante recebe uma demonstração independente, sem login.
 
 Projeto demonstrativo desenvolvido para um desafio técnico, com identidade visual inspirada no [site público do Gogroup](https://estagiogogroup.com.br/). Este repositório contém a aplicação e testes sintéticos; materiais, registros e resultados da base privada não são distribuídos nesta documentação.
 
 ## Capacidades
 
-| Área               | Funcionalidade                                                                                             |
-| ------------------ | ---------------------------------------------------------------------------------------------------------- |
-| Visão geral        | Indicadores da carteira pendente e progresso da sessão                                                     |
-| Operação diária    | Plano persistido pelo agente, orientações por área e capacidade restante                                   |
-| Fila de trabalho   | Priorização por valor, urgência e relacionamento, estratégias comparadas pelo agente e comparação com FIFO |
-| Dossiê do pedido   | Evidências, explicação da prioridade, prazos e custos indicativos                                          |
-| Investigações      | Concentrações operacionais com amostra e referências verificáveis                                          |
-| Agente de IA       | Consulta de fatos, simulação de alternativas e criação persistente de tarefas                              |
-| Tratativas         | Revisão de status conflitante, conclusão de tarefas, avaliação de propostas, encerramento e reabertura     |
-| Auditoria          | Histórico de decisões e isolamento das alterações por visitante                                            |
-| Impacto financeiro | Exposição elegível, registros declarados com evidência e cenários com custos explícitos                    |
+| Aba          | Função                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------- |
+| Hoje         | Resumo da carteira e plano opcional com IA, limitado à capacidade disponível                |
+| Pedidos      | Carteira completa ou seleção do plano, filtros, investigação individual e histórico do caso |
+| Pendências   | Tratativas iniciadas e investigações ainda abertas, com próximo passo e paginação           |
+| Resultados   | Dashboard da situação atual, problemas abertos, soluções registradas e valores informados   |
+| Recorrências | Sinais calculados pelo sistema e investigação de hipóteses pelo agente e pela equipe        |
+| Dados        | Origem da base, importação validada por sessão e reinício da demonstração                   |
+| Metodologia  | Fluxo de uso, critérios de priorização, conceitos financeiros e limites do piloto           |
 
 ## Arquitetura
 
@@ -115,21 +113,21 @@ Sem banco ou importação, a interface orienta a configuração e oferece a áre
 
 O modelo recebe ferramentas restritas conforme a etapa:
 
-| Ferramenta              | Resultado                                                                 |
-| ----------------------- | ------------------------------------------------------------------------- |
-| `consultar_pedido`      | Fatos, indicadores calculados, ações admitidas e IDs válidos de evidência |
-| `consultar_padroes`     | Concentração observada e amostra de pedidos relacionados                  |
-| `simular_tratativa`     | Custo indicativo de uma alternativa, sem execução financeira              |
-| `criar_tarefa`          | Tarefa persistida com justificativa, evidências, responsável e prazo      |
-| `consultar_diagnostico` | Diagnóstico da carteira e métricas das alternativas de estratégia         |
-| `comparar_estrategias`  | Escolha justificada e consulta das frentes da estratégia aplicada         |
-| `consultar_fila`        | Seleção calculada, capacidade, comparação com FIFO e frentes de trabalho  |
-| `registrar_plano_dia`   | Plano persistido com orientação para cada área da seleção calculada       |
-| `criar_acao_processo`   | Investigação de melhoria vinculada a um padrão e a evidências consultadas |
+| Ferramenta              | Resultado                                                                   |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `consultar_pedido`      | Fatos, indicadores calculados, ações admitidas e IDs válidos de evidência   |
+| `consultar_padroes`     | Concentração observada e amostra de pedidos relacionados                    |
+| `simular_tratativa`     | Custo indicativo de uma alternativa, sem execução financeira                |
+| `criar_tarefa`          | Tarefa persistida com justificativa, evidências, responsável e prazo        |
+| `consultar_diagnostico` | Diagnóstico da carteira e métricas das alternativas de estratégia           |
+| `comparar_estrategias`  | Escolha justificada e consulta das frentes da estratégia aplicada           |
+| `consultar_fila`        | Seleção calculada, capacidade, comparação com FIFO e frentes de trabalho    |
+| `registrar_plano_dia`   | Plano persistido com orientação para cada área da seleção calculada         |
+| `criar_acao_processo`   | Investigação de recorrência vinculada a um sinal e a evidências consultadas |
 
 Consultar o pedido é obrigatório antes de criar uma tarefa. Propostas financeiras exigem simulação prévia e avaliação humana. Após aprovar, o operador precisa registrar a execução; aprovação sozinha não permite encerrar a exceção. Um conflito de status bloqueia outras tratativas até uma revisão explícita. A justificativa é identificada como hipótese do agente; fatos e números verificados aparecem separadamente.
 
-O agente consulta o diagnóstico, compara três estratégias e escolhe a política aplicada. Os cálculos são feitos no servidor; a fila de trabalho só aparece depois do plano persistido. O plano registra a estratégia, justificativa, referência da base, comparação FIFO e orientações para todas as áreas. O agente escolhe um primeiro pedido da amostra por área e indica o próximo passo. Encerramentos atualizam o progresso sem repor pedidos; outro plano exige solicitação explícita. Gerar esse plano não cria tarefas em lote. A investigação explícita do pedido escolhido cria um encaminhamento individual. Ações de processo exigem um padrão consultado e evidências distintas. Elas não encerram o conjunto de pedidos. Uma resposta textual sem plano ou tarefa persistida não conclui uma investigação.
+O usuário escolhe o foco do plano. O agente consulta o diagnóstico, compara três estratégias e aplica exatamente a estratégia solicitada. Os cálculos são feitos no servidor; a seleção priorizada do plano só aparece depois de ele ser salvo; a carteira completa pode ser consultada e investigada antes disso. O plano registra a estratégia, justificativa, referência da base, comparação FIFO e orientações para todas as áreas. O agente escolhe um primeiro pedido da amostra por área e indica o próximo passo. Encerramentos atualizam o progresso sem repor pedidos; outro plano exige solicitação explícita. Gerar esse plano não cria tarefas em lote. A investigação explícita do pedido escolhido cria um encaminhamento individual. Ações de processo exigem um padrão consultado e evidências distintas. Elas não encerram o conjunto de pedidos. Uma resposta textual sem plano ou tarefa persistida não conclui uma investigação.
 
 O modelo padrão é `openai/gpt-oss-20b`, com esforço de raciocínio baixo. O planejamento restringe cada chamada à ferramenta da etapa atual. Uma resposta 429 com espera explícita de até 12 segundos permite uma única nova tentativa por chamada, respeitando o orçamento total e cancelamento. Esperas maiores ou sem indicação não geram repetição automática.
 
@@ -138,10 +136,10 @@ As execuções têm orçamento de tempo, limite de chamadas e controle de concor
 ## Sessões, integridade e privacidade
 
 - A base importada permanece imutável. Revisões, encerramentos e reaberturas são sobreposições exclusivas da sessão.
-- Pendências mostra apenas trabalho em aberto, com uma entrada por pedido e investigações de processo ainda não concluídas. A lista é paginada e não mistura históricos de análises ou planos. Resultados organiza os encerramentos mais recentes, separa ação, evidência e valores, e mantém custo desconhecido distinto de zero.
-- Melhorias pagina os sinais e distingue abrir uma investigação já registrada de iniciar outra análise. Reabrir o registro existente não usa a IA. Uma nova análise de um sinal já concluído exige confirmação, preserva a conclusão anterior e cria uma nova etapa vinculada à anterior; tentativas repetidas não duplicam uma investigação aberta. Uma investigação de processo pode consultar pedidos já encerrados sem reabri-los ou alterar seus resultados.
+- Pendências mostra apenas trabalho em aberto, com uma entrada por pedido e investigações de processo ainda não concluídas. A lista é paginada e não mistura históricos de análises ou planos. Resultados mostra a situação atual da base, problemas abertos, tipos de solução e valores registrados, sem lista individual de encerramentos. Os detalhes ficam em Pedidos; custo desconhecido continua distinto de zero.
+- Recorrências pagina os sinais. Os cards padronizados abrem detalhes com o sinal observado, grupo, quantidade e pedidos de referência. Essas informações vêm das regras do sistema, sem IA. Solicitar análise cria a hipótese e a verificação recomendada do agente; a equipe registra a conclusão após conferir as evidências. A interface distingue abrir uma investigação já registrada de iniciar outra análise. Reabrir o registro existente não usa a IA. Uma nova análise de um sinal já concluído exige confirmação, preserva a conclusão anterior e cria uma nova etapa vinculada à anterior; tentativas repetidas não duplicam uma investigação aberta. Uma investigação de processo pode consultar pedidos já encerrados sem reabri-los ou alterar seus resultados.
 - Propostas de reenvio e reembolso exigem aprovação humana. A decisão não executa ações externas; a rejeição exige motivo e mantém o pedido em acompanhamento. Uma nova proposta após rejeição recebe uma identidade própria, mantendo a idempotência das repetições. Reenvio despachado aguarda recebimento; o comprovante do despacho não serve como evidência de recebimento. A validação de status conclui automaticamente a tarefa de revisão correspondente, sem encerrar a exceção original.
-- Reabrir inicia uma nova etapa de atendimento: o pedido fica em Pendências aguardando investigação, os encaminhamentos e análises anteriores ficam disponíveis apenas para consulta, e o novo encerramento exige tarefa e execução posteriores à reabertura. Repetir a criação da mesma tarefa dentro da etapa preserva a idempotência. Os indicadores operacionais consideram a situação atual do pedido. Custos declarados e reembolsos são acumulados pelas etapas registradas, inclusive após reabertura, sem contar novamente a projeção do encerramento atual. Em uma nova etapa, informe somente novos valores; o total de reembolsos não pode ultrapassar o valor do pedido. Estimativas dos encerramentos atuais ficam separadas de despesas declaradas.
+- Reabrir inicia uma nova etapa de atendimento: o pedido fica em Pendências aguardando investigação, os eventos de encerramento e reabertura permanecem no histórico do caso, os encaminhamentos da etapa anterior não entram na etapa atual e o novo encerramento exige tarefa e execução posteriores à reabertura. Repetir a criação da mesma tarefa dentro da etapa preserva a idempotência. Os indicadores operacionais consideram a situação atual do pedido. Custos declarados e reembolsos são acumulados pelas etapas registradas, inclusive após reabertura, sem contar novamente a projeção do encerramento atual. Em uma nova etapa, informe somente novos valores; o total de reembolsos não pode ultrapassar o valor do pedido. Estimativas dos encerramentos atuais ficam separadas de despesas declaradas.
 - Um cookie aleatório `HttpOnly`, `SameSite=Lax` e seguro em produção identifica o visitante. O servidor armazena seu hash.
 - Tarefas, investigações e decisões são isoladas por visitante. Sessões possuem expiração.
 - Mutações validam origem, conteúdo e regras de transição. Credenciais e conexões não são incluídas em respostas ou logs.
@@ -150,11 +148,11 @@ As execuções têm orçamento de tempo, limite de chamadas e controle de concor
 
 ## Critérios e limites
 
-A pontuação combina componentes normalizados de valor, urgência e relacionamento. A seleção reserva parte da capacidade para os casos mais antigos e preenche as demais vagas por pontuação, para reduzir o adiamento contínuo de pedidos de menor valor. Antes de cada geração, o usuário escolhe entre equilibrada (45/35/20), urgência (25/55/20) e relacionamento (25/30/45). A IA compara as alternativas e aplica a estratégia solicitada; o servidor rejeita uma estratégia diferente. Valor, urgência e relacionamento são normalizados pelo percentil 95, limitados a 1; os empates seguem critérios determinísticos. Cada encerramento consome capacidade da data de referência da demonstração; reabrir preserva o esforço consumido. O esforço de melhoria de processo requer dimensionamento próprio. A metodologia detalhada fica na aplicação.
+A pontuação combina componentes normalizados de valor, urgência e relacionamento. A seleção reserva parte da capacidade para os casos mais antigos e preenche as demais vagas por pontuação, para reduzir o adiamento contínuo de pedidos de menor valor. Antes de cada geração, o usuário escolhe entre equilibrada (45/35/20), urgência (25/55/20) e relacionamento (25/30/45). A IA compara as alternativas e aplica a estratégia solicitada; o servidor rejeita uma estratégia diferente. Valor, urgência e relacionamento são normalizados pelo percentil 95, limitados a 1; os empates seguem critérios determinísticos. Cada encerramento consome capacidade da data de referência da demonstração; reabrir preserva o esforço consumido. O esforço de investigação de recorrências requer dimensionamento próprio. A metodologia detalhada fica na aplicação.
 
 Valor de carteira, exposição estimada, custos estimados e custos registrados são conceitos distintos. Tarefas concluídas não representam receita recuperada. Concentrações em uma base de exceções não demonstram causalidade ou taxa de falha da operação completa.
 
-O encerramento exige resultado operacional e evidência, além de tarefa executada com documentação. Reembolso exige valor positivo limitado ao pedido. Custos desconhecidos não viram zero; estimativas ficam separadas de valores informados. A revisão de status, sozinha, não resolve a exceção original. Registros antigos sem os novos campos são identificados como legados. Não há simulador genérico de eficácia nem saldo apresentado como recuperação.
+O encerramento exige resultado operacional e evidência, além de tarefa executada com documentação. Reembolso exige valor positivo limitado ao pedido. Custos desconhecidos não viram zero; estimativas ficam separadas de valores informados. A revisão de status, sozinha, não resolve a exceção original. Registros antigos sem os novos campos são identificados como legados. Estimativas de custo apoiam propostas específicas e não são apresentadas como recuperação financeira.
 
 Encerrar um caso atualiza a demonstração. Aprovar uma proposta registra uma decisão; registrar sua execução é uma etapa separada, com ação realizada e evidência obrigatórias. Concluir uma investigação de recorrência exige observações, duas referências distintas relacionadas e encaminhamento, sem encerrar os pedidos. Não existem integrações de envio a clientes, pagamento, reembolso, transportadora ou estoque.
 

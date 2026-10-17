@@ -136,7 +136,7 @@ export function CaseControls({
           <p>
             {order.resolution.outcome
               ? outcomeLabels[order.resolution.outcome.type]
-              : "Encerramento legado, sem resultado estruturado"}
+              : "Encerramento sem tipo de solução registrado"}
             : {order.resolution.note}
           </p>
         </>

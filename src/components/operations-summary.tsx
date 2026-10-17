@@ -23,7 +23,9 @@ export function OperationsSummary({
       <p>
         <b>
           Estratégia:{" "}
-          {plan.strategy ? STRATEGIES[plan.strategy].label : "Plano legado"}
+          {plan.strategy
+            ? STRATEGIES[plan.strategy].label
+            : "Estratégia não registrada"}
         </b>
       </p>
       <p>{plan.strategyReason && generatedTextLabel(plan.strategyReason)}</p>

@@ -65,8 +65,8 @@ function eventDescription(event: ToolEvent, type?: Investigation["type"]) {
       type === "daily"
         ? "Preparação concluída. Confira a seleção e as orientações em “Seu plano de trabalho”."
         : type === "pattern"
-          ? "Investigação concluída. Abra a investigação registrada em Pendências para acompanhar os próximos passos."
-          : "Investigação concluída. Confira as tarefas em “Encaminhamentos para este pedido”.",
+          ? "Análise concluída. Abra a investigação em Recorrências ou Pendências para conferir a hipótese."
+          : "Análise concluída. Confira as tarefas em “Encaminhamentos para este pedido”.",
     );
   if (event.state === "running")
     return "Etapa iniciada. Aguardando o retorno da ferramenta.";

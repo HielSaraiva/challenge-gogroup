@@ -78,7 +78,7 @@ export function planQueue(source: Dataset, state: SessionState) {
       ? plan.selectedOrderIds.filter((id) => ranks.get(id)?.resolution).length
       : 0,
     error: expiredRun
-      ? "A execução foi interrompida. Os efeitos já registrados foram preservados; confira o histórico antes de tentar novamente."
+      ? "A execução foi interrompida. Os efeitos já registrados foram preservados; confira o plano em Hoje antes de tentar novamente."
       : latest?.status === "failed"
         ? latest.summary
         : null,

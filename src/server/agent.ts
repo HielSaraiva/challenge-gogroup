@@ -299,13 +299,13 @@ export async function executeTool(
   if (name === "consultar_padroes") {
     const { insightId } = patternArgs.parse(raw);
     if (context.patternId && context.patternId !== insightId)
-      throw new AppError("Padrão fora do escopo desta investigação.");
+      throw new AppError("Sinal fora do escopo desta investigação.");
     const insight = insights(context.data).find((i) => i.id === insightId);
     if (
       !insight ||
       !insight.evidenceIds.some((id) => context.allowedIds.has(id))
     )
-      throw new AppError("Padrão fora do escopo.");
+      throw new AppError("Sinal fora do escopo.");
     const evidenceIds = insight.evidenceIds
       .filter((id) => context.allowedIds.has(id))
       .slice(0, 20);
@@ -354,7 +354,7 @@ export async function executeTool(
     const order = findOrder(args.orderId);
     if (context.requiresPattern && !context.patternConsulted)
       throw new AppError(
-        "Consulte o padrão antes de registrar o encaminhamento.",
+        "Consulte o sinal antes de registrar o encaminhamento.",
       );
     if (!context.consulted.has(order.id))
       throw new AppError(
@@ -482,7 +482,7 @@ export async function investigate(
     )
   )
     throw new AppError(
-      "Este padrão não possui casos pendentes nesta sessão.",
+      "Este sinal não possui casos abertos nesta sessão.",
       409,
     );
   await consumeLimit(
@@ -806,8 +806,8 @@ export async function investigate(
           .map((id) => ordersForSummary(data, id))
           .join("\n");
         run.summary = run.planId
-          ? `Plano do dia registrado para ${queue(data, context.weights).orders.length} pedidos, dentro da capacidade restante de ${queue(data, context.weights).availableCapacity} tratativas. A seleção combina uma reserva para os casos mais antigos e pontuação explicável nas demais vagas. A seleção foi calculada pelas regras do sistema. O agente comparou estratégias, escolheu a política aplicada, consultou amostras por área e registrou o primeiro pedido sugerido, sua justificativa e o próximo passo. O plano não cria tarefas para todos os pedidos: investigue o caso escolhido para gerar uma tarefa. Nenhuma tratativa externa ou recuperação financeira foi executada.`
-          : `O agente consultou evidências e registrou ${processCreated ? "uma ação para investigar o processo" : `${run.taskIds.length} encaminhamento(s) individual(is)`} nesta sessão.\n${pattern ? `Padrão observado: ${pattern.count} de ${pattern.total} casos elegíveis no grupo ${insightGroupLabel(pattern.group)}. A concentração não comprova causa.\n` : ""}${evidence}\nA justificativa é uma hipótese do agente; os fatos verificados aparecem separadamente. O próximo passo é a revisão pela área responsável. Nenhum envio, pagamento ou recuperação financeira foi executado.`;
+          ? `Plano do dia registrado para ${queue(data, context.weights).orders.length} pedidos, dentro da capacidade restante de ${queue(data, context.weights).availableCapacity} tratativas. A seleção combina uma reserva para os casos mais antigos e pontuação explicável nas demais vagas. A seleção foi calculada pelas regras do sistema. O agente comparou estratégias, aplicou a estratégia escolhida, consultou amostras por área e registrou o primeiro pedido sugerido, sua justificativa e o próximo passo. O plano não cria tarefas para todos os pedidos: investigue o caso escolhido para gerar uma tarefa. Nenhuma tratativa externa ou recuperação financeira foi executada.`
+          : `O agente consultou evidências e registrou ${processCreated ? "uma ação para investigar o processo" : `${run.taskIds.length} encaminhamento(s) individual(is)`} nesta sessão.\n${pattern ? `Sinal observado: ${pattern.count} de ${pattern.total} casos elegíveis no grupo ${insightGroupLabel(pattern.group)}. A concentração não comprova causa.\n` : ""}${evidence}\nA justificativa é uma hipótese do agente; os fatos verificados aparecem separadamente. O próximo passo é a revisão pela área responsável. Nenhum envio, pagamento ou recuperação financeira foi executado.`;
         run.status = "completed";
         break;
       }
@@ -819,8 +819,8 @@ export async function investigate(
       input.type === "daily"
         ? "Preparação concluída. Confira a seleção e as orientações em “Seu plano de trabalho”."
         : input.type === "pattern"
-          ? "Investigação concluída. Abra a investigação registrada em Pendências para acompanhar os próximos passos."
-          : "Investigação concluída. Confira as tarefas em “Encaminhamentos para este pedido”.",
+          ? "Análise concluída. Abra a investigação em Recorrências ou Pendências para conferir a hipótese."
+          : "Análise concluída. Confira as tarefas em “Encaminhamentos para este pedido”.",
     );
   } catch (error) {
     const provider = error as { status?: number; name?: string };
@@ -831,7 +831,7 @@ export async function investigate(
     run.status = "failed";
     run.summary =
       run.taskIds.length || run.planId
-        ? "Execução interrompida. O plano e as tarefas já registrados foram preservados; consulte o histórico antes de tentar novamente."
+        ? "Execução interrompida. O plano e as tarefas já registrados foram preservados; confira os registros em Hoje, no pedido ou em Recorrências antes de tentar novamente."
         : provider.status === 429
           ? "O Groq atingiu o limite de uso. A execução foi interrompida. Aguarde a renovação da cota e tente novamente. As ações já registradas foram preservadas."
           : provider.status === 401

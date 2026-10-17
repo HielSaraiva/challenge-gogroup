@@ -405,10 +405,10 @@ export function OperationsApp() {
                     overview: "Prepare seu dia com o agente",
                     queue: "Pedidos para acompanhar",
                     agent: "Pendências da equipe",
-                    impact: "Resultados das tratativas",
+                    impact: "Resultados da operação",
                     insights: "Recorrências para investigar",
                     data: "Dados da operação",
-                    method: "Como funciona e por quê",
+                    method: "Metodologia da operação",
                   }[tab]
                 }
               </h1>
@@ -422,9 +422,9 @@ export function OperationsApp() {
                     agent:
                       "Revise propostas, registre execuções e documente investigações.",
                     impact:
-                      "Acompanhe o que foi resolvido e os valores realmente registrados.",
+                      "Veja pedidos abertos e resolvidos, tipos de solução e valores registrados.",
                     insights:
-                      "Investigue problemas que voltam a acontecer e podem afetar vários pedidos.",
+                      "Identifique problemas repetidos e investigue possíveis causas na operação.",
                     data: "Valide os arquivos, confira a origem e gerencie sua demonstração.",
                     method:
                       "Entenda o fluxo e os motivos das decisões de negócio e tecnologia.",
@@ -467,7 +467,7 @@ export function OperationsApp() {
                   await load();
                   navigate("overview");
                   setNotice(
-                    "Base importada. Prepare o dia com a IA para gerar seu plano.",
+                    "Base importada. Consulte Pedidos ou prepare um plano em Hoje.",
                   );
                 }}
               />
@@ -527,15 +527,16 @@ export function OperationsApp() {
                     </p>
                     {day?.status === "needs_review" && (
                       <p role="status">
-                        O plano anterior é legado ou a base/status mudou.
-                        Prepare outro plano antes de orientar o trabalho.
+                        O plano precisa de atualização após mudanças nos dados
+                        ou nas regras. Gere outro plano ou consulte a carteira
+                        em Pedidos.
                       </p>
                     )}
                     {day?.status === "failed" && (
                       <p role="alert">
                         {day.error}{" "}
                         {day.plan
-                          ? "O plano anterior continua disponível abaixo e no histórico."
+                          ? "O plano anterior foi preservado. Se ainda for válido, continuará disponível em Hoje."
                           : ""}
                       </p>
                     )}
@@ -613,8 +614,8 @@ export function OperationsApp() {
                       </div>
                     </dl>
                     <p>
-                      Estes são fatos da base importada. A carteira ainda não é
-                      um plano de trabalho da IA.
+                      Indicadores dos pedidos ainda abertos. A seleção do plano
+                      é apresentada separadamente, em “Seu plano de trabalho”.
                     </p>
                   </section>
                 </>
@@ -623,10 +624,10 @@ export function OperationsApp() {
                 <>
                   {!ready && (
                     <section className="panel prose">
-                      <h2>O plano do agente ainda não está disponível</h2>
+                      <h2>Consulte pedidos com ou sem plano</h2>
                       <p>
-                        Você pode consultar os pedidos recebidos. Para gerar a
-                        seleção e as orientações, prepare o dia com a IA.
+                        Abra uma linha para investigar o pedido diretamente.
+                        Para uma seleção priorizada, prepare um plano em Hoje.
                       </p>
                       <Button onClick={() => navigate("overview")}>
                         Preparar o dia
@@ -1039,8 +1040,9 @@ export function OperationsApp() {
                 <p className="case-next-step">
                   Reaberto em{" "}
                   {new Date(selectedReopen.at).toLocaleString("pt-BR")}. Motivo:{" "}
-                  {selectedReopen.note}. As execuções anteriores não encerram
-                  esta nova etapa.
+                  {selectedReopen.note}
+                  <br />
+                  As execuções anteriores não encerram esta nova etapa.
                 </p>
               )}
               {activity("order", selected.id)}
@@ -1059,12 +1061,13 @@ export function OperationsApp() {
                     : "não registrada"}
                 </p>
                 <p>
-                  {selected.carrier} / {selected.state} · CD {selected.dc} ·
-                  turno {selected.shift} · máquina{" "}
+                  {selected.carrier} / {selected.state} · Centro de
+                  distribuição: {selected.dc} · turno {selected.shift} · máquina{" "}
                   {selected.machine || "não informada"} · lote {selected.lot}
                 </p>
                 <p>
-                  {selected.customer?.orders} pedidos do cliente · histórico de{" "}
+                  {selected.customer?.orders} pedidos do cliente · valor
+                  acumulado de compras:{" "}
                   {money(selected.customer?.revenue || "0")}
                 </p>
                 {selected.issues.map((i) => (
@@ -1328,13 +1331,16 @@ export function OperationsApp() {
             <div className="new-plan-consequences">
               <div>
                 <strong>O novo plano passa a ser o ativo</strong>
-                <p>O plano atual continuará disponível no histórico.</p>
+                <p>
+                  O plano anterior será preservado nos registros da sessão. A
+                  tela mostrará o novo plano.
+                </p>
               </div>
               <div>
                 <strong>Seu trabalho fica preservado</strong>
                 <p>
                   As tratativas registradas serão mantidas. Se a análise falhar,
-                  o plano atual continua ativo.
+                  o plano atual será preservado.
                 </p>
               </div>
             </div>

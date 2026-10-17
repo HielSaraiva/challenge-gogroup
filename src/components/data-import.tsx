@@ -82,7 +82,9 @@ export function DataImport({
       if (mode === "preview") setPreview(b);
       else {
         setPreview(undefined);
-        setNotice("Base importada. Abra Hoje para iniciar o trabalho.");
+        setNotice(
+          "Base importada. Consulte Pedidos ou prepare um plano em Hoje.",
+        );
         setStatus({
           available: true,
           source: "session",
@@ -105,9 +107,8 @@ export function DataImport({
           <Database size={21} aria-hidden="true" /> Base de operações
         </h2>
         <p>
-          A importação é opcional. Se você não adicionar uma base própria, a
-          demonstração usará a base padrão, com data de referência em
-          <strong> 30/09/2026</strong>.
+          A importação é opcional quando a base padrão estiver disponível. A
+          referência dos cálculos é<strong> 30/09/2026</strong>.
         </p>
         <p>
           Para usar outra base, importe os três CSVs da mesma extração. Primeiro
@@ -132,9 +133,9 @@ export function DataImport({
         )}
         <p>
           Use apenas dados sintéticos nesta demonstração pública. Arquivos
-          enviados são processados no servidor e ficam vinculados à sua sessão
-          por até sete dias. Investigar com IA envia evidências selecionadas ao
-          Groq.
+          enviados são processados no servidor e ficam vinculados à sua sessão.
+          O acesso à sessão expira em sete dias. Investigar com IA envia
+          evidências selecionadas ao Groq.
         </p>
         {error && (
           <p className="alert alert-error" role="alert">
@@ -234,7 +235,8 @@ export function DataImport({
         </p>
         <p>
           A atualização é manual neste piloto. O caminho para integração
-          automática com os sistemas da Gogroup está explicado em Metodologia.
+          automática com os sistemas da Gocase e da GoBeauté está explicado em
+          Metodologia.
         </p>
       </section>
     </div>

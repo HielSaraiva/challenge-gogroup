@@ -59,7 +59,7 @@ export function FinancialImpact({
             <dd>{report.resolvedCount.toLocaleString("pt-BR")}</dd>
           </div>
           <div>
-            <dt>Resolução da base</dt>
+            <dt>Percentual resolvido</dt>
             <dd>{rateLabel}</dd>
           </div>
           <div>
@@ -102,11 +102,12 @@ export function FinancialImpact({
                 ? money(report.estimatedCosts.total)
                 : "Sem estimativas"}
             </dd>
-            <small>Separados dos custos informados</small>
+            <small>Previsões nos pedidos resolvidos</small>
           </div>
         </dl>
         <p className="dashboard-caption">
-          Reembolsos e custos acumulados, incluindo pedidos reabertos.
+          Reembolsos e custos informados são acumulados, inclusive após
+          reabertura. Estimativas ficam separadas; não comprovam despesas.
         </p>
       </section>
       <div className="dashboard-columns">

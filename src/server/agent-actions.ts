@@ -382,7 +382,7 @@ export async function executeStrategicTool(
       (context.patternId && context.patternId !== args.insightId)
     )
       throw new AppError(
-        "Consulte o padrão correto antes de criar a ação de processo.",
+        "Consulte o sinal correto antes de registrar a investigação de recorrência.",
       );
     const insight = insights(context.data).find(
       (item) => item.id === args.insightId,

@@ -95,7 +95,8 @@ export function PendingWorkspace({
           <h3>Nenhuma pendência de acompanhamento</h3>
           <p>
             Novas tarefas, pedidos reabertos e execuções aguardando resultado
-            aparecerão aqui. Consulte os encerramentos em Resultados.
+            aparecerão aqui. Consulte os pedidos resolvidos em Pedidos e o
+            resumo da operação em Resultados.
           </p>
         </div>
       )}
