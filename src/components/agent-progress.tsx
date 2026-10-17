@@ -1,4 +1,5 @@
 "use client";
+import { generatedTextLabel } from "@/lib/utils";
 import { Expandable } from "./ui/expandable";
 import type { Investigation, ToolEvent } from "@/domain/types";
 
@@ -172,9 +173,7 @@ export function AgentProgress({
             <div className="agent-step-body">
               <header>
                 <strong>
-                  {toolDescriptions[event.tool]?.[0] ||
-                    event.tool.replaceAll("_", " ")}{" "}
-                  ·{" "}
+                  {toolDescriptions[event.tool]?.[0] || "Etapa da análise"} ·{" "}
                   {event.tool === "agente" && event.state === "error"
                     ? quotaExceeded
                       ? "Limite do Groq atingido"
@@ -240,9 +239,7 @@ export function AgentProgress({
               >
                 <header className="agent-event-header">
                   <b>
-                    {toolDescriptions[e.tool]?.[0] ||
-                      e.tool.replaceAll("_", " ")}{" "}
-                    ·{" "}
+                    {toolDescriptions[e.tool]?.[0] || "Etapa da análise"} ·{" "}
                     {e.state === "ok"
                       ? "Concluída"
                       : e.state === "error"
@@ -257,7 +254,7 @@ export function AgentProgress({
                     {new Date(e.at).toLocaleTimeString("pt-BR")}
                   </time>
                 </header>
-                <p>{eventDescription(e, run?.type)}</p>
+                <p>{generatedTextLabel(eventDescription(e, run?.type))}</p>
                 {e.state === "error" &&
                   e.message.includes(
                     "Escreva apenas orientação qualitativa",

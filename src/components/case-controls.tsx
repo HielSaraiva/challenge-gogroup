@@ -1,4 +1,5 @@
 "use client";
+import { generatedTextLabel } from "@/lib/utils";
 import { useState } from "react";
 import { Button } from "./ui/button";
 import { outcomeLabels } from "@/domain/cases";
@@ -184,7 +185,7 @@ export function CaseControls({
             />
           </label>
         )}
-        {error && <p role="alert">{error}</p>}
+        {error && <p role="alert">{generatedTextLabel(error)}</p>}
         {action === "resolve" && !canResolve && (
           <p>
             Primeiro registre a execução de uma tarefa que trate a exceção.

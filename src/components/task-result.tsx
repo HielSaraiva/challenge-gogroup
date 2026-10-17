@@ -2,7 +2,12 @@
 import { Expandable } from "./ui/expandable";
 import { useState } from "react";
 import type { Task, RankedOrder } from "@/domain/types";
-import { shortDate, statusLabel, taskFactLabel } from "@/lib/utils";
+import {
+  shortDate,
+  statusLabel,
+  taskFactLabel,
+  generatedTextLabel,
+} from "@/lib/utils";
 import { CircleCheck } from "lucide-react";
 import {
   ResolutionFields,
@@ -95,18 +100,22 @@ export function TaskResult({
         {task.scope === "process" ? "Investigação de recorrência" : task.area} ·{" "}
         {statusLabel(task.status)}
       </span>
-      <h3>{task.title}</h3>
+      <h3>{generatedTextLabel(task.title)}</h3>
       <p>
         <b>Área responsável:</b> {task.area} · Prazo de referência:{" "}
         {shortDate(task.dueAt)}
       </p>
       <div className="agent-hypothesis">
         <strong>Hipótese do agente</strong>
-        <p>{task.justification.replace(/^Hipótese do agente:\s*/i, "")}</p>
+        <p>
+          {generatedTextLabel(
+            task.justification.replace(/^Hipótese do agente:\s*/i, ""),
+          )}
+        </p>
       </div>
       {task.nextStep && (
         <p>
-          <b>Verificação necessária:</b> {task.nextStep}
+          <b>Verificação necessária:</b> {generatedTextLabel(task.nextStep)}
         </p>
       )}
       <Expandable>
@@ -287,7 +296,7 @@ export function TaskResult({
               )}
             </>
           )}
-          {error && <p role="alert">{error}</p>}
+          {error && <p role="alert">{generatedTextLabel(error)}</p>}
           <Button
             disabled={busy || (task.scope === "process" && ids.length < 2)}
           >
@@ -375,7 +384,7 @@ export function TaskResult({
         </section>
       )}
       {error && task.status === "pendente_aprovacao" && (
-        <p role="alert">{error}</p>
+        <p role="alert">{generatedTextLabel(error)}</p>
       )}
     </article>
   );

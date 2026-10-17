@@ -1,5 +1,5 @@
 import Groq from "groq-sdk";
-import { statusLabel } from "@/lib/utils";
+import { statusLabel, insightGroupLabel } from "@/lib/utils";
 import { withShortRateLimitRetry } from "./provider-retry";
 import type {
   ChatCompletionMessageParam,
@@ -755,7 +755,7 @@ export async function investigate(
           .join("\n");
         run.summary = run.planId
           ? `Plano do dia registrado para ${queue(data, context.weights).orders.length} pedidos, dentro da capacidade restante de ${queue(data, context.weights).availableCapacity} tratativas. A seleção combina uma reserva para os casos mais antigos e pontuação explicável nas demais vagas. A seleção foi calculada pelas regras do sistema. O agente comparou estratégias, escolheu a política aplicada, consultou amostras por área e registrou o primeiro pedido sugerido, sua justificativa e o próximo passo. O plano não cria tarefas para todos os pedidos: investigue o caso escolhido para gerar uma tarefa. Nenhuma tratativa externa ou recuperação financeira foi executada.`
-          : `O agente consultou evidências e registrou ${processCreated ? "uma ação para investigar o processo" : `${run.taskIds.length} encaminhamento(s) individual(is)`} nesta sessão.\n${pattern ? `Padrão observado: ${pattern.count} de ${pattern.total} casos elegíveis no grupo ${pattern.group}. A concentração não comprova causa.\n` : ""}${evidence}\nA justificativa é uma hipótese do agente; os fatos verificados aparecem separadamente. O próximo passo é a revisão pela área responsável. Nenhum envio, pagamento ou recuperação financeira foi executado.`;
+          : `O agente consultou evidências e registrou ${processCreated ? "uma ação para investigar o processo" : `${run.taskIds.length} encaminhamento(s) individual(is)`} nesta sessão.\n${pattern ? `Padrão observado: ${pattern.count} de ${pattern.total} casos elegíveis no grupo ${insightGroupLabel(pattern.group)}. A concentração não comprova causa.\n` : ""}${evidence}\nA justificativa é uma hipótese do agente; os fatos verificados aparecem separadamente. O próximo passo é a revisão pela área responsável. Nenhum envio, pagamento ou recuperação financeira foi executado.`;
         run.status = "completed";
         break;
       }

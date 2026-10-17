@@ -31,7 +31,13 @@ import {
 import type { dashboard } from "@/domain/analytics";
 import type { planQueue } from "@/domain/planning";
 import type { financialReport } from "@/domain/operations";
-import { money, shortDate, statusLabel } from "@/lib/utils";
+import {
+  money,
+  shortDate,
+  statusLabel,
+  generatedTextLabel,
+  insightGroupLabel,
+} from "@/lib/utils";
 import { paginationItems } from "@/lib/pagination";
 import { orderList, PAGE_SIZES } from "@/lib/order-list";
 import { awaitingResultOrders } from "@/domain/task-resolution";
@@ -454,7 +460,7 @@ export function OperationsApp() {
           </div>
           {error && (
             <div className="alert alert-error" role="alert">
-              {error}
+              {generatedTextLabel(error)}
               <button aria-label="Dispensar erro" onClick={() => setError("")}>
                 ×
               </button>
@@ -957,8 +963,8 @@ export function OperationsApp() {
                             {t.scope === "process" ? "Recorrência" : t.area} ·{" "}
                             {statusLabel(t.status)}
                           </span>
-                          <h3>{t.title}</h3>
-                          <p>{t.justification}</p>
+                          <h3>{generatedTextLabel(t.title)}</h3>
+                          <p>{generatedTextLabel(t.justification)}</p>
                           <Button
                             variant="outline"
                             onClick={() =>
@@ -997,18 +1003,22 @@ export function OperationsApp() {
                         <b>
                           Plano de{" "}
                           {new Date(plan.createdAt).toLocaleString("pt-BR")} ·{" "}
-                          {plan.strategy || "legado"}
+                          {plan.strategy
+                            ? STRATEGIES[plan.strategy].label
+                            : "Plano legado"}
                         </b>
                         <p>
-                          {plan.strategyReason ||
+                          {(plan.strategyReason &&
+                            generatedTextLabel(plan.strategyReason)) ||
                             "Política anterior, sem comparação de estratégias registrada."}
                         </p>
-                        <p>{plan.briefing}</p>
+                        <p>{generatedTextLabel(plan.briefing)}</p>
                         <Expandable>
                           <summary>Consultar orientações salvas</summary>
                           {plan.workstreams.map((stream) => (
                             <p key={stream.area}>
-                              <b>{stream.area}:</b> {stream.nextStep}
+                              <b>{stream.area}:</b>{" "}
+                              {generatedTextLabel(stream.nextStep)}
                             </p>
                           ))}
                         </Expandable>
@@ -1025,7 +1035,8 @@ export function OperationsApp() {
                           · {statusLabel(r.status)}
                         </b>
                         <p>
-                          {shortDate(r.createdAt.slice(0, 10))} · {r.summary}
+                          {shortDate(r.createdAt.slice(0, 10))} ·{" "}
+                          {generatedTextLabel(r.summary)}
                         </p>
                       </article>
                     ))}
@@ -1064,7 +1075,9 @@ export function OperationsApp() {
                           </span>
                           <h2>{recurrenceQuestion(p)}</h2>
                           <p>
-                            <b>Grupo a conferir: {p.group}</b>
+                            <b>
+                              Grupo a conferir: {insightGroupLabel(p.group)}
+                            </b>
                           </p>
                           <p>
                             {p.count} casos relacionados dentro desta análise.
@@ -1238,7 +1251,7 @@ export function OperationsApp() {
                   {money(selected.customer?.revenue || "0")}
                 </p>
                 {selected.issues.map((i) => (
-                  <p key={i.code}>{i.detail}</p>
+                  <p key={i.code}>{generatedTextLabel(i.detail)}</p>
                 ))}
               </Expandable>
               <section className="order-task-section">

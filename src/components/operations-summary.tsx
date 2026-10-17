@@ -1,4 +1,5 @@
 "use client";
+import { generatedTextLabel } from "@/lib/utils";
 import type { DailyPlan } from "@/domain/types";
 import { STRATEGIES } from "@/domain/types";
 import { Button } from "./ui/button";
@@ -25,8 +26,8 @@ export function OperationsSummary({
           {plan.strategy ? STRATEGIES[plan.strategy].label : "Plano legado"}
         </b>
       </p>
-      <p>{plan.strategyReason}</p>
-      <p>{plan.briefing}</p>
+      <p>{plan.strategyReason && generatedTextLabel(plan.strategyReason)}</p>
+      <p>{generatedTextLabel(plan.briefing)}</p>
       <p>
         {completed} de {plan.selectedOrderIds.length} pedidos encerrados. A
         seleção original é preservada até você solicitar outro plano.
@@ -40,12 +41,12 @@ export function OperationsSummary({
             </header>
             <div className="workstream-guidance">
               <h4>Orientação para a equipe</h4>
-              <p>{s.nextStep}</p>
+              <p>{generatedTextLabel(s.nextStep)}</p>
             </div>
             {s.agentDecision?.justification && (
               <div className="workstream-guidance">
                 <h4>Por que começar por este pedido</h4>
-                <p>{s.agentDecision.justification}</p>
+                <p>{generatedTextLabel(s.agentDecision.justification)}</p>
               </div>
             )}
             {s.agentDecision &&

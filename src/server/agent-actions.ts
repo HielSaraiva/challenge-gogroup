@@ -1,3 +1,4 @@
+import { insightGroupLabel } from "@/lib/utils";
 import { z } from "zod";
 import { randomUUID, createHash } from "node:crypto";
 import type { ChatCompletionTool } from "groq-sdk/resources/chat/completions";
@@ -436,7 +437,7 @@ export async function executeStrategicTool(
       updatedAt: now,
       idempotencyKey: key,
       facts: [
-        `${insight.count} de ${insight.total} registros elegíveis desta análise pertencem ao grupo ${insight.group}.`,
+        `${insight.count} de ${insight.total} registros elegíveis desta análise pertencem ao grupo ${insightGroupLabel(insight.group)}.`,
         insight.dimension === "promise_rule"
           ? "Divergência verificada entre promessa original e a regra de separação + SLA."
           : `Participação na exceção: ${(insight.share * 100).toFixed(1)}%; na base de exceções com a dimensão disponível: ${(insight.baselineShare * 100).toFixed(1)}%; associação relativa: ${insight.enrichment.toFixed(2)}x.`,
