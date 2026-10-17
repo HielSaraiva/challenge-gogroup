@@ -109,12 +109,13 @@ export function Methodology({
         <details>
           <summary>Como ler a atividade do agente?</summary>
           <p>
-            As etapas são numeradas de cima para baixo: conferir a carteira,
-            comparar alternativas, preparar encaminhamentos e salvar o plano. O
-            resultado aparece com o que foi registrado. As chamadas de
-            ferramentas ficam em detalhes técnicos, agrupadas por identificador
-            de chamada; registros antigos sem esse identificador são marcados
-            como legados.
+            As etapas entram na pilha quando são concluídas, com a mais recente
+            no topo e o horário da conclusão. Um indicador separado acompanha o
+            trabalho em andamento. Preparar os encaminhamentos e salvar o plano
+            aparecem como um único registro, pois são concluídos pela mesma
+            ferramenta. As chamadas de ferramentas ficam em detalhes técnicos,
+            agrupadas por identificador de chamada; registros antigos sem esse
+            identificador são marcados como legados.
           </p>
         </details>
       </section>

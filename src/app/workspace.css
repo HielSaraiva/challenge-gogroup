@@ -216,6 +216,85 @@ summary:focus-visible,
   display: grid;
   gap: 14px;
 }
+.agent-completion-stack {
+  padding: 0;
+  margin-block: 20px;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+.agent-completed-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px;
+  background: #f3f6fa;
+  border: 1px solid #e0e7f1;
+  border-radius: 10px;
+  animation: agent-step-enter 240ms ease-out both;
+}
+.agent-step-check {
+  display: grid;
+  place-items: center;
+  flex: 0 0 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e1eee9;
+  color: #24624e;
+  font-weight: 600;
+}
+.agent-step-body {
+  flex: 1;
+  min-width: 0;
+}
+.agent-step-body header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+.agent-step-body time {
+  font-size: 12px;
+  color: #62636b;
+  font-variant-numeric: tabular-nums;
+}
+.agent-step-body p {
+  margin: 8px 0 0;
+}
+.agent-current {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.agent-working-dot {
+  flex: 0 0 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2659a5;
+  animation: agent-working 1.4s ease-in-out infinite;
+}
+@keyframes agent-step-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes agent-working {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-completed-step,
+  .agent-working-dot {
+    animation: none;
+  }
+}
 .agent-technical-content {
   margin: 16px clamp(12px, 2.5vw, 32px) 0;
   padding-inline: clamp(12px, 2vw, 24px);

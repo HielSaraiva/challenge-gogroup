@@ -67,33 +67,15 @@ export function AgentProgress({
 }) {
   const history = events.length ? events : run?.events || [];
   if (!history.length && !run) return null;
-  const daily =
-    run?.type === "daily" ||
-    history.some((e) =>
-      [
-        "consultar_diagnostico",
-        "comparar_estrategias",
-        "registrar_plano_dia",
-      ].includes(e.tool),
-    );
-  const steps = daily
-    ? ([
-        ["Conferindo a carteira", ["consultar_diagnostico"]],
-        ["Comparando alternativas", ["comparar_estrategias"]],
-        ["Preparando encaminhamentos", ["registrar_plano_dia"]],
-        ["Salvando o plano", ["registrar_plano_dia"]],
-      ] as const)
-    : ([
-        ["Consultando evidências", ["consultar_pedido", "consultar_padroes"]],
-        [
-          "Preparando a ação",
-          ["simular_tratativa", "criar_tarefa", "criar_acao_processo"],
-        ],
-        [
-          "Registrando o encaminhamento",
-          ["criar_tarefa", "criar_acao_processo"],
-        ],
-      ] as const);
+  const completedSteps = new Map<string, ToolEvent>();
+  for (const event of history) {
+    if (event.state === "ok" && event.tool !== "agente")
+      completedSteps.set(event.tool, event);
+  }
+  const stack = [...completedSteps.values()]
+    .reverse()
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+  const current = history.at(-1);
   const success = run?.status === "completed";
   const failed = !busy && run?.status === "failed";
   const grouped = new Map<string, ToolEvent>();
@@ -132,34 +114,50 @@ export function AgentProgress({
               ? "A análise não foi concluída"
               : "Atividade do agente"}
       </h2>
-      <p>Etapas em ordem, de cima para baixo.</p>
-      <ol className="agent-steps" aria-live="polite">
-        {steps.map(([label, tools], i) => {
-          const matching = history.filter((e) =>
-            (tools as readonly string[]).includes(e.tool),
-          );
-          const last = matching.at(-1);
-          const done = success || last?.state === "ok";
-          return (
-            <li key={label}>
-              <b>
-                {i + 1}. {label}
-              </b>
-              <span>
-                {done
-                  ? "Concluída"
-                  : last?.state === "error"
-                    ? "Precisa de atenção"
-                    : last?.state === "running"
-                      ? "Em andamento"
-                      : failed
-                        ? "Não concluída"
-                        : "Aguardando"}
-              </span>
-            </li>
-          );
-        })}
+      <p>
+        As etapas aparecem ao serem concluídas. A mais recente fica no topo.
+      </p>
+      {busy && (
+        <p className="agent-current" role="status">
+          <span className="agent-working-dot" aria-hidden="true" />
+          {current?.state === "running" && current.tool !== "agente"
+            ? `${toolDescriptions[current.tool]?.[0] || current.tool.replaceAll("_", " ")} em andamento…`
+            : "O agente está preparando a próxima etapa…"}
+        </p>
+      )}
+      <ol
+        className="agent-completion-stack"
+        aria-label="Etapas concluídas, da mais recente para a mais antiga"
+        aria-live="polite"
+        aria-relevant="additions"
+      >
+        {stack.map((event) => (
+          <li
+            key={`${run?.id || "live"}:${event.tool}`}
+            className="agent-completed-step"
+          >
+            <span className="agent-step-check" aria-hidden="true">
+              ✓
+            </span>
+            <div className="agent-step-body">
+              <header>
+                <strong>
+                  {toolDescriptions[event.tool]?.[0] ||
+                    event.tool.replaceAll("_", " ")}{" "}
+                  · Concluída
+                </strong>
+                <time dateTime={event.at}>
+                  {new Date(event.at).toLocaleTimeString("pt-BR")}
+                </time>
+              </header>
+              <p>{eventDescription(event)}</p>
+            </div>
+          </li>
+        ))}
       </ol>
+      {!busy && !stack.length && (
+        <p>Nenhuma etapa foi concluída nesta execução.</p>
+      )}
       {!busy && <p role={failed ? "alert" : undefined}>{run?.summary}</p>}
       <details>
         <summary>Detalhes técnicos da execução</summary>
