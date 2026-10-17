@@ -123,7 +123,7 @@ export function Methodology({
               reembolsos e custos registrados.
             </li>
             <li>
-              <b>Melhorias:</b> investigue recorrências separadamente. Uma
+              <b>Recorrências:</b> investigue recorrências separadamente. Uma
               conclusão sobre o processo não encerra os pedidos relacionados.
             </li>
           </ol>

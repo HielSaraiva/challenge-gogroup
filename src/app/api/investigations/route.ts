@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     if (previous) return json({ investigation: previous });
     if (input.renewFromTaskId && input.type !== "pattern")
       throw new AppError(
-        "Uma nova investigação de recorrência deve ser solicitada em Melhorias.",
+        "Uma nova investigação de recorrência deve ser solicitada em Recorrências.",
       );
     if (input.type === "pattern") {
       let decision;

@@ -46,7 +46,7 @@ const nav = [
   ["queue", "Pedidos"],
   ["agent", "Pendências"],
   ["impact", "Resultados"],
-  ["insights", "Melhorias"],
+  ["insights", "Recorrências"],
   ["data", "Dados"],
   ["method", "Metodologia"],
 ] as const;
@@ -406,7 +406,7 @@ export function OperationsApp() {
                     queue: "Pedidos para acompanhar",
                     agent: "Pendências da equipe",
                     impact: "Resultados das tratativas",
-                    insights: "Melhorias para investigar",
+                    insights: "Recorrências para investigar",
                     data: "Dados da operação",
                     method: "Como funciona e por quê",
                   }[tab]
