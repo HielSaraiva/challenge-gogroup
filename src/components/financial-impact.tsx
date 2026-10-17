@@ -76,30 +76,6 @@ export function FinancialImpact({
           <span style={{ width: `${rate}%` }} />
         </div>
       </section>
-      <div className="dashboard-columns">
-        <section className="panel prose">
-          <h2>Problemas em aberto</h2>
-          <Distribution
-            rows={report.openByException.map(({ type, count }) => ({
-              label: exceptionLabels[type] || "Outros problemas",
-              count,
-            }))}
-            empty="Nenhum pedido em aberto."
-          />
-        </section>
-        <section className="panel prose">
-          <h2>Soluções registradas</h2>
-          <p>Dos pedidos atualmente resolvidos</p>
-          <Distribution
-            rows={[...outcomes]
-              .map(([label, count]) => ({ label, count }))
-              .sort(
-                (a, b) => b.count - a.count || a.label.localeCompare(b.label),
-              )}
-            empty="Nenhum pedido resolvido ainda."
-          />
-        </section>
-      </div>
       <section className="panel prose">
         <h2>Valores registrados pela equipe</h2>
         <dl className="result-metrics dashboard-kpis">
@@ -133,6 +109,30 @@ export function FinancialImpact({
           Reembolsos e custos acumulados, incluindo pedidos reabertos.
         </p>
       </section>
+      <div className="dashboard-columns">
+        <section className="panel prose">
+          <h2>Problemas em aberto</h2>
+          <Distribution
+            rows={report.openByException.map(({ type, count }) => ({
+              label: exceptionLabels[type] || "Outros problemas",
+              count,
+            }))}
+            empty="Nenhum pedido em aberto."
+          />
+        </section>
+        <section className="panel prose">
+          <h2>Soluções registradas</h2>
+          <p>Dos pedidos atualmente resolvidos</p>
+          <Distribution
+            rows={[...outcomes]
+              .map(([label, count]) => ({ label, count }))
+              .sort(
+                (a, b) => b.count - a.count || a.label.localeCompare(b.label),
+              )}
+            empty="Nenhum pedido resolvido ainda."
+          />
+        </section>
+      </div>
     </div>
   );
 }
