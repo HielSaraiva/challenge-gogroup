@@ -1044,7 +1044,10 @@ main > .panel {
   gap: 18px;
 }
 .sidebar .logo img {
+  display: block;
   width: 140px;
+  height: auto;
+  flex-shrink: 0;
 }
 .sidebar .brand-product {
   max-width: 92px;

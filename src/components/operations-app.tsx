@@ -379,7 +379,7 @@ export function OperationsApp() {
             navigate("overview");
           }}
         >
-          <img src="/gogroup-logo.svg" alt="Gogroup" width={164} height={38} />
+          <img src="/gogroup-logo.svg" alt="Gogroup" width={159} height={32} />
         </a>
         <span className="brand-product">Agente de operações</span>
         <button
