@@ -897,7 +897,7 @@ export function OperationsApp() {
                 />
               )}
               {tab === "impact" && financial && (
-                <FinancialImpact report={financial} onOrder={openOrder} />
+                <FinancialImpact report={financial} />
               )}
               {tab === "insights" && (
                 <ImprovementsWorkspace

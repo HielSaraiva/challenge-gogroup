@@ -91,7 +91,19 @@ export function financialReport(data: Dataset, state: SessionState) {
   const estimated = outcomes.flatMap((o) =>
     o.cost?.kind === "estimated" ? [o.cost.amount] : [],
   );
+  const openCounts = new Map<string, number>();
+  for (const order of data.orders) {
+    if (!order.resolution) {
+      openCounts.set(
+        order.exception,
+        (openCounts.get(order.exception) || 0) + 1,
+      );
+    }
+  }
   return {
+    openByException: [...openCounts]
+      .map(([type, count]) => ({ type, count }))
+      .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type)),
     resolvedCount: resolved.length,
     pendingCount: data.orders.length - resolved.length,
     reopenedCount: data.orders.filter(

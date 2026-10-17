@@ -114,12 +114,14 @@ describe("situação do pedido e histórico financeiro", () => {
     });
     expect(report(first)).toMatchObject({
       resolvedCount: 1,
+      openByException: [],
       refunds: { count: 1, total: "40.00" },
       declaredCosts: { count: 1, total: "15.00" },
     });
     const reopened = reopen(first, "2026-10-02T10:00:00Z");
     expect(report(reopened)).toMatchObject({
       resolvedCount: 0,
+      openByException: [{ type: "atraso_entrega", count: 1 }],
       reopenedCount: 1,
       pendingCount: 1,
       treatedValue: "0.00",
