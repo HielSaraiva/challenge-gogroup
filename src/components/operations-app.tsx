@@ -1161,7 +1161,7 @@ export function OperationsApp() {
                 )}
               </section>
               {activity("order", selected.id)}
-              <details className="panel prose">
+              <details className="panel prose order-facts-panel">
                 <summary>Conferir fatos, prazos e histórico do cliente</summary>
                 <p>
                   Pedido: {shortDate(selected.orderedAt)} · Exceção:{" "}

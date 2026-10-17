@@ -576,6 +576,9 @@ main > .panel {
 .case-history {
   margin-top: 20px;
 }
+.order-facts-panel {
+  margin-top: 24px;
+}
 .order-dialog .order-dialog-header {
   padding-right: 24px;
 }
