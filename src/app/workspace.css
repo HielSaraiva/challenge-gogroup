@@ -514,6 +514,8 @@ summary:focus-visible,
 .guided-form textarea,
 .guided-form select {
   width: 100%;
+  max-width: none;
+  min-width: 0;
   padding: 12px;
   border: 1px solid #aeb8c6;
   border-radius: 6px;
