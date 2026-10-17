@@ -3,6 +3,14 @@ import { useEffect, useState, type MouseEvent } from "react";
 import { ChevronDown, List } from "lucide-react";
 import { STRATEGIES, type Weights } from "@/domain/types";
 import type { dashboard } from "@/domain/analytics";
+const sections = [
+  ["method-flow", "Do diagnóstico ao resultado"],
+  ["method-agent", "Papel da IA"],
+  ["method-priority", "Priorização"],
+  ["method-outcomes", "Execução e resultados"],
+  ["method-data", "Dados e tecnologia"],
+  ["method-pilot", "Limites e validação"],
+] as const;
 export function Methodology({
   summary,
   weights,
@@ -11,23 +19,32 @@ export function Methodology({
   weights: Weights;
 }) {
   const [indexOpen, setIndexOpen] = useState(false);
-  function scrollToSection() {
+  const [activeSection, setActiveSection] = useState("method-flow");
+  function scrollToSection(animate = false) {
     const id = window.location.hash.slice(1);
     if (!id.startsWith("method-")) return;
     const section = document.getElementById(id);
     if (!section) return;
+    setActiveSection(id);
     const title = section.querySelector<HTMLElement>("h2");
     if (title) {
       title.tabIndex = -1;
       title.focus({ preventScroll: true });
     }
-    section.scrollIntoView({ block: "start", behavior: "instant" });
+    section.scrollIntoView({
+      block: "start",
+      behavior:
+        animate &&
+        !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "smooth"
+          : "instant",
+    });
   }
   useEffect(() => {
     let frame = 0;
     const restoreSection = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(scrollToSection);
+      frame = requestAnimationFrame(() => scrollToSection());
     };
     restoreSection();
     window.addEventListener("hashchange", restoreSection);
@@ -38,6 +55,22 @@ export function Methodology({
       window.removeEventListener("popstate", restoreSection);
     };
   }, []);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible[0]) setActiveSection(visible[0].target.id);
+      },
+      { rootMargin: "-20% 0px -60% 0px", threshold: 0 },
+    );
+    for (const [id] of sections) {
+      const section = document.getElementById(id);
+      if (section) observer.observe(section);
+    }
+    return () => observer.disconnect();
+  }, []);
   function followSection(event: MouseEvent<HTMLAnchorElement>) {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
       return;
@@ -45,7 +78,7 @@ export function Methodology({
     setIndexOpen(false);
     const hash = event.currentTarget.hash;
     if (window.location.hash !== hash) window.history.pushState(null, "", hash);
-    scrollToSection();
+    scrollToSection(true);
   }
   return (
     <div className="methodology">
@@ -66,25 +99,20 @@ export function Methodology({
           id="method-section-links"
           aria-label="Nesta metodologia"
         >
-          <a href="#method-agent" onClick={followSection}>
-            Papel da IA
-          </a>
-          <a href="#method-priority" onClick={followSection}>
-            Priorização
-          </a>
-          <a href="#method-outcomes" onClick={followSection}>
-            Execução e resultados
-          </a>
-          <a href="#method-data" onClick={followSection}>
-            Dados e tecnologia
-          </a>
-          <a href="#method-pilot" onClick={followSection}>
-            Limites e validação
-          </a>
+          {sections.map(([id, label]) => (
+            <a
+              key={id}
+              href={`#${id}`}
+              onClick={followSection}
+              aria-current={activeSection === id ? "location" : undefined}
+            >
+              {label}
+            </a>
+          ))}
         </nav>
       </aside>
       <div className="method-content">
-        <section className="panel prose">
+        <section className="panel prose" id="method-flow">
           <h2>Do diagnóstico ao resultado</h2>
           <ol className="workflow-steps">
             <li>
