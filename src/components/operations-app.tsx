@@ -101,6 +101,7 @@ export function OperationsApp() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [resetting, setResetting] = useState(false);
+  const [sessionRevision, setSessionRevision] = useState(0);
   const [confirmNewPlan, setConfirmNewPlan] = useState(false);
   const [planStrategy, setPlanStrategy] = useState<Strategy>("equilibrada");
   const [query, setQuery] = useState("");
@@ -271,6 +272,7 @@ export function OperationsApp() {
         body: "{}",
       });
       if (!r.ok) throw new Error("Não foi possível reiniciar.");
+      setSessionRevision((revision) => revision + 1);
       setResetting(false);
       setEvents([]);
       setActiveRun(undefined);
@@ -433,6 +435,7 @@ export function OperationsApp() {
           {tab === "data" ? (
             <>
               <DataImport
+                key={sessionRevision}
                 onImported={async () => {
                   await load();
                   navigate("overview");

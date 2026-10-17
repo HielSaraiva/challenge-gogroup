@@ -34,15 +34,18 @@ export function DataImport({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   useEffect(() => {
-    void fetch("/api/data")
+    const controller = new AbortController();
+    void fetch("/api/data", { cache: "no-store", signal: controller.signal })
       .then(async (r) => {
         const b = await r.json();
         if (!r.ok) throw new Error(b.error);
         setStatus(b);
       })
-      .catch(() =>
-        setError("Não foi possível consultar a base. Recarregue a página."),
-      );
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setError("Não foi possível consultar a base. Recarregue a página.");
+      });
+    return () => controller.abort();
   }, []);
   async function select(key: keyof Files, file?: File) {
     setPreview(undefined);
