@@ -105,8 +105,13 @@ export function DataImport({
           <Database size={21} aria-hidden="true" /> Base de operações
         </h2>
         <p>
-          Importe os três CSVs da mesma extração. Primeiro você confere a
-          qualidade; a fila só muda depois da confirmação.
+          A importação é opcional. Se você não adicionar uma base própria, a
+          demonstração usará a base padrão, com data de referência em
+          <strong> 30/09/2026</strong>.
+        </p>
+        <p>
+          Para usar outra base, importe os três CSVs da mesma extração. Primeiro
+          você confere a qualidade; a base só muda depois da confirmação.
         </p>
         {status?.available && (
           <div className="data-status">
