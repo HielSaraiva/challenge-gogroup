@@ -395,7 +395,7 @@ summary:focus-visible,
     animation: none;
   }
 }
-.agent-technical-content {
+.expandable-content {
   margin: 16px clamp(12px, 2.5vw, 32px) 0;
   padding-inline: clamp(12px, 2vw, 24px);
   border-inline: 2px solid var(--line);

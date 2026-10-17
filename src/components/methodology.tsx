@@ -1,4 +1,5 @@
 "use client";
+import { Expandable } from "./ui/expandable";
 import { useEffect, useState, type MouseEvent } from "react";
 import { ChevronDown, List } from "lucide-react";
 import { STRATEGIES, type Weights } from "@/domain/types";
@@ -142,7 +143,7 @@ export function Methodology({
             vínculos, inclusive se a estratégia aplicada corresponde à escolha
             do usuário.
           </p>
-          <details open>
+          <Expandable open>
             <summary>O que cada execução produz?</summary>
             <ul>
               <li>
@@ -162,8 +163,8 @@ export function Methodology({
                 confirmada, descartada ou permanece inconclusiva.
               </li>
             </ul>
-          </details>
-          <details>
+          </Expandable>
+          <Expandable>
             <summary>
               Por que as ferramentas e os registros são necessários?
             </summary>
@@ -187,8 +188,8 @@ export function Methodology({
               preserva os efeitos registrados, mostra o problema e não gera uma
               resposta simulada de sucesso.
             </p>
-          </details>
-          <details>
+          </Expandable>
+          <Expandable>
             <summary>Como ler a atividade do agente?</summary>
             <p>
               As tentativas entram na pilha ao terminar, com sucesso ou erro e a
@@ -200,7 +201,7 @@ export function Methodology({
               identificador de chamada; registros antigos sem esse identificador
               são marcados como legados.
             </p>
-          </details>
+          </Expandable>
         </section>
         <section className="panel prose" id="method-priority">
           <h2>Por que estes pedidos foram selecionados?</h2>
@@ -237,7 +238,7 @@ export function Methodology({
             agir; não precisa interpretar porcentagens normalizadas para usar a
             ferramenta.
           </p>
-          <details>
+          <Expandable>
             <summary>Fórmulas e escolha da normalização</summary>
             <p>
               Pontuação = 100 × soma de cada componente normalizado multiplicado
@@ -267,8 +268,8 @@ export function Methodology({
               relacionamento para alegar perda futura da carteira, pois um
               cliente pode ter várias exceções.
             </p>
-          </details>
-          <details>
+          </Expandable>
+          <Expandable>
             <summary>
               Reserva para antigos, capacidade e comparação com FIFO
             </summary>
@@ -298,8 +299,8 @@ export function Methodology({
               efeito causal. O agente compara valor, exposição e espera, sem
               prometer que uma única métrica represente sucesso.
             </p>
-          </details>
-          <details>
+          </Expandable>
+          <Expandable>
             <summary>Calendário e promessa ao cliente</summary>
             <p>
               A referência é fixa: 30/09/2026. Sábados, domingos e os feriados
@@ -314,7 +315,7 @@ export function Methodology({
               entrega não encerra automaticamente exceções como item faltante ou
               avaria.
             </p>
-          </details>
+          </Expandable>
         </section>
         <section className="panel prose" id="method-outcomes">
           <h2>Por que aprovação, execução e resultado são separados?</h2>
@@ -325,7 +326,7 @@ export function Methodology({
             ausência de tarefas pendentes. Revisar um status, sozinho, não
             resolve a pendência original.
           </p>
-          <details open>
+          <Expandable open>
             <summary>Quando há resultado sem dinheiro?</summary>
             <p>
               Exemplo sintético: um pedido está bloqueado por endereço
@@ -340,8 +341,8 @@ export function Methodology({
               operador. Valor desconhecido permanece “não informado”; não é
               convertido em zero.
             </p>
-          </details>
-          <details>
+          </Expandable>
+          <Expandable>
             <summary>Significado de cada valor</summary>
             <ul>
               <li>
@@ -379,8 +380,8 @@ export function Methodology({
               junto da proposta concreta, para apoiar a avaliação antes da
               execução.
             </p>
-          </details>
-          <details>
+          </Expandable>
+          <Expandable>
             <summary>
               Por que uma investigação de melhoria não encerra pedidos?
             </summary>
@@ -405,7 +406,7 @@ export function Methodology({
               segue verificação contratual própria. Sem todas as vendas ou
               produção, não há taxa real de falha nem causalidade demonstrada.
             </p>
-          </details>
+          </Expandable>
         </section>
         <section className="panel prose" id="method-data">
           <h2>Por que esta arquitetura e esta entrada de dados?</h2>
@@ -416,7 +417,7 @@ export function Methodology({
               preservados para revisão.
             </p>
           )}
-          <details open>
+          <Expandable open>
             <summary>CSV no piloto; integração no uso interno</summary>
             <p>
               A importação valida campos, relações e duplicatas; exibe prévia e
@@ -438,8 +439,8 @@ export function Methodology({
               incremental, conciliação, monitoramento e reprocessamento. Não
               presumimos quais serviços a Gogroup usa.
             </p>
-          </details>
-          <details>
+          </Expandable>
+          <Expandable>
             <summary>Escolhas técnicas e seus limites</summary>
             <ul>
               <li>
@@ -483,7 +484,7 @@ export function Methodology({
               Acesso expirado não representa uma política de descarte auditada
               para produção.
             </p>
-          </details>
+          </Expandable>
         </section>
         <section className="panel prose" id="method-pilot">
           <h2>O que falta provar no piloto?</h2>

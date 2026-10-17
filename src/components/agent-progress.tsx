@@ -1,4 +1,5 @@
 "use client";
+import { Expandable } from "./ui/expandable";
 import type { Investigation, ToolEvent } from "@/domain/types";
 
 const toolDescriptions: Record<string, [string, string]> = {
@@ -215,9 +216,9 @@ export function AgentProgress({
           já havia um plano ativo, ele continua disponível.
         </p>
       )}
-      <details>
+      <Expandable>
         <summary>Detalhes técnicos da execução</summary>
-        <div className="agent-technical-content">
+        <>
           <p>
             Histórico das chamadas do agente, da mais recente para a mais
             antiga. Tentativas não concluídas ficam registradas mesmo quando o
@@ -261,7 +262,7 @@ export function AgentProgress({
                   e.message.includes(
                     "Escreva apenas orientação qualitativa",
                   ) && (
-                    <details>
+                    <Expandable>
                       <summary>O que a validação identificou?</summary>
                       <p>
                         A justificativa incluiu informações numéricas em um
@@ -271,7 +272,7 @@ export function AgentProgress({
                         formato; não significa que os números gerados estavam
                         incorretos.
                       </p>
-                    </details>
+                    </Expandable>
                   )}
                 {recovered.has(id) && (
                   <p>
@@ -295,8 +296,8 @@ export function AgentProgress({
                 )}
               </article>
             ))}
-        </div>
-      </details>
+        </>
+      </Expandable>
     </section>
   );
 }

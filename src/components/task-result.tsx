@@ -1,4 +1,5 @@
 "use client";
+import { Expandable } from "./ui/expandable";
 import { useState } from "react";
 import type { Task, RankedOrder } from "@/domain/types";
 import { shortDate } from "@/lib/utils";
@@ -70,12 +71,12 @@ export function TaskResult({
           <b>Verificação necessária:</b> {task.nextStep}
         </p>
       )}
-      <details>
+      <Expandable>
         <summary>Fatos consultados pelo agente</summary>
         {task.facts?.map((f) => (
           <p key={f}>{f}</p>
         ))}
-      </details>
+      </Expandable>
       {task.status === "pendente_aprovacao" && (
         <div className="task-actions">
           <Button disabled={busy} onClick={() => void save("aprovada")}>
@@ -132,7 +133,7 @@ export function TaskResult({
                         {id}
                       </label>
                       {o && (
-                        <details>
+                        <Expandable>
                           <summary>Conferir evidências de {id}</summary>
                           <p>
                             {exceptionLabels[o.exception]} · {o.product} ·{" "}
@@ -147,7 +148,7 @@ export function TaskResult({
                             CD {o.dc}, turno {o.shift}, máquina{" "}
                             {o.machine || "não informada"}, lote {o.lot}.
                           </p>
-                        </details>
+                        </Expandable>
                       )}
                     </div>
                   );

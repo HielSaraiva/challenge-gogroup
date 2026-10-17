@@ -1,4 +1,5 @@
 "use client";
+import { Expandable } from "./ui/expandable";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, Menu, Search, X } from "lucide-react";
 import { Button } from "./ui/button";
@@ -859,7 +860,7 @@ export function OperationsApp() {
                     </div>
                   </section>
                   {ready && day.plan?.comparison && (
-                    <details className="panel prose">
+                    <Expandable className="panel prose">
                       <summary>
                         Comparação deste plano com a ordem de chegada
                       </summary>
@@ -891,7 +892,7 @@ export function OperationsApp() {
                           ),
                         )}
                       </div>
-                    </details>
+                    </Expandable>
                   )}
                 </>
               )}
@@ -951,7 +952,7 @@ export function OperationsApp() {
                       </p>
                     )}
                   </section>
-                  <details className="panel prose">
+                  <Expandable className="panel prose">
                     <summary>Histórico de análises e planos</summary>
                     {plans.map((plan) => (
                       <article key={plan.id} className="result-row">
@@ -965,14 +966,14 @@ export function OperationsApp() {
                             "Política anterior, sem comparação de estratégias registrada."}
                         </p>
                         <p>{plan.briefing}</p>
-                        <details>
+                        <Expandable>
                           <summary>Consultar orientações salvas</summary>
                           {plan.workstreams.map((stream) => (
                             <p key={stream.area}>
                               <b>{stream.area}:</b> {stream.nextStep}
                             </p>
                           ))}
-                        </details>
+                        </Expandable>
                       </article>
                     ))}
                     {runs.map((r) => (
@@ -990,7 +991,7 @@ export function OperationsApp() {
                         </p>
                       </article>
                     ))}
-                  </details>
+                  </Expandable>
                 </>
               )}
               {tab === "impact" && financial && (
@@ -1031,7 +1032,7 @@ export function OperationsApp() {
                             {p.count} casos relacionados dentro desta análise.
                           </p>
                           <p>{p.investigationQuestion}</p>
-                          <details>
+                          <Expandable>
                             <summary>
                               Por que este sinal merece investigação?
                             </summary>
@@ -1044,7 +1045,7 @@ export function OperationsApp() {
                               Referências:{" "}
                               {p.evidenceIds.slice(0, 3).join(", ")}
                             </p>
-                          </details>
+                          </Expandable>
                           <Button
                             disabled={busy}
                             onClick={() => void investigate(p.id, "pattern")}
@@ -1161,7 +1162,7 @@ export function OperationsApp() {
                 )}
               </section>
               {activity("order", selected.id)}
-              <details className="panel prose order-facts-panel">
+              <Expandable className="panel prose order-facts-panel">
                 <summary>Conferir fatos, prazos e histórico do cliente</summary>
                 <p>
                   Pedido: {shortDate(selected.orderedAt)} · Exceção:{" "}
@@ -1187,7 +1188,7 @@ export function OperationsApp() {
                 {selected.issues.map((i) => (
                   <p key={i.code}>{i.detail}</p>
                 ))}
-              </details>
+              </Expandable>
               <section className="order-task-section">
                 <h3>Encaminhamentos para este pedido</h3>
                 {!related.length && (
@@ -1221,7 +1222,7 @@ export function OperationsApp() {
                 disabled={busy}
                 onSaved={refresh}
               />
-              <details className="panel prose case-history">
+              <Expandable className="panel prose case-history">
                 <summary>Histórico deste caso</summary>
                 {selected.caseHistory?.map((e) => (
                   <p key={e.id}>
@@ -1229,7 +1230,7 @@ export function OperationsApp() {
                     {new Date(e.at).toLocaleString("pt-BR")}
                   </p>
                 ))}
-              </details>
+              </Expandable>
             </>
           )}
         </DialogContent>
