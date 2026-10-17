@@ -163,7 +163,7 @@ export function CaseControls({
                 maxLength={1500}
                 value={evidence}
                 onChange={(e) => setEvidence(e.target.value)}
-                placeholder="Descreva a confirmação e informe a referência consultada, sem dados pessoais."
+                placeholder="Informe como o resultado foi confirmado e onde conferir. Ex.: correção do endereço confirmada no chamado de atendimento; informe o protocolo ou link, sem copiar dados pessoais."
               />
             </label>
             {type === "reembolso_registrado" && (
@@ -173,7 +173,7 @@ export function CaseControls({
                   required
                   type="text"
                   inputMode="decimal"
-                  placeholder="R$ 0,00"
+                  placeholder="Ex.: R$ 23,75 devolvidos ao cliente"
                   value={refund}
                   onChange={(e) => setRefund(e.target.value)}
                   onBlur={() => setRefund(formatCurrencyInput(refund))}
@@ -184,11 +184,11 @@ export function CaseControls({
               </label>
             )}
             <label>
-              Custo desta tratativa (R$), se conhecido
+              Custo adicional para resolver o problema (R$) — opcional
               <input
                 type="text"
                 inputMode="decimal"
-                placeholder="Não informado"
+                placeholder="Ex.: R$ 15,00 de novo frete. Se desconhecido, deixe em branco."
                 value={cost}
                 onChange={(e) => setCost(e.target.value)}
                 onBlur={() => setCost(formatCurrencyInput(cost))}
@@ -206,9 +206,10 @@ export function CaseControls({
               </label>
             )}
             <p>
-              Informe apenas custos relacionados a esta tratativa. Deixe em
-              branco se o valor for desconhecido; isso não será registrado como
-              zero.
+              Registre despesas adicionais, como novo frete ou reprodução do
+              item. Não inclua o valor original do pedido nem o reembolso, que
+              tem campo próprio. Se não houve custo adicional, informe R$ 0,00;
+              se você não sabe o valor, deixe em branco.
             </p>
           </>
         )}
@@ -220,6 +221,13 @@ export function CaseControls({
             maxLength={1200}
             value={note}
             onChange={(e) => setNote(e.target.value)}
+            placeholder={
+              review
+                ? "Descreva a fonte consultada e por que o status escolhido é o correto. Informe a referência do registro, sem dados pessoais."
+                : order.resolution
+                  ? "Explique por que o pedido precisa ser reaberto e qual pendência voltou a ocorrer."
+                  : "Resuma como o problema foi resolvido. Ex.: endereço validado, correção registrada no sistema e pedido liberado para seguir o atendimento."
+            }
           />
         </label>
         {error && <p role="alert">{error}</p>}
