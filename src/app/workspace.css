@@ -571,6 +571,13 @@ main > .panel {
 .page-heading h1:focus {
   outline: none;
 }
+.order-row {
+  cursor: pointer;
+}
+.order-row:hover > td,
+.order-row:focus-within > td {
+  background: #edf2fa;
+}
 .pagination {
   flex-wrap: wrap;
   gap: 12px;

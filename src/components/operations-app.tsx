@@ -675,10 +675,24 @@ export function OperationsApp() {
                           {visible
                             .slice((currentPage - 1) * 15, currentPage * 15)
                             .map((o) => (
-                              <tr key={o.id}>
+                              <tr
+                                key={o.id}
+                                className="order-row"
+                                onClick={(event) => {
+                                  if (
+                                    (event.target as HTMLElement).closest(
+                                      "button, a, input, select, textarea",
+                                    )
+                                  )
+                                    return;
+                                  if (window.getSelection()?.toString()) return;
+                                  openOrder(o.id);
+                                }}
+                              >
                                 <td>
                                   <button
                                     className="order-link"
+                                    aria-label={`Abrir pedido ${o.id} de ${o.brand}`}
                                     onClick={() => openOrder(o.id)}
                                   >
                                     {o.id} · {o.brand}
