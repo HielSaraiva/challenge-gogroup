@@ -769,6 +769,32 @@ main > .panel {
 .case-result-panel .guided-form {
   gap: 20px;
 }
+.resolution-fields {
+  display: grid;
+  gap: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.reused-evidence {
+  padding: 16px;
+  border: 1px solid #d5e5dc;
+  border-radius: 8px;
+  background: #f6faf7;
+  min-width: 0;
+}
+.reused-evidence strong {
+  display: block;
+  color: #24624e;
+  font-size: 12px;
+}
+.reused-evidence p {
+  margin: 6px 0 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.reused-evidence p:last-child {
+  margin-bottom: 0;
+}
 @media (max-width: 480px) {
   .order-dialog-facts {
     grid-template-columns: minmax(0, 1fr);

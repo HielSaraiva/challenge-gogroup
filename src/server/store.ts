@@ -1,4 +1,5 @@
 import { completedTask } from "@/domain/task-results";
+import { prepareTaskResolution } from "@/domain/task-resolution";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { and, eq, gt, lt, sql } from "drizzle-orm";
@@ -224,6 +225,73 @@ export async function upsertTask(sessionId: string, task: Task): Promise<Task> {
       ),
     );
   return row.payload;
+}
+export async function completeTaskAndResolve(
+  sessionId: string,
+  taskId: string,
+  execution: import("@/domain/types").TaskExecution,
+  outcome: import("@/domain/types").ResolutionOutcome,
+) {
+  const save = async () => {
+    const state = await getSession(sessionId);
+    if (!state) throw new AppError("Sessão expirada.", 401);
+    const data = await getDataset(state);
+    let prepared;
+    try {
+      prepared = prepareTaskResolution(
+        data,
+        state,
+        taskId,
+        execution,
+        outcome,
+        randomUUID(),
+      );
+    } catch (error) {
+      throw new AppError((error as Error).message, 409);
+    }
+    const { previous, task, record } = prepared;
+    if (!process.env.DATABASE_URL) {
+      state.tasks = state.tasks.map((item) =>
+        item.id === task.id ? task : item,
+      );
+      state.cases = { ...state.cases, [record.orderId]: record };
+      await writeLocal(`session-${sessionId}.json`, state);
+    } else {
+      // One SQL statement: a failed case/version check rolls back the task too.
+      try {
+        await db().execute(sql`
+          WITH updated_task AS (
+            UPDATE demo_tasks SET payload = ${JSON.stringify(task)}::jsonb
+            WHERE session_id = ${sessionId} AND key = ${previous.idempotencyKey}
+              AND payload->>'status' = ${previous.status}
+              AND payload->>'updatedAt' = ${previous.updatedAt}
+            RETURNING session_id
+          ), saved_case AS (
+            INSERT INTO demo_cases (session_id, order_id, version, payload)
+            SELECT session_id, ${record.orderId}, ${record.version}, ${JSON.stringify(record)}::jsonb
+            FROM updated_task WHERE true
+            ON CONFLICT (session_id, order_id) DO UPDATE
+              SET version = EXCLUDED.version, payload = EXCLUDED.payload
+              WHERE demo_cases.version = ${record.version - 1}
+            RETURNING order_id
+          )
+          SELECT 1 / count(*)::integer AS committed FROM saved_case
+        `);
+      } catch (error) {
+        const code =
+          (error as { code?: string; cause?: { code?: string } }).cause?.code ||
+          (error as { code?: string }).code;
+        if (code === "22012")
+          throw new AppError(
+            "O pedido ou a tarefa mudou. Atualize antes de confirmar novamente.",
+            409,
+          );
+        throw error;
+      }
+    }
+    return { task, record };
+  };
+  return process.env.DATABASE_URL ? save() : locked(save);
 }
 export async function updateTask(
   sessionId: string,

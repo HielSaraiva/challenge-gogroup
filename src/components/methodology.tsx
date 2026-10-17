@@ -114,8 +114,9 @@ export function Methodology({
             </li>
             <li>
               <b>Execução:</b> revise propostas, aprove quando necessário e
-              registre a ação e a evidência. Só então informe o resultado do
-              pedido.
+              registre a ação e a evidência uma vez. Se a pendência foi
+              resolvida, confirme o resultado no mesmo formulário; caso
+              contrário, mantenha o pedido aberto para acompanhamento.
             </li>
             <li>
               <b>Resultados:</b> acompanhe casos resolvidos, pendências,
@@ -325,6 +326,17 @@ export function Methodology({
             Depois, o encerramento exige resultado compatível com a exceção e
             ausência de tarefas pendentes. Revisar um status, sozinho, não
             resolve a pendência original.
+          </p>
+          <p>
+            Execução e encerramento podem ser confirmados juntos, mas continuam
+            sendo registros distintos. O operador escolhe se a ação resolveu a
+            exceção e pode confirmar que a mesma evidência comprova o resultado.
+            Nesse caso, a referência da tarefa fica vinculada ao encerramento.
+            Se faltou confirmação, o pedido permanece em Pendências como
+            “Aguardando resultado do pedido”. Uma execução já salva não precisa
+            ser descrita de novo: informe apenas o resultado e, se necessário,
+            uma evidência complementar. No salvamento conjunto, o servidor grava
+            a execução e o encerramento de forma atômica.
           </p>
           <Expandable open>
             <summary>Quando há resultado sem dinheiro?</summary>

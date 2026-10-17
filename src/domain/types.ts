@@ -160,6 +160,7 @@ export type ResolutionOutcome = {
     | "estoque_regularizado"
     | "reembolso_registrado";
   evidence: string;
+  evidenceTaskId?: string;
   refund?: string;
   cost?: { amount: string; kind: "estimated" | "declared" };
 };

@@ -1,10 +1,14 @@
 "use client";
 import { useState } from "react";
 import { Button } from "./ui/button";
-import { allowedOutcomes, outcomeLabels } from "@/domain/cases";
-import type { RankedOrder, Task, ResolutionOutcome } from "@/domain/types";
-import { formatCurrencyInput, parseCurrencyInput } from "@/lib/currency-input";
-import { money, statusLabel } from "@/lib/utils";
+import { outcomeLabels } from "@/domain/cases";
+import type { RankedOrder, Task } from "@/domain/types";
+import {
+  ResolutionFields,
+  emptyResolution,
+  resolutionPayload,
+} from "./resolution-fields";
+import { statusLabel } from "@/lib/utils";
 export function CaseControls({
   order,
   tasks,
@@ -17,14 +21,8 @@ export function CaseControls({
   onSaved: () => Promise<void>;
 }) {
   const [note, setNote] = useState("");
-  const [evidence, setEvidence] = useState("");
   const [status, setStatus] = useState(order.sourceStatuses[0]);
-  const [type, setType] = useState<ResolutionOutcome["type"]>(
-    allowedOutcomes(order.exception)[0],
-  );
-  const [refund, setRefund] = useState("");
-  const [cost, setCost] = useState("");
-  const [kind, setKind] = useState("estimated");
+  const [draft, setDraft] = useState(emptyResolution);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const review = order.status === "status_divergente";
@@ -51,6 +49,18 @@ export function CaseControls({
     !related.some((t) =>
       ["aberta", "aprovada", "pendente_aprovacao"].includes(t.status),
     );
+  const lastExecutionTask = [...related]
+    .filter(
+      (task) =>
+        task.status === "concluida" &&
+        task.kind !== "revisao_status" &&
+        task.execution &&
+        (!lastReopen ||
+          Boolean(task.execution.at && task.execution.at >= lastReopen.at)),
+    )
+    .sort((a, b) =>
+      (b.execution?.at || "").localeCompare(a.execution?.at || ""),
+    )[0];
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -62,20 +72,17 @@ export function CaseControls({
         body: JSON.stringify({
           action,
           orderId: order.id,
-          note,
+          note:
+            action === "resolve"
+              ? lastExecutionTask!.execution!.note.slice(0, 1200)
+              : note,
           ...(review ? { status } : {}),
           ...(action === "resolve"
             ? {
-                outcome: {
-                  type,
-                  evidence,
-                  ...(type === "reembolso_registrado"
-                    ? { refund: parseCurrencyInput(refund) }
-                    : {}),
-                  ...(cost.trim() !== ""
-                    ? { cost: { amount: parseCurrencyInput(cost), kind } }
-                    : {}),
-                },
+                outcome: resolutionPayload(draft, {
+                  taskId: lastExecutionTask!.id,
+                  evidence: lastExecutionTask!.execution!.evidence,
+                }),
               }
             : {}),
         }),
@@ -138,98 +145,45 @@ export function CaseControls({
             </select>
           </label>
         )}
-        {action === "resolve" && (
+        {action === "resolve" && lastExecutionTask && (
           <>
-            <label>
-              O que resolveu a exceção?
-              <select
-                value={type}
-                onChange={(e) =>
-                  setType(e.target.value as ResolutionOutcome["type"])
-                }
-              >
-                {allowedOutcomes(order.exception).map((t) => (
-                  <option value={t} key={t}>
-                    {outcomeLabels[t]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Evidência do resultado
-              <textarea
-                required
-                minLength={15}
-                maxLength={1500}
-                value={evidence}
-                onChange={(e) => setEvidence(e.target.value)}
-                placeholder="Informe como o resultado foi confirmado e onde conferir. Ex.: correção do endereço confirmada no chamado de atendimento; informe o protocolo ou link, sem copiar dados pessoais."
-              />
-            </label>
-            {type === "reembolso_registrado" && (
-              <label>
-                Reembolso registrado (R$)
-                <input
-                  required
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="Ex.: R$ 23,75 devolvidos ao cliente"
-                  value={refund}
-                  onChange={(e) => setRefund(e.target.value)}
-                  onBlur={() => setRefund(formatCurrencyInput(refund))}
-                />
-                <small>
-                  Limitado ao valor do pedido: {money(order.value)}.
-                </small>
-              </label>
-            )}
-            <label>
-              Custo adicional para resolver o problema (R$) — opcional
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder="Ex.: R$ 15,00 de novo frete. Se desconhecido, deixe em branco."
-                value={cost}
-                onChange={(e) => setCost(e.target.value)}
-                onBlur={() => setCost(formatCurrencyInput(cost))}
-              />
-            </label>
-            {cost !== "" && (
-              <label>
-                Origem do custo
-                <select value={kind} onChange={(e) => setKind(e.target.value)}>
-                  <option value="estimated">
-                    Estimativa, ainda não confirmada
-                  </option>
-                  <option value="declared">Informado pelo operador</option>
-                </select>
-              </label>
-            )}
+            <div className="reused-evidence">
+              <strong>Execução já registrada</strong>
+              <p>{lastExecutionTask.execution!.note}</p>
+              <strong>Evidência da execução</strong>
+              <p>{lastExecutionTask.execution!.evidence}</p>
+            </div>
             <p>
-              Registre despesas adicionais, como novo frete ou reprodução do
-              item. Não inclua o valor original do pedido nem o reembolso, que
-              tem campo próprio. Se não houve custo adicional, informe R$ 0,00;
-              se você não sabe o valor, deixe em branco.
+              Falta apenas confirmar o resultado. Não é necessário descrever a
+              ação novamente.
             </p>
+            <ResolutionFields
+              order={order}
+              value={draft}
+              onChange={setDraft}
+              executionEvidence={lastExecutionTask.execution!.evidence}
+            />
           </>
         )}
-        <label>
-          {review ? "Como o status foi validado?" : "Registro da tratativa"}
-          <textarea
-            required
-            minLength={10}
-            maxLength={1200}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder={
-              review
-                ? "Descreva a fonte consultada e por que o status escolhido é o correto. Informe a referência do registro, sem dados pessoais."
-                : order.resolution
-                  ? "Explique por que o pedido precisa ser reaberto e qual pendência voltou a ocorrer."
-                  : "Resuma como o problema foi resolvido. Ex.: endereço validado, correção registrada no sistema e pedido liberado para seguir o atendimento."
-            }
-          />
-        </label>
+        {action !== "resolve" && (
+          <label>
+            {review ? "Como o status foi validado?" : "Registro da tratativa"}
+            <textarea
+              required
+              minLength={10}
+              maxLength={1200}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={
+                review
+                  ? "Descreva a fonte consultada e por que o status escolhido é o correto. Informe a referência do registro, sem dados pessoais."
+                  : order.resolution
+                    ? "Explique por que o pedido precisa ser reaberto e qual pendência voltou a ocorrer."
+                    : "Resuma como o problema foi resolvido. Ex.: endereço validado, correção registrada no sistema e pedido liberado para seguir o atendimento."
+              }
+            />
+          </label>
+        )}
         {error && <p role="alert">{error}</p>}
         {action === "resolve" && !canResolve && (
           <p>

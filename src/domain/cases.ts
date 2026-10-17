@@ -13,6 +13,7 @@ export const outcomeSchema = z
       "reembolso_registrado",
     ]),
     evidence: z.string().trim().min(15).max(1500),
+    evidenceTaskId: z.string().min(1).max(100).optional(),
     refund: amount.optional(),
     cost: z
       .object({ amount, kind: z.enum(["estimated", "declared"]) })
@@ -151,6 +152,17 @@ export function transitionCase(
         "Existem tarefas ou propostas pendentes para este pedido.",
       );
     const outcome = outcomeSchema.parse(action.outcome);
+    if (outcome.evidenceTaskId) {
+      const source = related.find((task) => task.id === outcome.evidenceTaskId);
+      if (
+        !source?.execution ||
+        source.status !== "concluida" ||
+        source.execution.evidence !== outcome.evidence
+      )
+        throw new Error(
+          "A evidência escolhida deve corresponder a uma execução registrada neste pedido.",
+        );
+    }
     if (!allowedOutcomes(order.exception).includes(outcome.type))
       throw new Error("Resultado incompatível com esta exceção.");
     if (outcome.type === "reembolso_registrado") {

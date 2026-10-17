@@ -34,6 +34,7 @@ import type { financialReport } from "@/domain/operations";
 import { money, shortDate, statusLabel } from "@/lib/utils";
 import { paginationItems } from "@/lib/pagination";
 import { orderList, PAGE_SIZES } from "@/lib/order-list";
+import { awaitingResultOrders } from "@/domain/task-resolution";
 type Tab =
   "overview" | "queue" | "agent" | "impact" | "insights" | "data" | "method";
 const nav = [
@@ -357,6 +358,7 @@ export function OperationsApp() {
   const pending = tasks.filter((t) =>
     ["aberta", "aprovada", "pendente_aprovacao"].includes(t.status),
   );
+  const awaitingResults = awaitingResultOrders(orders, tasks);
   return (
     <div className="app-layout">
       <header className="sidebar">
@@ -392,9 +394,12 @@ export function OperationsApp() {
               onClick={() => navigate(id)}
             >
               {label}
-              {id === "agent" && pending.length > 0 && (
-                <span className="nav-count">{pending.length}</span>
-              )}
+              {id === "agent" &&
+                pending.length + awaitingResults.length > 0 && (
+                  <span className="nav-count">
+                    {pending.length + awaitingResults.length}
+                  </span>
+                )}
             </button>
           ))}
         </nav>
@@ -901,6 +906,10 @@ export function OperationsApp() {
                 <>
                   <section className="panel prose">
                     <h2>O que precisa de acompanhamento?</h2>
+                    <p>
+                      Execuções concluídas continuam aqui enquanto o resultado
+                      do pedido não for confirmado.
+                    </p>
                     <label className="check-label">
                       <input
                         type="checkbox"
@@ -909,6 +918,30 @@ export function OperationsApp() {
                       />
                       Mostrar somente pendências
                     </label>
+                    {awaitingResults.map((order) => (
+                      <article
+                        key={`result-${order.id}`}
+                        className="result-row"
+                      >
+                        <span className="badge">
+                          Aguardando resultado do pedido
+                        </span>
+                        <h3>
+                          {order.id} · {exceptionLabels[order.exception]}
+                        </h3>
+                        <p>
+                          A execução foi registrada, mas o pedido permanece
+                          aberto. Confirme o resultado ou acompanhe o que ainda
+                          falta resolver.
+                        </p>
+                        <Button
+                          variant="outline"
+                          onClick={() => openOrder(order.id)}
+                        >
+                          Abrir pedido e confirmar resultado
+                        </Button>
+                      </article>
+                    ))}
                     {tasks
                       .filter(
                         (t) =>
@@ -939,12 +972,15 @@ export function OperationsApp() {
                           </Button>
                         </article>
                       ))}
-                    {tasks.length > 0 && pendingOnly && !pending.length && (
-                      <p>
-                        Não há pendências. Desmarque o filtro para consultar os
-                        registros concluídos.
-                      </p>
-                    )}
+                    {tasks.length > 0 &&
+                      pendingOnly &&
+                      !pending.length &&
+                      !awaitingResults.length && (
+                        <p>
+                          Não há pendências. Desmarque o filtro para consultar
+                          os registros concluídos.
+                        </p>
+                      )}
                     {!tasks.length && (
                       <p>
                         O agente ainda não registrou tarefas. Prepare o dia e
@@ -1226,7 +1262,12 @@ export function OperationsApp() {
                         de executar.
                       </p>
                     )}
-                    <TaskResult task={t} orders={orders} onSaved={refresh} />
+                    <TaskResult
+                      task={t}
+                      orders={orders}
+                      tasks={tasks}
+                      onSaved={refresh}
+                    />
                   </div>
                 ))}
               </section>
@@ -1323,6 +1364,7 @@ export function OperationsApp() {
                 key={processTask.id}
                 task={processTask}
                 orders={orders}
+                tasks={tasks}
                 onSaved={refresh}
               />
             </>

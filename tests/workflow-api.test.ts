@@ -12,6 +12,8 @@ import { PATCH as taskPATCH } from "@/app/api/tasks/route";
 import { PATCH as orderPATCH } from "@/app/api/orders/route";
 import { GET as operationsGET } from "@/app/api/operations/route";
 import type { Dataset, Task } from "@/domain/types";
+import { sessionDataset } from "@/domain/cases";
+import { awaitingResultOrders } from "@/domain/task-resolution";
 let sessionId = "";
 vi.mock("@/server/http", async (original) => ({
   ...(await original<typeof import("@/server/http")>()),
@@ -86,6 +88,167 @@ beforeEach(async () => {
   await saveSessionDataset(sessionId, data);
 });
 describe("fluxo persistido pelos endpoints", () => {
+  const newTask = (patch: Partial<Task> = {}): Task => ({
+    id: randomUUID(),
+    investigationId: randomUUID(),
+    orderId: "SYN-A",
+    kind: "revisao_cadastral",
+    title: "Conferir endereço",
+    justification: "Validar o endereço antes de liberar o atendimento",
+    evidenceIds: ["SYN-A"],
+    area: "Atendimento",
+    dueAt: "2026-10-01",
+    status: "aberta",
+    createdAt: "2026-09-30T10:00:00Z",
+    updatedAt: "2026-09-30T10:00:00Z",
+    idempotencyKey: randomUUID(),
+    ...patch,
+  });
+  const execution = {
+    note: "Endereço conferido e correção registrada no sistema",
+    evidence: "Chamado sintético com confirmação da correção cadastral",
+  };
+  it("registra execução sem encerrar e mantém pedido aguardando resultado", async () => {
+    const task = newTask();
+    await upsertTask(sessionId, task);
+    expect(
+      (
+        await taskPATCH(
+          request("tasks", { id: task.id, status: "concluida", execution }),
+        )
+      ).status,
+    ).toBe(200);
+    const state = (await getSession(sessionId))!;
+    expect(state.tasks[0].status).toBe("concluida");
+    expect(state.cases?.["SYN-A"]?.resolution).toBeUndefined();
+    expect(
+      awaitingResultOrders(sessionDataset(data, state).orders, state.tasks).map(
+        (order) => order.id,
+      ),
+    ).toEqual(["SYN-A"]);
+    const response = await orderPATCH(
+      request("orders", {
+        action: "resolve",
+        orderId: "SYN-A",
+        note: execution.note,
+        outcome: {
+          type: "endereco_corrigido",
+          evidence: execution.evidence,
+          evidenceTaskId: task.id,
+        },
+      }),
+    );
+    expect(response.status).toBe(200);
+    const closed = (await getSession(sessionId))!;
+    expect(
+      awaitingResultOrders(sessionDataset(data, closed).orders, closed.tasks),
+    ).toEqual([]);
+  });
+  it("salva execução e resultado juntos, vinculando a evidência sem duplicar formulário", async () => {
+    const task = newTask();
+    await upsertTask(sessionId, task);
+    const response = await taskPATCH(
+      request("tasks", {
+        id: task.id,
+        status: "concluida",
+        execution,
+        resolution: {
+          type: "endereco_corrigido",
+          evidence: execution.evidence,
+          evidenceTaskId: task.id,
+        },
+      }),
+    );
+    expect(response.status).toBe(200);
+    const state = (await getSession(sessionId))!;
+    expect(state.tasks[0].execution?.note).toBe(execution.note);
+    expect(state.cases?.["SYN-A"].resolution?.outcome).toMatchObject({
+      evidenceTaskId: task.id,
+      evidence: execution.evidence,
+    });
+    expect(state.cases?.["SYN-A"].history).toHaveLength(1);
+  });
+  it.each([
+    [
+      "resultado incompatível",
+      {
+        type: "reembolso_registrado",
+        refund: "50.00",
+        evidence: execution.evidence,
+      },
+    ],
+    [
+      "referência de evidência inválida",
+      {
+        type: "endereco_corrigido",
+        evidence: execution.evidence,
+        evidenceTaskId: "outra-tarefa",
+      },
+    ],
+  ])(
+    "rejeita %s sem concluir parcialmente a tarefa",
+    async (_label, resolution) => {
+      const task = newTask();
+      await upsertTask(sessionId, task);
+      const response = await taskPATCH(
+        request("tasks", {
+          id: task.id,
+          status: "concluida",
+          execution,
+          resolution,
+        }),
+      );
+      expect(response.status).toBe(409);
+      const state = (await getSession(sessionId))!;
+      expect(state.tasks[0].status).toBe("aberta");
+      expect(state.tasks[0].execution).toBeUndefined();
+      expect(state.cases?.["SYN-A"]).toBeUndefined();
+    },
+  );
+  it("não permite encerrar com aprovação pendente ou outras tarefas abertas", async () => {
+    const task = newTask();
+    await upsertTask(sessionId, task);
+    await upsertTask(sessionId, newTask());
+    const response = await taskPATCH(
+      request("tasks", {
+        id: task.id,
+        status: "concluida",
+        execution,
+        resolution: {
+          type: "endereco_corrigido",
+          evidence: execution.evidence,
+        },
+      }),
+    );
+    expect(response.status).toBe(409);
+    expect(
+      (await getSession(sessionId))!.tasks.every(
+        (task) => task.status === "aberta",
+      ),
+    ).toBe(true);
+  });
+  it("não converte proposta sem aprovação em execução com encerramento", async () => {
+    const task = newTask({ status: "pendente_aprovacao" });
+    await upsertTask(sessionId, task);
+    expect(
+      (
+        await taskPATCH(
+          request("tasks", {
+            id: task.id,
+            status: "concluida",
+            execution,
+            resolution: {
+              type: "endereco_corrigido",
+              evidence: execution.evidence,
+            },
+          }),
+        )
+      ).status,
+    ).toBe(409);
+    expect((await getSession(sessionId))!.tasks[0].status).toBe(
+      "pendente_aprovacao",
+    );
+  });
   it("exibe plano somente após as ferramentas e exige execução e resultado no encerramento", async () => {
     expect(await (await queueGET()).json()).toMatchObject({
       status: "not_prepared",

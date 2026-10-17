@@ -4,15 +4,22 @@ import { useState } from "react";
 import type { Task, RankedOrder } from "@/domain/types";
 import { shortDate, statusLabel } from "@/lib/utils";
 import { CircleCheck } from "lucide-react";
+import {
+  ResolutionFields,
+  emptyResolution,
+  resolutionPayload,
+} from "./resolution-fields";
 import { Button } from "./ui/button";
 import { exceptionLabels } from "@/domain/types";
 export function TaskResult({
   task,
   orders,
+  tasks,
   onSaved,
 }: {
   task: Task;
   orders: RankedOrder[];
+  tasks: Task[];
   onSaved: () => Promise<void>;
 }) {
   const [note, setNote] = useState("");
@@ -22,6 +29,22 @@ export function TaskResult({
   const [next, setNext] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [resolvedAnswer, setResolvedAnswer] = useState("");
+  const [resolution, setResolution] = useState(emptyResolution);
+  const order = orders.find((order) => order.id === task.orderId);
+  const canCloseWithExecution = Boolean(
+    order &&
+    !order.resolution &&
+    order.status !== "status_divergente" &&
+    task.kind !== "revisao_status" &&
+    !tasks.some(
+      (other) =>
+        other.id !== task.id &&
+        other.scope !== "process" &&
+        other.orderId === task.orderId &&
+        ["aberta", "aprovada", "pendente_aprovacao"].includes(other.status),
+    ),
+  );
   async function save(status: string) {
     setBusy(true);
     setError("");
@@ -43,6 +66,17 @@ export function TaskResult({
                   },
                 }
               : { execution: { note, evidence } }
+            : {}),
+          ...(status === "concluida" &&
+          task.scope !== "process" &&
+          resolvedAnswer === "yes" &&
+          order
+            ? {
+                resolution: resolutionPayload(resolution, {
+                  taskId: task.id,
+                  evidence,
+                }),
+              }
             : {}),
         }),
       });
@@ -220,6 +254,37 @@ export function TaskResult({
                   placeholder="Informe onde essa ação pode ser comprovada: número do chamado, protocolo, comprovante ou link do registro. Não inclua nomes, endereços ou outros dados pessoais."
                 />
               </label>
+              <label>
+                A ação realizada resolveu a pendência deste pedido?
+                <select
+                  required
+                  value={resolvedAnswer}
+                  onChange={(event) => setResolvedAnswer(event.target.value)}
+                >
+                  <option value="">Selecione como o pedido deve ficar</option>
+                  <option value="no">
+                    Ainda não — registrar execução e manter pedido aberto
+                  </option>
+                  <option value="yes" disabled={!canCloseWithExecution}>
+                    Sim — registrar execução e encerrar pedido
+                  </option>
+                </select>
+              </label>
+              {!canCloseWithExecution && (
+                <p className="muted">
+                  Registre esta execução sem encerrar o pedido. Antes de
+                  confirmar a resolução, é necessário concluir as demais
+                  pendências e validar eventuais conflitos de status.
+                </p>
+              )}
+              {resolvedAnswer === "yes" && canCloseWithExecution && order && (
+                <ResolutionFields
+                  order={order}
+                  value={resolution}
+                  onChange={setResolution}
+                  executionEvidence={evidence}
+                />
+              )}
             </>
           )}
           {error && <p role="alert">{error}</p>}
@@ -230,7 +295,9 @@ export function TaskResult({
               ? "Salvando…"
               : task.scope === "process"
                 ? "Registrar conclusão da investigação"
-                : "Confirmar execução documentada"}
+                : resolvedAnswer === "yes"
+                  ? "Registrar execução e encerrar pedido"
+                  : "Registrar execução e manter aberto"}
           </Button>
         </form>
       )}
