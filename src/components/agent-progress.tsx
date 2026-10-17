@@ -37,6 +37,25 @@ const toolDescriptions: Record<string, [string, string]> = {
   ],
 };
 
+const stageResults: Record<string, string> = {
+  consultar_diagnostico:
+    "Carteira conferida. As alternativas de priorização estão prontas para comparação.",
+  comparar_estrategias:
+    "Estratégia definida. A seleção está pronta para receber as orientações da equipe.",
+  registrar_plano_dia:
+    "Plano disponível. Você já pode abrir os pedidos sugeridos e iniciar as tratativas.",
+  consultar_pedido:
+    "Dossiê conferido. O agente reuniu as evidências para propor o próximo passo.",
+  consultar_padroes:
+    "Recorrência analisada. As evidências estão disponíveis para orientar a investigação.",
+  simular_tratativa:
+    "Alternativa avaliada. A estimativa pode apoiar a decisão sobre a tratativa.",
+  criar_tarefa:
+    "Tarefa disponível no pedido para revisão e execução pela equipe.",
+  criar_acao_processo:
+    "Investigação aberta para a equipe validar a hipótese e registrar a conclusão.",
+};
+
 function eventDescription(event: ToolEvent) {
   if (event.tool === "agente") return event.message;
   if (event.state === "running")
@@ -161,16 +180,20 @@ export function AgentProgress({
                   {new Date(event.at).toLocaleTimeString("pt-BR")}
                 </time>
               </header>
-              <p>{eventDescription(event)}</p>
-              {quotaExceeded &&
-                event.state === "error" &&
-                event.tool !== "agente" &&
-                !recovered.has(id) && (
-                  <p>
-                    Esta rejeição aconteceu antes da interrupção. O motivo final
-                    de a execução parar foi o limite de uso do Groq.
-                  </p>
-                )}
+              <p>
+                {event.state === "ok"
+                  ? stageResults[event.tool] ||
+                    "Etapa concluída. O resultado foi disponibilizado para a próxima ação."
+                  : event.tool === "agente"
+                    ? quotaExceeded
+                      ? "A cota do provedor impediu a continuação. Aguarde a renovação e tente novamente; o trabalho já registrado foi preservado."
+                      : "A análise parou antes de terminar. Consulte o motivo nos detalhes técnicos antes de tentar novamente."
+                    : recovered.has(id)
+                      ? "O agente ajustou esta tentativa e concluiu a etapa depois."
+                      : busy
+                        ? "Esta tentativa não foi aceita. A análise continua em andamento."
+                        : "Esta tentativa não foi registrada. O motivo está disponível nos detalhes técnicos."}
+              </p>
             </div>
           </li>
         ))}
@@ -178,7 +201,12 @@ export function AgentProgress({
       {!busy && !stack.length && (
         <p>Nenhuma etapa foi finalizada nesta execução.</p>
       )}
-      {!busy && <p role={failed ? "alert" : undefined}>{run?.summary}</p>}
+      {!busy && failed && (
+        <p role="alert">
+          A análise não foi concluída. Confira acima o ponto de interrupção; se
+          já havia um plano ativo, ele continua disponível.
+        </p>
+      )}
       <details>
         <summary>Detalhes técnicos da execução</summary>
         <div className="agent-technical-content">
