@@ -65,7 +65,10 @@ export function TaskResult({
         <b>Área responsável:</b> {task.area} · Prazo de referência:{" "}
         {shortDate(task.dueAt)}
       </p>
-      <p>{task.justification}</p>
+      <div className="agent-hypothesis">
+        <strong>Hipótese do agente</strong>
+        <p>{task.justification.replace(/^Hipótese do agente:\s*/i, "")}</p>
+      </div>
       {task.nextStep && (
         <p>
           <b>Verificação necessária:</b> {task.nextStep}
