@@ -48,7 +48,9 @@ function eventDescription(event: ToolEvent) {
       return "O plano não foi salvo nesta tentativa porque as orientações ou os destaques não correspondiam às áreas da seleção. Este registro antigo não informa qual área faltou, foi repetida ou era inválida.";
     }
     if (event.message.includes("Escreva apenas orientação qualitativa")) {
-      return "O registro foi rejeitado porque o texto gerado incluiu números que devem ser acrescentados pelas ferramentas do servidor. Esta tentativa não salvou o encaminhamento.";
+      return event.tool === "registrar_plano_dia"
+        ? "Esta versão do plano não foi salva: a resposta da IA não passou pela validação do formato das orientações. Não é necessário corrigir os arquivos importados por causa desta rejeição."
+        : "Esta tentativa não foi registrada: a resposta da IA não passou pela validação do formato das orientações.";
     }
     return `A etapa não foi concluída. ${event.message}`;
   }
@@ -198,12 +200,39 @@ export function AgentProgress({
                   </time>
                 </header>
                 <p>{eventDescription(e)}</p>
+                {e.state === "error" &&
+                  e.message.includes(
+                    "Escreva apenas orientação qualitativa",
+                  ) && (
+                    <details>
+                      <summary>O que a validação identificou?</summary>
+                      <p>
+                        A justificativa incluiu informações numéricas em um
+                        campo destinado a orientações. Nesta versão,
+                        quantidades, valores e prazos são apresentados em campos
+                        separados, calculados pelo servidor. Esta regra valida o
+                        formato; não significa que os números gerados estavam
+                        incorretos.
+                      </p>
+                    </details>
+                  )}
                 {recovered.has(id) && (
                   <p>
                     Depois dessa rejeição, o agente fez uma nova tentativa da
                     mesma etapa e conseguiu concluí-la.
                   </p>
                 )}
+                {e.state === "error" &&
+                  e.tool !== "agente" &&
+                  !recovered.has(id) && (
+                    <p>
+                      {busy
+                        ? "A análise continua em andamento. Esta tentativa ainda não teve uma correção concluída."
+                        : failed
+                          ? "A execução terminou sem concluir esta etapa. Para tentar novamente, inicie outra análise."
+                          : "Esta tentativa não foi concluída. Consulte o resultado final da análise para verificar o que foi registrado."}
+                    </p>
+                  )}
                 {!e.operationId && (
                   <small>Registro legado: sem identificador de chamada.</small>
                 )}
