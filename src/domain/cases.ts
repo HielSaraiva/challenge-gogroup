@@ -1,4 +1,5 @@
 import { currentCaseTasks } from "./case-cycle";
+import { closureRecords } from "./financial-records";
 import { z } from "zod";
 import Decimal from "decimal.js";
 import type { CaseRecord, Dataset, Order, SessionState, Task } from "./types";
@@ -178,6 +179,14 @@ export function transitionCase(
     if (!allowedOutcomes(order.exception).includes(outcome.type))
       throw new Error("Resultado incompatível com esta exceção.");
     if (outcome.type === "reembolso_registrado") {
+      const alreadyRefunded = closureRecords({
+        ...order,
+        resolution: undefined,
+        caseHistory: previous?.history,
+      }).reduce(
+        (total, record) => total.plus(record.outcome?.refund || 0),
+        new Decimal(0),
+      );
       if (
         !outcome.refund ||
         !new Decimal(outcome.refund).gt(0) ||
@@ -185,6 +194,10 @@ export function transitionCase(
       )
         throw new Error(
           "Informe o reembolso positivo, sem exceder o valor do pedido.",
+        );
+      if (alreadyRefunded.plus(outcome.refund).gt(order.value))
+        throw new Error(
+          "O total de reembolsos deste pedido, incluindo etapas anteriores, não pode exceder o valor do pedido. Informe apenas o novo reembolso desta etapa.",
         );
     } else if (outcome.refund !== undefined)
       throw new Error(

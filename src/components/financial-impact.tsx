@@ -17,7 +17,20 @@ export function FinancialImpact({
   const [size, setSize] = useState(10);
   const region = useRef<HTMLElement>(null);
   const view = paginate(report.resolvedOrders, page, size);
-  const total = report.resolvedCount + report.pendingCount;
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerSize, setLedgerSize] = useState(10);
+  const ledgerRegion = useRef<HTMLElement>(null);
+  const ledger = paginate(report.financialRecords, ledgerPage, ledgerSize);
+  const changeLedgerPage = (next: number) => {
+    setLedgerPage(next);
+    ledgerRegion.current?.focus({ preventScroll: true });
+    ledgerRegion.current?.scrollIntoView({
+      block: "start",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+    });
+  };
   const outcomes = [
     ...new Set(report.resolvedOrders.map((order) => order.outcome?.type)),
   ];
@@ -34,20 +47,26 @@ export function FinancialImpact({
   return (
     <div className="results-workspace">
       <section className="panel prose">
-        <h2>O que a equipe já registrou?</h2>
+        <h2>Situação atual dos pedidos</h2>
         <p>
-          Encerramentos confirmados pela equipe nesta sessão. Os números
-          representam resultados declarados, sem confirmação externa de
-          pagamentos, retenção ou lucro.
+          Veja quantos pedidos estão resolvidos ou continuam abertos nesta
+          sessão.
         </p>
         <Expandable>
           <summary>Como interpretar os indicadores?</summary>
           <p>
-            Os totais consideram apenas os pedidos atualmente encerrados.
-            Pedidos ainda abertos incluem toda a base e podem não ter uma tarefa
-            em Pendências. Ao reabrir, os valores anteriores saem destes
-            indicadores e permanecem no histórico do caso; isso não desfaz
-            pagamentos nem despesas.
+            <strong>Pedidos abertos:</strong> todos os pedidos da base que ainda
+            não foram encerrados, inclusive os que você ainda não investigou.
+          </p>
+          <p>
+            <strong>Aba Pendências:</strong> apenas os pedidos e investigações
+            que já precisam de acompanhamento.
+          </p>
+          <p>
+            <strong>Ao reabrir um pedido:</strong> ele volta a contar como
+            aberto. Reembolsos e custos informados como realizados continuam nos
+            totais financeiros e no histórico. Estimativas aparecem
+            separadamente.
           </p>
         </Expandable>
         <dl className="result-metrics">
@@ -64,25 +83,23 @@ export function FinancialImpact({
             <dd>{report.reopenedCount}</dd>
           </div>
           <div>
-            <dt>Parcela da base encerrada</dt>
-            <dd>
-              {(total
-                ? (100 * report.resolvedCount) / total
-                : 0
-              ).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
-              %
-            </dd>
+            <dt>Valor dos pedidos atualmente resolvidos</dt>
+            <dd>{money(report.treatedValue)}</dd>
+            <small>
+              Volume da carteira encerrada; não é receita recuperada.
+            </small>
           </div>
         </dl>
       </section>
       <section className="panel prose">
-        <h2>Valores associados às tratativas</h2>
+        <h2>Custos e reembolsos acumulados</h2>
+        <p>
+          Valores informados pela equipe em todas as etapas desta sessão,
+          inclusive de pedidos reabertos. Reabrir não apaga esses registros nem
+          desfaz uma despesa ou um reembolso. A aplicação não confirma nem
+          executa pagamentos externos.
+        </p>
         <dl className="result-metrics">
-          <div>
-            <dt>Valor dos pedidos resolvidos</dt>
-            <dd>{money(report.treatedValue)}</dd>
-            <small>Volume tratado; não é receita recuperada.</small>
-          </div>
           <div>
             <dt>Reembolsos registrados</dt>
             <dd>
@@ -99,22 +116,102 @@ export function FinancialImpact({
                 : "Não informados"}
             </dd>
           </div>
-          <div>
-            <dt>Custos ainda estimados</dt>
-            <dd>
-              {report.estimatedCosts.count
-                ? money(report.estimatedCosts.total)
-                : "Não informados"}
-            </dd>
-          </div>
         </dl>
-        <p>
-          {report.unmeasured}{" "}
-          {report.unmeasured === 1
-            ? "encerramento sem valor de custo ou reembolso informado"
-            : "encerramentos sem valor de custo ou reembolso informado"}
-          . Valor não informado não significa custo zero.
-        </p>
+        <Expandable>
+          <summary>Estimativas e valores não informados</summary>
+          <p>
+            Estimativas nos encerramentos atuais:{" "}
+            {report.estimatedCosts.count
+              ? money(report.estimatedCosts.total)
+              : "nenhuma informada"}
+            . Elas não entram no total de custos informados pelo operador e não
+            comprovam uma despesa realizada.
+          </p>
+          <p>
+            {report.unmeasured}{" "}
+            {report.unmeasured === 1
+              ? "pedido atualmente resolvido sem custo ou reembolso informado"
+              : "pedidos atualmente resolvidos sem custo ou reembolso informado"}
+            . Valor não informado não significa custo zero.
+          </p>
+        </Expandable>
+        {ledger.total > 0 && (
+          <Expandable>
+            <summary>
+              Ver registros que compõem os totais ({ledger.total})
+            </summary>
+            <section
+              className="paged-workspace"
+              ref={ledgerRegion}
+              tabIndex={-1}
+              aria-label="Histórico financeiro das tratativas"
+            >
+              <p>
+                Cada registro corresponde a uma etapa de atendimento. Os mais
+                recentes aparecem primeiro.
+              </p>
+              <div className="resolved-list">
+                {ledger.items.map((record) => (
+                  <article className="resolved-card" key={record.key}>
+                    <header className="resolved-card-heading">
+                      <div className="financial-record-identity">
+                        <button
+                          className="plain-link"
+                          onClick={() => onOrder(record.orderId)}
+                          aria-label={`Consultar registro financeiro do pedido ${record.orderId}`}
+                        >
+                          {record.orderId}
+                        </button>
+                        <p className="badge">
+                          {record.orderOpen
+                            ? "Pedido reaberto"
+                            : record.current
+                              ? "Encerramento atual"
+                              : "Etapa anterior"}
+                        </p>
+                      </div>
+                      <time dateTime={record.at}>
+                        {new Date(record.at).toLocaleString("pt-BR")}
+                      </time>
+                    </header>
+                    <dl className="resolved-amounts">
+                      {record.outcome?.refund !== undefined && (
+                        <div>
+                          <dt>Reembolso registrado nesta etapa</dt>
+                          <dd>{money(record.outcome.refund)}</dd>
+                        </div>
+                      )}
+                      {record.outcome?.cost?.kind === "declared" && (
+                        <div>
+                          <dt>Custo informado nesta etapa</dt>
+                          <dd>{money(record.outcome.cost.amount)}</dd>
+                        </div>
+                      )}
+                    </dl>
+                    {record.outcome?.evidence && (
+                      <dl className="resolved-details">
+                        <div>
+                          <dt>Evidência registrada</dt>
+                          <dd>{record.outcome.evidence}</dd>
+                        </div>
+                      </dl>
+                    )}
+                  </article>
+                ))}
+              </div>
+              <Pagination
+                {...ledger}
+                noun="registros financeiros"
+                pageSize={ledgerSize}
+                onPage={changeLedgerPage}
+                onPageSize={(next) => {
+                  setLedgerSize(next);
+                  changeLedgerPage(1);
+                }}
+              />
+            </section>
+          </Expandable>
+        )}
         {report.legacy > 0 && (
           <p>
             {report.legacy} registros legados não possuem o novo resultado

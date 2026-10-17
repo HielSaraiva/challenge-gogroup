@@ -1,4 +1,5 @@
 import { queue, rankOrders, sumMoney } from "./analytics";
+import { closureRecords } from "./financial-records";
 import {
   CAPACITY,
   DEFAULT_WEIGHTS,
@@ -67,10 +68,24 @@ export function financialReport(data: Dataset, state: SessionState) {
   const outcomes = resolved.flatMap((o) =>
     o.resolution?.outcome ? [o.resolution.outcome] : [],
   );
-  const refunds = outcomes.filter(
+  const financialRecords = data.orders
+    .flatMap((order) =>
+      closureRecords(order)
+        .filter(
+          (record) =>
+            record.outcome?.refund !== undefined ||
+            record.outcome?.cost?.kind === "declared",
+        )
+        .map((record) => ({ ...record, orderOpen: !order.resolution })),
+    )
+    .sort((a, b) => b.at.localeCompare(a.at) || a.key.localeCompare(b.key));
+  const recordedOutcomes = financialRecords.flatMap((record) =>
+    record.outcome ? [record.outcome] : [],
+  );
+  const refunds = recordedOutcomes.filter(
     (o) => o.type === "reembolso_registrado" && o.refund !== undefined,
   );
-  const declared = outcomes.flatMap((o) =>
+  const declared = recordedOutcomes.flatMap((o) =>
     o.cost?.kind === "declared" ? [o.cost.amount] : [],
   );
   const estimated = outcomes.flatMap((o) =>
@@ -85,6 +100,7 @@ export function financialReport(data: Dataset, state: SessionState) {
         order.caseHistory?.some((event) => event.action === "reopen"),
     ).length,
     treatedValue: sumMoney(resolved.map((o) => o.value)),
+    financialRecords,
     refunds: {
       count: refunds.length,
       total: sumMoney(refunds.map((o) => o.refund!)),

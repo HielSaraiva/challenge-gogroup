@@ -2,6 +2,8 @@
 import { allowedOutcomes, outcomeLabels } from "@/domain/cases";
 import type { RankedOrder, ResolutionOutcome } from "@/domain/types";
 import { formatCurrencyInput, parseCurrencyInput } from "@/lib/currency-input";
+import { closureRecords } from "@/domain/financial-records";
+import Decimal from "decimal.js";
 import { money } from "@/lib/utils";
 
 export type ResolutionDraft = {
@@ -74,10 +76,26 @@ export function ResolutionFields({
 }) {
   const change = (patch: Partial<ResolutionDraft>) =>
     onChange({ ...value, ...patch });
+  const previous = closureRecords(order);
+  const refunded = previous.reduce(
+    (total, record) => total.plus(record.outcome?.refund || 0),
+    new Decimal(0),
+  );
+  const remainingRefund = Decimal.max(
+    0,
+    new Decimal(order.value).minus(refunded),
+  ).toFixed(2);
   const canReuse =
     value.type !== "item_reenviado" || executionStage === "received";
   return (
     <div className="resolution-fields">
+      {previous.length > 0 && (
+        <p className="reused-evidence">
+          Os valores das etapas anteriores já estão registrados. Informe apenas
+          novos custos ou reembolsos desta etapa; não repita os valores
+          anteriores.
+        </p>
+      )}
       <label>
         Qual resultado foi confirmado?
         <select
@@ -93,10 +111,19 @@ export function ResolutionFields({
         >
           <option value="">Selecione o resultado</option>
           {allowedOutcomes(order.exception).map((type) => (
-            <option key={type} value={type}>
+            <option
+              key={type}
+              value={type}
+              disabled={
+                type === "reembolso_registrado" && remainingRefund === "0.00"
+              }
+            >
               {type === "item_reenviado"
                 ? "Recebimento do item reenviado confirmado"
                 : outcomeLabels[type]}
+              {type === "reembolso_registrado" && remainingRefund === "0.00"
+                ? " (valor total já registrado)"
+                : ""}
             </option>
           ))}
         </select>
@@ -170,7 +197,11 @@ export function ResolutionFields({
             onBlur={() => change({ refund: formatCurrencyInput(value.refund) })}
             placeholder="Ex.: R$ 23,75"
           />
-          <small>Limitado ao valor do pedido: {money(order.value)}.</small>
+          <small>
+            Limite disponível para novo reembolso: {money(remainingRefund)}.
+            {refunded.gt(0) &&
+              ` Já registrado neste pedido: ${money(refunded.toFixed(2))}.`}
+          </small>
         </label>
       )}
       <label>
