@@ -70,11 +70,17 @@ export function AgentProgress({
   const current = history.at(-1);
   const success = run?.status === "completed";
   const failed = !busy && run?.status === "failed";
+  const quotaExceeded =
+    failed && Boolean(run?.summary.match(/Groq.*(?:limite de uso|cota)/i));
   const grouped = new Map<string, ToolEvent>();
   history.forEach((e, i) => grouped.set(e.operationId || `legacy-${i}`, e));
   const calls = [...grouped.entries()];
   const stack = calls
-    .filter(([, event]) => event.tool !== "agente" && event.state !== "running")
+    .filter(
+      ([, event]) =>
+        event.state !== "running" &&
+        (event.tool !== "agente" || event.state === "error"),
+    )
     .reverse()
     .sort(([, a], [, b]) => Date.parse(b.at) - Date.parse(a.at));
   const recovered = new Set(
@@ -107,7 +113,9 @@ export function AgentProgress({
                 ? `Análise do pedido ${run.target} concluída`
                 : "Análise da recorrência concluída"
             : failed
-              ? "A análise não foi concluída"
+              ? quotaExceeded
+                ? "Análise interrompida pelo limite do Groq"
+                : "A análise não foi concluída"
               : "Atividade do agente"}
       </h2>
       <p>
@@ -139,17 +147,30 @@ export function AgentProgress({
                   {toolDescriptions[event.tool]?.[0] ||
                     event.tool.replaceAll("_", " ")}{" "}
                   ·{" "}
-                  {event.state === "ok"
-                    ? "Concluída"
-                    : recovered.has(id)
-                      ? "Tentativa corrigida depois"
-                      : "Tentativa não concluída"}
+                  {event.tool === "agente" && event.state === "error"
+                    ? quotaExceeded
+                      ? "Limite do Groq atingido"
+                      : "Execução interrompida"
+                    : event.state === "ok"
+                      ? "Concluída"
+                      : recovered.has(id)
+                        ? "Tentativa corrigida depois"
+                        : "Tentativa não concluída"}
                 </strong>
                 <time dateTime={event.at}>
                   {new Date(event.at).toLocaleTimeString("pt-BR")}
                 </time>
               </header>
               <p>{eventDescription(event)}</p>
+              {quotaExceeded &&
+                event.state === "error" &&
+                event.tool !== "agente" &&
+                !recovered.has(id) && (
+                  <p>
+                    Esta rejeição aconteceu antes da interrupção. O motivo final
+                    de a execução parar foi o limite de uso do Groq.
+                  </p>
+                )}
             </div>
           </li>
         ))}

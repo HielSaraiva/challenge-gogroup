@@ -776,7 +776,7 @@ export async function investigate(
       run.taskIds.length || run.planId
         ? "Execução interrompida. O plano e as tarefas já registrados foram preservados; consulte o histórico antes de tentar novamente."
         : provider.status === 429
-          ? "O Groq atingiu o limite de uso do provedor. Aguarde a renovação da cota e tente novamente; nenhuma ação foi inventada."
+          ? "O Groq atingiu o limite de uso. A execução foi interrompida. Aguarde a renovação da cota e tente novamente. As ações já registradas foram preservadas."
           : provider.status === 401
             ? "O Groq recusou a credencial. Verifique GROQ_API_KEY no servidor."
             : provider.status === 404
