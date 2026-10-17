@@ -763,7 +763,11 @@ export async function investigate(
     await event(
       "agente",
       "ok",
-      "Investigação concluída. Ações disponíveis no histórico.",
+      input.type === "daily"
+        ? "Preparação concluída. Confira a seleção e as orientações em “Seu plano de trabalho”."
+        : input.type === "pattern"
+          ? "Investigação concluída. Abra a investigação registrada em Pendências para acompanhar os próximos passos."
+          : "Investigação concluída. Confira as tarefas em “Encaminhamentos para este pedido”.",
     );
   } catch (error) {
     const provider = error as { status?: number; name?: string };

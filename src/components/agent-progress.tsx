@@ -56,8 +56,16 @@ const stageResults: Record<string, string> = {
     "Investigação aberta para a equipe validar a hipótese e registrar a conclusão.",
 };
 
-function eventDescription(event: ToolEvent) {
-  if (event.tool === "agente") return event.message;
+function eventDescription(event: ToolEvent, type?: Investigation["type"]) {
+  if (event.tool === "agente")
+    return event.message.replace(
+      "Investigação concluída. Ações disponíveis no histórico.",
+      type === "daily"
+        ? "Preparação concluída. Confira a seleção e as orientações em “Seu plano de trabalho”."
+        : type === "pattern"
+          ? "Investigação concluída. Abra a investigação registrada em Pendências para acompanhar os próximos passos."
+          : "Investigação concluída. Confira as tarefas em “Encaminhamentos para este pedido”.",
+    );
   if (event.state === "running")
     return "Etapa iniciada. Aguardando o retorno da ferramenta.";
   if (event.state === "error") {
@@ -248,7 +256,7 @@ export function AgentProgress({
                     {new Date(e.at).toLocaleTimeString("pt-BR")}
                   </time>
                 </header>
-                <p>{eventDescription(e)}</p>
+                <p>{eventDescription(e, run?.type)}</p>
                 {e.state === "error" &&
                   e.message.includes(
                     "Escreva apenas orientação qualitativa",
