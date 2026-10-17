@@ -1224,6 +1224,14 @@ export function OperationsApp() {
               />
               <Expandable className="panel prose case-history">
                 <summary>Histórico deste caso</summary>
+                {!selected.caseHistory?.length && (
+                  <p className="case-history-empty">
+                    Nenhuma alteração registrada neste pedido. As validações de
+                    status, os encerramentos e as reaberturas aparecerão aqui.
+                    Investigações e tarefas ficam em “Encaminhamentos para este
+                    pedido”.
+                  </p>
+                )}
                 {selected.caseHistory?.map((e) => (
                   <p key={e.id}>
                     {e.action} · {e.note} ·{" "}

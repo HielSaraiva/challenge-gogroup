@@ -576,6 +576,19 @@ main > .panel {
 .case-history {
   margin-top: 20px;
 }
+.order-dialog .case-history > summary {
+  color: #25262c;
+}
+.order-dialog .case-history-empty {
+  margin: 0;
+  color: #62636b;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.case-history > .expandable-content {
+  border-top: 0;
+  border-bottom: 0;
+}
 .order-facts-panel {
   margin-top: 24px;
 }
