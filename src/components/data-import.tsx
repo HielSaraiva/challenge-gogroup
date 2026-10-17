@@ -146,7 +146,13 @@ export function DataImport({
             {notice}
           </p>
         )}
-        {status && !status.canImport ? (
+        {!status ? (
+          !error && (
+            <p className="alert alert-info" role="status" aria-live="polite">
+              Conferindo a base e a disponibilidade de importação…
+            </p>
+          )
+        ) : !status.canImport ? (
           <p className="alert alert-info">
             Há tratativas nesta demonstração. Para trocar a base sem misturar
             históricos, reinicie a demonstração nesta área Dados e volte aqui.
