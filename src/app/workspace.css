@@ -560,6 +560,71 @@ main > .panel {
 .task-result {
   margin-top: 20px;
 }
+.task-execution-record {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid #d5e5dc;
+  border-radius: 10px;
+  background: #f6faf7;
+}
+.task-execution-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #24624e;
+}
+.task-execution-header svg {
+  flex-shrink: 0;
+}
+.task-execution-header h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.task-execution-header time {
+  margin-left: auto;
+  font-size: 12px;
+  color: #62636b;
+  font-variant-numeric: tabular-nums;
+}
+.task-execution-record .task-execution-description {
+  margin: 10px 0 18px;
+  color: #62636b;
+  font-size: 12px;
+}
+.task-execution-fields {
+  display: grid;
+  gap: 18px;
+  margin: 0;
+  padding-top: 18px;
+  border-top: 1px solid #d5e5dc;
+}
+.task-execution-fields:empty {
+  display: none;
+}
+.task-execution-fields dt {
+  font-size: 12px;
+  font-weight: 600;
+  color: #46574e;
+}
+.task-execution-fields dd {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #33343c;
+}
+@media (max-width: 480px) {
+  .task-execution-record {
+    padding: 16px;
+  }
+  .task-execution-header time {
+    width: 100%;
+    margin-left: 28px;
+  }
+}
 .agent-hypothesis {
   position: relative;
   isolation: isolate;

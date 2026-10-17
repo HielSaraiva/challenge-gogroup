@@ -2,7 +2,8 @@
 import { Expandable } from "./ui/expandable";
 import { useState } from "react";
 import type { Task, RankedOrder } from "@/domain/types";
-import { shortDate } from "@/lib/utils";
+import { shortDate, statusLabel } from "@/lib/utils";
+import { CircleCheck } from "lucide-react";
 import { Button } from "./ui/button";
 import { exceptionLabels } from "@/domain/types";
 export function TaskResult({
@@ -58,7 +59,7 @@ export function TaskResult({
     <article className="panel prose task-result">
       <span className="badge">
         {task.scope === "process" ? "Investigação de recorrência" : task.area} ·{" "}
-        {task.status}
+        {statusLabel(task.status)}
       </span>
       <h3>{task.title}</h3>
       <p>
@@ -234,26 +235,77 @@ export function TaskResult({
         </form>
       )}
       {task.status === "concluida" && (
-        <div>
-          <h4>
+        <section
+          className="task-execution-record"
+          aria-label="Registro de conclusão da tarefa"
+        >
+          <header className="task-execution-header">
+            <CircleCheck size={20} aria-hidden="true" />
+            <h4>
+              {task.conclusion
+                ? "Conclusão documentada"
+                : task.execution
+                  ? "Execução registrada"
+                  : "Conclusão legada, sem evidência estruturada"}
+            </h4>
+            {(task.execution?.at || task.conclusion?.at) && (
+              <time dateTime={task.execution?.at || task.conclusion?.at}>
+                {new Date(
+                  (task.execution?.at || task.conclusion?.at)!,
+                ).toLocaleString("pt-BR")}
+              </time>
+            )}
+          </header>
+          <p className="task-execution-description">
             {task.conclusion
-              ? "Conclusão documentada"
+              ? "Conclusão informada pela equipe após conferir as evidências."
               : task.execution
-                ? "Execução registrada"
-                : "Conclusão legada, sem evidência estruturada"}
-          </h4>
-          <p>{task.execution?.note || task.conclusion?.observations}</p>
-          <p>{task.execution?.evidence}</p>
-          {task.conclusion && (
-            <>
-              <b>Hipótese {task.conclusion.outcome}</b>
-              <p>{task.conclusion.nextStep}</p>
-              <small>
-                Referências: {task.conclusion.evidenceIds.join(", ")}
-              </small>
-            </>
-          )}
-        </div>
+                ? "Execução informada pelo operador. A ação foi realizada fora da aplicação."
+                : "Este registro antigo não contém os dados de execução exigidos na versão atual."}
+          </p>
+          <dl className="task-execution-fields">
+            {task.execution && (
+              <>
+                <div>
+                  <dt>Ação realizada</dt>
+                  <dd>{task.execution.note}</dd>
+                </div>
+                <div>
+                  <dt>Evidência ou referência</dt>
+                  <dd>{task.execution.evidence}</dd>
+                </div>
+              </>
+            )}
+            {task.conclusion && (
+              <>
+                <div>
+                  <dt>Resultado da hipótese</dt>
+                  <dd>
+                    {
+                      {
+                        confirmada: "Confirmada",
+                        descartada: "Descartada",
+                        inconclusiva: "Inconclusiva",
+                      }[task.conclusion.outcome]
+                    }
+                  </dd>
+                </div>
+                <div>
+                  <dt>O que foi verificado</dt>
+                  <dd>{task.conclusion.observations}</dd>
+                </div>
+                <div>
+                  <dt>Próximo encaminhamento</dt>
+                  <dd>{task.conclusion.nextStep}</dd>
+                </div>
+                <div>
+                  <dt>Pedidos usados como referência</dt>
+                  <dd>{task.conclusion.evidenceIds.join(", ")}</dd>
+                </div>
+              </>
+            )}
+          </dl>
+        </section>
       )}
       {error && task.status === "pendente_aprovacao" && (
         <p role="alert">{error}</p>
