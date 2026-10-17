@@ -99,14 +99,15 @@ Sem `DATABASE_URL`, o desenvolvimento salva dados e sessões em `.local/`, ignor
 4. No computador do administrador, configure a conexão em `.env.local` e execute:
 
 ```sh
-pnpm db:push
-pnpm import:data "/caminho/privado/operacoes"
+pnpm db:prepare "/caminho/privado/operacoes"
 ```
 
 5. Faça o deploy com `pnpm install --frozen-lockfile` e `pnpm build`.
 6. Verifique no endereço publicado: abertura sem login, investigação real, persistência após recarregar e isolamento entre navegadores.
 
-`db:push` lê a configuração local de ambiente e sincroniza o esquema do banco selecionado. Revise a conexão antes de executá-lo. As migrações SQL também ficam versionadas para revisão. Use bancos ou branches Neon separados para produção e prévias.
+`db:prepare` aplica as migrações SQL versionadas e carrega a base padrão apenas se ela ainda não existir. Repetir o comando preserva a base e as sessões existentes. O diretório dos CSVs é privado e não deve ir para o Git. Para substituir intencionalmente a base administrativa, use `pnpm import:data`.
+
+Na Vercel, `vercel.json` executa `pnpm db:migrate` antes do build. Assim, as tabelas são criadas antes de publicar o backend; a credencial `DATABASE_URL` precisa estar disponível também no build. Falta de conexão ou falha de migração interrompe o deploy, sem publicar uma versão que dependa de tabelas ausentes. Migrações futuras devem ser compatíveis com a versão ainda publicada. A carga dos CSVs não roda durante o build: ela é feita uma vez pelo administrador com `db:prepare`. Para esta PoC, local e Vercel podem usar o mesmo banco. Não alterne `db:push` e migrações no mesmo banco sem reconciliar o histórico.
 
 Sem banco ou importação, a interface orienta a configuração e oferece a área Dados para importação por sessão. A aplicação não inclui uma base pública. Criação do banco e configuração das credenciais são etapas externas ao código.
 

@@ -1,4 +1,5 @@
 {
   "framework": "nextjs",
+  "buildCommand": "pnpm db:migrate && pnpm build",
   "functions": { "src/app/api/investigations/route.ts": { "maxDuration": 60 } }
 }

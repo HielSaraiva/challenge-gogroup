@@ -13,6 +13,8 @@
     "format": "prettier --write src tests scripts docs README.md package.json next.config.ts drizzle.config.ts vitest.config.ts",
     "format:check": "prettier --check src tests scripts docs README.md package.json next.config.ts drizzle.config.ts vitest.config.ts",
     "db:push": "drizzle-kit push",
+    "db:prepare": "tsx --env-file-if-exists=.env.local scripts/prepare-database.ts",
+    "db:migrate": "tsx --env-file-if-exists=.env.local scripts/prepare-database.ts --schema-only",
     "db:generate": "drizzle-kit generate",
     "import:data": "tsx --env-file-if-exists=.env.local scripts/import-data.ts"
   },

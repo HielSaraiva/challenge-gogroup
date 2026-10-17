@@ -60,6 +60,23 @@ export function failure(error: unknown) {
       { error: "Parâmetros inválidos. Revise os campos informados." },
       400,
     );
+  const databaseCode = postgresErrorCode(error);
+  if (databaseCode === "42P01" || databaseCode === "42703")
+    return json(
+      {
+        error:
+          "O banco ainda não está preparado para esta versão. O administrador precisa aplicar as migrações e carregar a base padrão.",
+      },
+      503,
+    );
+  if (["28P01", "28000", "3D000"].includes(databaseCode || ""))
+    return json(
+      {
+        error:
+          "A conexão com o banco precisa ser revisada pelo administrador. Confira DATABASE_URL no ambiente de produção.",
+      },
+      503,
+    );
   // Não registrar payloads, credenciais, connection strings ou mensagens do provedor.
   console.error("operations_request_failed", {
     type: error instanceof Error ? error.name : "UnknownError",
@@ -68,4 +85,15 @@ export function failure(error: unknown) {
     { error: "Não foi possível concluir a operação. Tente novamente." },
     500,
   );
+}
+
+function postgresErrorCode(error: unknown): string | undefined {
+  let current = error;
+  for (let depth = 0; depth < 5; depth++) {
+    if (!current || typeof current !== "object") return;
+    const entry = current as { code?: unknown; cause?: unknown };
+    if (typeof entry.code === "string" && /^[0-9A-Z]{5}$/.test(entry.code))
+      return entry.code;
+    current = entry.cause;
+  }
 }
