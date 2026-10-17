@@ -571,6 +571,32 @@ main > .panel {
 .page-heading h1:focus {
   outline: none;
 }
+.pagination {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.pagination-numbers {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.pagination-numbers .button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.pagination-numbers .button[aria-current="page"] {
+  background: #2659a5;
+  border-color: #2659a5;
+  color: #fff;
+}
+.pagination-gap {
+  padding-inline: 2px;
+  color: #62636b;
+}
 .daily-activity {
   scroll-margin-top: 96px;
 }

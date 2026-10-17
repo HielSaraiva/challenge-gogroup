@@ -31,6 +31,7 @@ import type { dashboard } from "@/domain/analytics";
 import type { planQueue } from "@/domain/planning";
 import type { financialReport } from "@/domain/operations";
 import { money, shortDate, statusLabel } from "@/lib/utils";
+import { paginationItems } from "@/lib/pagination";
 type Tab =
   "overview" | "queue" | "agent" | "impact" | "insights" | "data" | "method";
 const nav = [
@@ -318,6 +319,8 @@ export function OperationsApp() {
       .toLocaleLowerCase("pt-BR")
       .includes(query.toLocaleLowerCase("pt-BR")),
   );
+  const totalPages = Math.max(1, Math.ceil(visible.length / 15));
+  const currentPage = Math.min(page, totalPages);
   function activity(type: Investigation["type"], target?: string) {
     const matches = (run: Investigation) =>
       run.type === type && (target === undefined || run.target === target);
@@ -670,7 +673,7 @@ export function OperationsApp() {
                         </thead>
                         <tbody>
                           {visible
-                            .slice((page - 1) * 15, page * 15)
+                            .slice((currentPage - 1) * 15, currentPage * 15)
                             .map((o) => (
                               <tr key={o.id}>
                                 <td>
@@ -714,25 +717,38 @@ export function OperationsApp() {
                     )}
                     <div className="pagination">
                       <span>
-                        {visible.length} pedidos · página {page} de{" "}
-                        {Math.max(1, Math.ceil(visible.length / 15))}
+                        {visible.length} pedidos · página {currentPage} de{" "}
+                        {totalPages}
                       </span>
-                      <div>
-                        <Button
-                          variant="outline"
-                          disabled={page === 1}
-                          onClick={() => setPage(page - 1)}
-                        >
-                          Anterior
-                        </Button>
-                        <Button
-                          variant="outline"
-                          disabled={page * 15 >= visible.length}
-                          onClick={() => setPage(page + 1)}
-                        >
-                          Próxima
-                        </Button>
-                      </div>
+                      <nav
+                        className="pagination-numbers"
+                        aria-label="Páginas de pedidos"
+                      >
+                        {paginationItems(currentPage, totalPages).map(
+                          (item, index) =>
+                            item === "ellipsis" ? (
+                              <span
+                                className="pagination-gap"
+                                key={`gap-${index}`}
+                                aria-hidden="true"
+                              >
+                                …
+                              </span>
+                            ) : (
+                              <Button
+                                key={item}
+                                variant="outline"
+                                aria-label={`Página ${item}`}
+                                aria-current={
+                                  currentPage === item ? "page" : undefined
+                                }
+                                onClick={() => setPage(item)}
+                              >
+                                {item}
+                              </Button>
+                            ),
+                        )}
+                      </nav>
                     </div>
                   </section>
                   {ready && day.plan?.comparison && (
