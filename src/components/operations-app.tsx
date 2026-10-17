@@ -366,24 +366,6 @@ export function OperationsApp() {
   }
   const selectedReopen = latestReopen(selected?.caseHistory);
   const related = selected ? currentCaseTasks(selected, tasks) : [];
-  const previousTasks =
-    selected && selectedReopen
-      ? tasks.filter(
-          (task) =>
-            task.scope !== "process" &&
-            task.orderId === selected.id &&
-            task.createdAt < selectedReopen.at,
-        )
-      : [];
-  const previousRuns =
-    selected && selectedReopen
-      ? runs.filter(
-          (run) =>
-            run.type === "order" &&
-            run.target === selected.id &&
-            run.createdAt < selectedReopen.at,
-        )
-      : [];
   function openOrder(id: string) {
     setProcessId(undefined);
     setSelectedId(id);
@@ -1362,45 +1344,6 @@ export function OperationsApp() {
                   </div>
                 ))}
               </section>
-              {selectedReopen &&
-                (previousTasks.length > 0 || previousRuns.length > 0) && (
-                  <Expandable className="panel prose order-facts-panel">
-                    <summary>Etapas anteriores — somente consulta</summary>
-                    <p>
-                      Estes registros pertencem ao atendimento anterior à última
-                      reabertura e não comprovam a resolução da etapa atual.
-                    </p>
-                    {previousTasks.map((task) => (
-                      <article className="case-history-event" key={task.id}>
-                        <strong>
-                          {generatedTextLabel(task.title)} ·{" "}
-                          {statusLabel(task.status)}
-                        </strong>
-                        <p>{generatedTextLabel(task.justification)}</p>
-                        {task.execution && (
-                          <>
-                            <p>
-                              <strong>Ação registrada:</strong>{" "}
-                              {task.execution.note}
-                            </p>
-                            <p>
-                              <strong>Evidência:</strong>{" "}
-                              {task.execution.evidence}
-                            </p>
-                          </>
-                        )}
-                      </article>
-                    ))}
-                    {previousRuns.map((run) => (
-                      <AgentProgress
-                        key={run.id}
-                        run={run}
-                        events={[]}
-                        busy={false}
-                      />
-                    ))}
-                  </Expandable>
-                )}
               <CaseControls
                 key={selected.id + selected.status + (selectedReopen?.id || "")}
                 order={selected}
