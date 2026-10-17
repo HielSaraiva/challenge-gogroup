@@ -19,6 +19,8 @@ Poppins é servida localmente, em pesos de 400 a 700. Títulos principais usam e
 
 ## Composição e movimento
 
+Os painéis de análise de pedidos, do plano do dia e de recorrências usam o mesmo componente `AgentProgress`: cartão branco com borda arredondada, título azul, etapas em blocos de fundo claro com barra lateral, horário à direita e detalhes técnicos recolhidos. As etapas aparecem da mais recente para a mais antiga. Estados em andamento e interrompidos preservam essa estrutura, com mensagens e cores de alerta próprias. No celular, os recuos diminuem e os horários podem quebrar de linha.
+
 A navegação horizontal dá protagonismo à marca. A abertura azul usa a grade, os circuitos e os contornos circulares presentes na referência, desenhados em CSS e SVG. O restante da interface privilegia listas, divisores, hierarquia e contraste. Rosa identifica a ação principal; o lima pontua a capacidade e o fluxo.
 
 A resposta dos botões e o progresso das investigações oferecem feedback. A preferência por redução de movimento desativa animações e transições. Os grafismos são decorativos e ficam fora da árvore de acessibilidade.
