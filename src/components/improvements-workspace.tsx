@@ -7,10 +7,11 @@ import {
   type Task,
   type Investigation,
 } from "@/domain/types";
-import { insightGroupLabel, generatedTextLabel } from "@/lib/utils";
+import { insightGroupLabel } from "@/lib/utils";
 import { paginate } from "@/lib/pagination";
 import { Button } from "./ui/button";
 import { Expandable } from "./ui/expandable";
+import { SignalContext } from "./signal-context";
 import { Pagination } from "./ui/pagination";
 import {
   Dialog,
@@ -73,6 +74,10 @@ export function ImprovementsWorkspace({
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(6);
   const [confirm, setConfirm] = useState<Task>();
+  const [selected, setSelected] = useState<Insight>();
+  const selectedTask = selected
+    ? latestPatternTask(tasks, selected.id)
+    : undefined;
   const region = useRef<HTMLElement>(null);
   const analysis = useRef<HTMLDivElement>(null);
   const starting = useRef(false);
@@ -174,7 +179,6 @@ export function ImprovementsWorkspace({
           const lastRun = runs.find(
             (run) => run.type === "pattern" && run.target === pattern.id,
           );
-          const working = busy && activePatternId === pattern.id;
           return (
             <article className="panel prose signal-card" key={pattern.id}>
               <div className="signal-badges">
@@ -197,16 +201,6 @@ export function ImprovementsWorkspace({
                 <strong>{pattern.count}</strong> casos relacionados nesta
                 análise.
               </p>
-              <Expandable>
-                <summary>O que conferir neste sinal?</summary>
-                <p>{generatedTextLabel(pattern.investigationQuestion)}</p>
-                <p>
-                  {generatedTextLabel(pattern.title)}. A concentração é um ponto
-                  de partida; valide os registros e as condições da operação
-                  antes de concluir causa.
-                </p>
-                <p>Referências: {pattern.evidenceIds.slice(0, 3).join(", ")}</p>
-              </Expandable>
               {lastRun?.status === "failed" && (
                 <p className="signal-feedback">
                   {existing
@@ -217,33 +211,9 @@ export function ImprovementsWorkspace({
                 </p>
               )}
               <div className="signal-actions">
-                <Button
-                  disabled={busy}
-                  onClick={() =>
-                    existing
-                      ? onProcess(existing.id)
-                      : void onInvestigate(pattern.id)
-                  }
-                >
-                  {existing
-                    ? completed
-                      ? "Ver conclusão da investigação"
-                      : "Abrir investigação"
-                    : working
-                      ? "Investigando recorrência…"
-                      : lastRun?.status === "failed"
-                        ? "Tentar investigação novamente"
-                        : "Investigar recorrência com IA"}
+                <Button disabled={busy} onClick={() => setSelected(pattern)}>
+                  Ver detalhes do sinal
                 </Button>
-                {completed && (
-                  <Button
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() => setConfirm(existing)}
-                  >
-                    Iniciar nova análise com IA
-                  </Button>
-                )}
               </div>
             </article>
           );
@@ -269,6 +239,82 @@ export function ImprovementsWorkspace({
           changePage(1);
         }}
       />
+      <Dialog
+        open={Boolean(selected)}
+        onOpenChange={(open) => {
+          if (!open) setSelected(undefined);
+        }}
+      >
+        <DialogContent
+          className="signal-dialog"
+          onCloseAutoFocus={(event) => {
+            if (starting.current || busy) event.preventDefault();
+          }}
+        >
+          <DialogTitle>
+            {selected ? recurrenceQuestion(selected) : "Detalhes do sinal"}
+          </DialogTitle>
+          <DialogDescription>
+            Confira o sinal antes de investigar sua causa.
+          </DialogDescription>
+          {selected && (
+            <>
+              <div className="signal-dialog-summary">
+                <span className="badge">
+                  {exceptionLabels[selected.exception] || "Prazo prometido"}
+                </span>
+                <p>
+                  <strong>Grupo:</strong> {insightGroupLabel(selected.group)}
+                </p>
+                <p>
+                  <strong>{selected.count}</strong> casos relacionados
+                </p>
+              </div>
+              <SignalContext pattern={selected} />
+              <div className="signal-dialog-actions">
+                <Button
+                  disabled={busy}
+                  onClick={() => {
+                    const pattern = selected;
+                    setSelected(undefined);
+                    if (selectedTask) onProcess(selectedTask.id);
+                    else {
+                      starting.current = true;
+                      void onInvestigate(pattern.id);
+                    }
+                  }}
+                >
+                  {selectedTask
+                    ? selectedTask.status === "concluida" &&
+                      selectedTask.conclusion
+                      ? "Ver conclusão da investigação"
+                      : "Abrir investigação"
+                    : "Investigar recorrência com IA"}
+                </Button>
+                {selectedTask?.status === "concluida" &&
+                  selectedTask.conclusion && (
+                    <Button
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => {
+                        setSelected(undefined);
+                        setConfirm(selectedTask);
+                      }}
+                    >
+                      Iniciar nova análise com IA
+                    </Button>
+                  )}
+              </div>
+              {!selectedTask && (
+                <p className="list-count">
+                  A análise usa a cota da IA. Os pedidos continuam com
+                  tratativas individuais.
+                </p>
+              )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={Boolean(confirm)}
         onOpenChange={(open) => {

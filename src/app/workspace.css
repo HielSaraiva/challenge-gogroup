@@ -1391,7 +1391,7 @@ main > .panel {
 }
 .improvements-workspace > .insight-grid {
   margin-top: 20px;
-  align-items: start;
+  align-items: stretch;
 }
 .signal-card {
   display: flex;
@@ -1474,4 +1474,41 @@ main > .panel {
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
+}
+
+.signal-context {
+  margin-block: 24px;
+  padding: 20px;
+  border: 1px solid #d6e2f6;
+  border-left: 3px solid #285caf;
+  border-radius: 8px;
+  background: #f3f6fc;
+  overflow-wrap: anywhere;
+}
+.signal-context h3 {
+  margin-top: 0;
+  color: #2659a5;
+}
+.signal-context p:last-child {
+  margin-bottom: 0;
+}
+.signal-references {
+  font-size: 13px;
+}
+.signal-dialog-summary {
+  margin-top: 24px;
+}
+.signal-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+@media (max-width: 720px) {
+  .signal-dialog-actions > button {
+    width: 100%;
+  }
+  .signal-context {
+    padding: 16px;
+  }
 }

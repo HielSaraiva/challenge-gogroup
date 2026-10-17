@@ -1,4 +1,5 @@
 "use client";
+import { SignalContext } from "./signal-context";
 import { Expandable } from "./ui/expandable";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, Menu, Search, X } from "lucide-react";
@@ -301,6 +302,9 @@ export function OperationsApp() {
   }
   const selected = orders.find((o) => o.id === selectedId);
   const processTask = tasks.find((t) => t.id === processId);
+  const processPattern = patterns.find(
+    (pattern) => pattern.id === processTask?.insightId,
+  );
   const ready = day?.usable === true;
   const sourceOrders = all || !ready ? orders : day?.orders || [];
   const visible = orderList(
@@ -1254,6 +1258,7 @@ export function OperationsApp() {
                 Documente o diagnóstico do grupo. Os pedidos continuam com
                 tratativas independentes.
               </DialogDescription>
+              {processPattern && <SignalContext pattern={processPattern} />}
               {processTask.previousTaskId && (
                 <Button
                   variant="outline"
