@@ -106,15 +106,17 @@ export function PendingWorkspace({
             <article className="pending-card" key={item.id}>
               <div>
                 <span className="badge">
-                  Investigação de recorrência aberta
+                  {item.task.processProgress
+                    ? "Recorrência em verificação"
+                    : "Investigação de recorrência aberta"}
                 </span>
                 <h3>{generatedTextLabel(item.task.title)}</h3>
                 <p>
                   {item.task.area} · referência: {shortDate(item.task.dueAt)}
                 </p>
                 <p>
-                  Confira os pedidos relacionados e registre a conclusão sobre a
-                  hipótese.
+                  {item.task.processProgress?.nextStep ||
+                    "Confira os pedidos relacionados e registre o que encontrou. Você pode salvar o progresso antes de concluir."}
                 </p>
               </div>
               <Button variant="outline" onClick={() => onProcess(item.task.id)}>
@@ -146,7 +148,7 @@ export function PendingWorkspace({
       </div>
       <Pagination
         {...view}
-        noun="pendências"
+        noun={view.total === 1 ? "pendência" : "pendências"}
         pageSize={size}
         onPage={changePage}
         onPageSize={(next) => {

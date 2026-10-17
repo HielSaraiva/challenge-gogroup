@@ -1,3 +1,4 @@
+import { processProgressSchema } from "@/domain/process-progress";
 import { currentCaseTasks } from "@/domain/case-cycle";
 import {
   executionSchema,
@@ -11,6 +12,7 @@ import {
   acquireAgentLease,
   completeTaskAndResolve,
   updateTask,
+  saveProcessProgress,
   getSession,
 } from "@/server/store";
 import { outcomeSchema } from "@/domain/cases";
@@ -29,20 +31,50 @@ export async function PATCH(request: Request) {
     verifyOrigin(request);
     const { id: sessionId } = await session();
     const input = z
-      .object({
-        id: z.uuid(),
-        execution: executionSchema.optional(),
-        conclusion: conclusionSchema.optional(),
-        resolution: outcomeSchema.optional(),
-        rejection: rejectionSchema.optional(),
-        status: z.enum(["concluida", "aprovada", "rejeitada"]),
-      })
-      .strict()
+      .union([
+        z
+          .object({
+            action: z.literal("save_process_progress"),
+            id: z.uuid(),
+            progress: processProgressSchema,
+            expectedUpdatedAt: z.string().datetime(),
+          })
+          .strict(),
+        z
+          .object({
+            id: z.uuid(),
+            expectedUpdatedAt: z.string().datetime().optional(),
+            execution: executionSchema.optional(),
+            conclusion: conclusionSchema.optional(),
+            resolution: outcomeSchema.optional(),
+            rejection: rejectionSchema.optional(),
+            status: z.enum(["concluida", "aprovada", "rejeitada"]),
+          })
+          .strict(),
+      ])
       .parse(await request.json());
     release = await acquireAgentLease(sessionId);
     const state = await getSession(sessionId);
     if (!state) throw new AppError("Sessão expirada.", 401);
     const task = state.tasks.find((item) => item.id === input.id);
+    if ("action" in input)
+      return json(
+        await saveProcessProgress(
+          sessionId,
+          input.id,
+          input.progress,
+          input.expectedUpdatedAt,
+        ),
+      );
+    if (
+      task?.scope === "process" &&
+      input.status === "concluida" &&
+      !input.expectedUpdatedAt
+    )
+      throw new AppError(
+        "Atualize a investigação antes de concluir. A versão do registro é obrigatória.",
+        409,
+      );
     if (
       task?.scope !== "process" &&
       task &&
@@ -109,6 +141,7 @@ export async function PATCH(request: Request) {
         input.execution,
         input.conclusion,
         input.rejection,
+        input.expectedUpdatedAt,
       ),
     );
   } catch (e) {

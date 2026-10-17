@@ -202,7 +202,11 @@ export function ImprovementsWorkspace({
                     : "Recorrência"}
                 </span>
                 <span className="badge">
-                  {completed ? "Conclusão registrada" : "Investigação aberta"}
+                  {completed
+                    ? "Conclusão registrada"
+                    : task.processProgress
+                      ? "Em verificação"
+                      : "Investigação aberta"}
                 </span>
               </div>
               <h3>{generatedTextLabel(task.title)}</h3>
@@ -221,6 +225,12 @@ export function ImprovementsWorkspace({
                 casos relacionados na base.
               </p>
               <p className="list-count">Proposta pelo agente · {task.area}</p>
+              {task.processProgress?.nextStep && !completed && (
+                <p className="signal-followup">
+                  <strong>Próxima ação registrada:</strong>{" "}
+                  {task.processProgress.nextStep}
+                </p>
+              )}
               <div className="signal-actions">
                 <Button disabled={locked} onClick={() => onProcess(task.id)}>
                   {completed

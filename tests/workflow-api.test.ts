@@ -116,6 +116,154 @@ describe("fluxo persistido pelos endpoints", () => {
     note: "Endereço conferido e correção registrada no sistema",
     evidence: "Chamado sintético com confirmação da correção cadastral",
   };
+  it("salva e retoma o progresso da recorrência sem encerrar pedidos ou remover a pendência", async () => {
+    const task = newTask({
+      scope: "process",
+      kind: "melhoria_processo",
+      affectedOrderIds: ["SYN-A", "SYN-B"],
+      evidenceIds: ["SYN-A", "SYN-B"],
+    });
+    await upsertTask(sessionId, task);
+    const progress = {
+      observations: "Conferência parcial dos registros sintéticos",
+      nextStep: "Consultar a área responsável antes de concluir a causa.",
+      evidenceIds: ["SYN-A"],
+    };
+    const response = await taskPATCH(
+      request("tasks", {
+        id: task.id,
+        action: "save_process_progress",
+        progress,
+        expectedUpdatedAt: task.updatedAt,
+      }),
+    );
+    expect(response.status).toBe(200);
+    const saved = await response.json();
+    expect(saved.status).toBe("aberta");
+    expect(saved.conclusion).toBeUndefined();
+    let state = (await getSession(sessionId))!;
+    expect(state.tasks[0].processProgress).toMatchObject(progress);
+    expect(
+      pendingWork(data.orders, state.tasks).some(
+        (item) => item.kind === "process",
+      ),
+    ).toBe(true);
+    expect(
+      financialReport(sessionDataset(data, state), state).resolvedCount,
+    ).toBe(0);
+    const stale = await taskPATCH(
+      request("tasks", {
+        id: task.id,
+        action: "save_process_progress",
+        progress: {
+          ...progress,
+          observations:
+            "Alteração de outra tela que não pode sobrescrever o progresso",
+        },
+        expectedUpdatedAt: task.updatedAt,
+      }),
+    );
+    expect(stale.status).toBe(409);
+    const conclusion = {
+      outcome: "inconclusiva",
+      observations:
+        "Os registros conferidos ainda não permitem confirmar a hipótese.",
+      nextStep: "Consultar os registros de origem com a área responsável.",
+      evidenceIds: ["SYN-A", "SYN-B"],
+    };
+    const missingVersion = await taskPATCH(
+      request("tasks", { id: task.id, status: "concluida", conclusion }),
+    );
+    expect(missingVersion.status).toBe(409);
+    const staleClose = await taskPATCH(
+      request("tasks", {
+        id: task.id,
+        status: "concluida",
+        conclusion,
+        expectedUpdatedAt: task.updatedAt,
+      }),
+    );
+    expect(staleClose.status).toBe(409);
+    const finished = await taskPATCH(
+      request("tasks", {
+        id: task.id,
+        status: "concluida",
+        conclusion,
+        expectedUpdatedAt: saved.updatedAt,
+      }),
+    );
+    expect(finished.status).toBe(200);
+    state = (await getSession(sessionId))!;
+    expect(state.tasks[0].conclusion).toMatchObject(conclusion);
+    expect(
+      pendingWork(data.orders, state.tasks).some(
+        (item) => item.kind === "process",
+      ),
+    ).toBe(false);
+    expect(
+      financialReport(sessionDataset(data, state), state).resolvedCount,
+    ).toBe(0);
+    const afterConclusion = await taskPATCH(
+      request("tasks", {
+        id: task.id,
+        action: "save_process_progress",
+        progress,
+        expectedUpdatedAt: state.tasks[0].updatedAt,
+      }),
+    );
+    expect(afterConclusion.status).toBe(409);
+  });
+  it("aceita progresso parcial, mas impede referências externas e uso em tarefa individual", async () => {
+    const task = newTask({
+      scope: "process",
+      kind: "melhoria_processo",
+      affectedOrderIds: ["SYN-A", "SYN-B"],
+    });
+    await upsertTask(sessionId, task);
+    const partial = { observations: "", nextStep: "", evidenceIds: [] };
+    let response = await taskPATCH(
+      request("tasks", {
+        id: task.id,
+        action: "save_process_progress",
+        progress: { ...partial, evidenceIds: ["SYN-OTHER"] },
+        expectedUpdatedAt: task.updatedAt,
+      }),
+    );
+    expect(response.status).toBe(409);
+    response = await taskPATCH(
+      request("tasks", {
+        id: task.id,
+        action: "save_process_progress",
+        progress: { ...partial, evidenceIds: ["SYN-A", "SYN-A"] },
+        expectedUpdatedAt: task.updatedAt,
+      }),
+    );
+    expect(response.status).toBe(409);
+    response = await taskPATCH(
+      request("tasks", {
+        id: task.id,
+        action: "save_process_progress",
+        progress: partial,
+        expectedUpdatedAt: task.updatedAt,
+      }),
+    );
+    expect(response.status).toBe(200);
+    const single = newTask();
+    await upsertTask(sessionId, single);
+    response = await taskPATCH(
+      request("tasks", {
+        id: single.id,
+        action: "save_process_progress",
+        progress: partial,
+        expectedUpdatedAt: single.updatedAt,
+      }),
+    );
+    expect(response.status).toBe(409);
+    const state = (await getSession(sessionId))!;
+    expect(
+      state.tasks.find((item) => item.id === single.id)?.processProgress,
+    ).toBeUndefined();
+  });
   it("reabre em nova etapa, preserva histórico e recusa evidência do atendimento anterior", async () => {
     const original = newTask();
     await upsertTask(sessionId, original);
@@ -1038,8 +1186,15 @@ describe("fluxo persistido pelos endpoints", () => {
     };
     await upsertTask(sessionId, task);
     expect(
-      (await taskPATCH(request("tasks", { id: task.id, status: "concluida" })))
-        .status,
+      (
+        await taskPATCH(
+          request("tasks", {
+            id: task.id,
+            status: "concluida",
+            expectedUpdatedAt: task.updatedAt,
+          }),
+        )
+      ).status,
     ).toBe(400);
     const conclusion = {
       outcome: "inconclusiva",
@@ -1051,7 +1206,12 @@ describe("fluxo persistido pelos endpoints", () => {
     expect(
       (
         await taskPATCH(
-          request("tasks", { id: task.id, status: "concluida", conclusion }),
+          request("tasks", {
+            id: task.id,
+            status: "concluida",
+            conclusion,
+            expectedUpdatedAt: task.updatedAt,
+          }),
         )
       ).status,
     ).toBe(400);
@@ -1062,6 +1222,7 @@ describe("fluxo persistido pelos endpoints", () => {
             id: task.id,
             status: "concluida",
             conclusion: { ...conclusion, evidenceIds: ["SYN-A", "SYN-B"] },
+            expectedUpdatedAt: task.updatedAt,
           }),
         )
       ).status,

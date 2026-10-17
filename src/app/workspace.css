@@ -1556,3 +1556,214 @@ main > .panel {
 .agent-progress .agent-completion-stack:empty {
   display: none;
 }
+
+.recurrence-dialog {
+  width: min(1040px, calc(100vw - 40px));
+}
+.recurrence-workspace {
+  display: grid;
+  gap: 24px;
+  margin-top: 24px;
+}
+.recurrence-overview,
+.recurrence-section {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+.recurrence-summary,
+.recurrence-order-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+  margin: 20px 0;
+}
+.recurrence-summary dt,
+.recurrence-order-facts dt {
+  color: #62636b;
+  font-size: 12px;
+}
+.recurrence-summary dd,
+.recurrence-order-facts dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+.recurrence-summary dd {
+  font-weight: 600;
+  color: #2659a5;
+}
+.recurrence-check {
+  margin-block: 24px;
+}
+.recurrence-check h3,
+.recurrence-section h3 {
+  margin-top: 0;
+  font-size: 18px;
+}
+.recurrence-section-heading,
+.recurrence-order-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.recurrence-section-heading .badge {
+  flex-shrink: 0;
+}
+.recurrence-sample {
+  scroll-margin-top: 24px;
+}
+.recurrence-sample:focus {
+  outline: none;
+}
+.recurrence-search {
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  margin-block: 24px;
+}
+.recurrence-search input {
+  width: 100%;
+  min-height: 44px;
+}
+.recurrence-order-list {
+  display: grid;
+  gap: 12px;
+}
+.recurrence-order {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.recurrence-order.is-checked {
+  border-color: #9ab4dc;
+  background: #f7faff;
+}
+.recurrence-order-heading p {
+  margin: 6px 0 16px;
+  font-size: 13px;
+  color: #62636b;
+  overflow-wrap: anywhere;
+}
+.recurrence-order-heading > div {
+  min-width: 0;
+}
+.recurrence-order > .check-label {
+  margin-top: 16px;
+  min-height: 44px;
+  font-size: 13px;
+}
+.recurrence-form-fields {
+  display: grid;
+  gap: 20px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  min-width: 0;
+}
+.recurrence-form-fields label {
+  display: grid;
+  gap: 8px;
+}
+.recurrence-form-fields textarea,
+.recurrence-form-fields select {
+  width: 100%;
+  min-width: 0;
+}
+.recurrence-save-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.recurrence-save-bar small {
+  display: block;
+  margin-top: 4px;
+  color: #62636b;
+}
+.recurrence-save-bar .task-actions {
+  margin: 0;
+}
+@media (max-width: 720px) {
+  .recurrence-dialog {
+    width: calc(100vw - 24px);
+  }
+  .recurrence-overview,
+  .recurrence-section {
+    padding: 16px;
+  }
+  .recurrence-section-heading,
+  .recurrence-order-heading {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .recurrence-order {
+    padding: 14px;
+  }
+  .recurrence-order-heading p {
+    margin-bottom: 8px;
+  }
+  .recurrence-order-heading .badge {
+    margin-bottom: 8px;
+  }
+  .recurrence-save-bar,
+  .recurrence-save-bar .task-actions,
+  .recurrence-save-bar button {
+    width: 100%;
+  }
+  .recurrence-save-bar .task-actions {
+    display: grid;
+    gap: 12px;
+  }
+  .recurrence-search input {
+    font-size: 16px;
+  }
+}
+.signal-followup {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.recurrence-step-nav {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+  padding: 12px 0;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+.recurrence-step-nav > button {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+}
+.recurrence-workspace > section {
+  scroll-margin-top: 84px;
+}
+.recurrence-workspace > section:focus {
+  outline: none;
+}
+@media (max-width: 720px) {
+  .recurrence-step-nav > button {
+    font-size: 12px;
+    padding-inline: 8px;
+  }
+}
+.recurrence-section .guided-form .recurrence-form-fields {
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.recurrence-form-fields textarea {
+  min-height: 128px;
+}

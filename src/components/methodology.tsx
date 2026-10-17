@@ -474,7 +474,13 @@ export function Methodology({
               <b>Verificação da equipe:</b> abra uma investigação, confira ao
               menos dois pedidos e as condições reais da operação. Registre as
               evidências, a conclusão sobre a hipótese e o próximo
-              encaminhamento.
+              encaminhamento. Use a busca e a paginação para localizar pedidos;
+              as referências do agente aparecem primeiro. “Salvar progresso”
+              guarda anotações e pedidos conferidos sem concluir a investigação.
+              Ao retomar, continue do último salvamento. “Concluir investigação”
+              exige ao menos dois pedidos, resultado e próximos passos. Se ainda
+              faltam verificações, salve o progresso em vez de encerrar como
+              inconclusiva.
             </li>
             <li>
               <b>Continuidade:</b> a conclusão sai de Pendências e continua

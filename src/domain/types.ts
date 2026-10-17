@@ -148,6 +148,13 @@ export type Task = {
   rejection?: { note: string; at: string };
   approval?: { at: string };
   conclusion?: ProcessConclusion;
+  processProgress?: {
+    observations: string;
+    nextStep: string;
+    evidenceIds: string[];
+    outcome?: ProcessConclusion["outcome"];
+    at: string;
+  };
   scope?: "case" | "process";
   insightId?: string;
   previousTaskId?: string;

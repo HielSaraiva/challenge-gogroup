@@ -1,3 +1,4 @@
+import { processProgressPatch } from "@/domain/process-progress";
 import { currentCaseTasks, latestReopen } from "@/domain/case-cycle";
 import {
   completedTask,
@@ -322,6 +323,64 @@ export async function completeTaskAndResolve(
   };
   return process.env.DATABASE_URL ? save() : locked(save);
 }
+export async function saveProcessProgress(
+  sessionId: string,
+  id: string,
+  progress: unknown,
+  expectedUpdatedAt: string,
+) {
+  const apply = (task: Task) => {
+    try {
+      return {
+        ...task,
+        ...processProgressPatch(task, progress, expectedUpdatedAt),
+      };
+    } catch (error) {
+      throw new AppError(
+        error instanceof Error ? error.message : "Progresso inválido.",
+        409,
+      );
+    }
+  };
+  if (!process.env.DATABASE_URL)
+    return locked(async () => {
+      const state = await getSession(sessionId);
+      const index = state?.tasks.findIndex((task) => task.id === id) ?? -1;
+      if (!state || index < 0)
+        throw new AppError("Investigação não encontrada.", 404);
+      const task = apply(state.tasks[index]);
+      state.tasks[index] = task;
+      await writeLocal(`session-${sessionId}.json`, state);
+      return task;
+    });
+  const database = db();
+  const records = await database
+    .select()
+    .from(schema.taskRecords)
+    .where(eq(schema.taskRecords.sessionId, sessionId));
+  const record = records.find((item) => item.payload.id === id);
+  if (!record) throw new AppError("Investigação não encontrada.", 404);
+  const task = apply(record.payload);
+  const updated = await database
+    .update(schema.taskRecords)
+    .set({ payload: task })
+    .where(
+      and(
+        eq(schema.taskRecords.sessionId, sessionId),
+        eq(schema.taskRecords.key, record.key),
+        sql`${schema.taskRecords.payload}->>'updatedAt' = ${expectedUpdatedAt}`,
+        sql`${schema.taskRecords.payload}->>'status' = ${record.payload.status}`,
+      ),
+    )
+    .returning();
+  if (!updated.length)
+    throw new AppError(
+      "A investigação mudou. Recarregue antes de salvar.",
+      409,
+    );
+  return task;
+}
+
 export async function updateTask(
   sessionId: string,
   id: string,
@@ -329,6 +388,7 @@ export async function updateTask(
   execution?: import("@/domain/types").TaskExecution,
   conclusion?: import("@/domain/types").ProcessConclusion,
   rejection?: { note: string },
+  expectedUpdatedAt?: string,
 ) {
   const rejectionRecord =
     status === "rejeitada"
@@ -348,6 +408,11 @@ export async function updateTask(
       const state = await getSession(sessionId);
       const task = state?.tasks.find((t) => t.id === id);
       if (!state || !task) throw new AppError("Tarefa não encontrada.", 404);
+      if (expectedUpdatedAt && task.updatedAt !== expectedUpdatedAt)
+        throw new AppError(
+          "A investigação mudou. Recarregue antes de concluir.",
+          409,
+        );
       if (!allowed(task))
         throw new AppError("Transição de tarefa inválida.", 409);
       if (status === "concluida") {
@@ -374,6 +439,11 @@ export async function updateTask(
     .where(eq(schema.taskRecords.sessionId, sessionId));
   const record = records.find((t) => t.payload.id === id);
   if (!record) throw new AppError("Tarefa não encontrada.", 404);
+  if (expectedUpdatedAt && record.payload.updatedAt !== expectedUpdatedAt)
+    throw new AppError(
+      "A investigação mudou. Recarregue antes de concluir.",
+      409,
+    );
   if (!allowed(record.payload))
     throw new AppError("Transição de tarefa inválida.", 409);
   let result = {};
@@ -404,6 +474,7 @@ export async function updateTask(
         eq(schema.taskRecords.sessionId, sessionId),
         eq(schema.taskRecords.key, record.key),
         sql`${schema.taskRecords.payload}->>'status' = ${record.payload.status}`,
+        sql`${schema.taskRecords.payload}->>'updatedAt' = ${record.payload.updatedAt}`,
       ),
     )
     .returning();

@@ -1,5 +1,5 @@
 "use client";
-import { SignalContext } from "./signal-context";
+import { RecurrenceInvestigation } from "./recurrence-investigation";
 import { Expandable } from "./ui/expandable";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, Menu, Search, X } from "lucide-react";
@@ -73,6 +73,17 @@ export function OperationsApp() {
   const [runs, setRuns] = useState<Investigation[]>([]);
   const [selectedId, setSelectedId] = useState<string>();
   const [processId, setProcessId] = useState<string>();
+  const [processDirty, setProcessDirty] = useState(false);
+  const [processSaving, setProcessSaving] = useState(false);
+  const [processDestination, setProcessDestination] = useState<string | null>();
+  function changeProcess(id?: string) {
+    if (processSaving) return;
+    if (processDirty) {
+      setProcessDestination(id ?? null);
+      return;
+    }
+    setProcessId(id);
+  }
   const [activePatternId, setActivePatternId] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -1260,35 +1271,67 @@ export function OperationsApp() {
       <Dialog
         open={Boolean(processTask)}
         onOpenChange={(open) => {
-          if (!open) setProcessId(undefined);
+          if (!open) changeProcess();
         }}
       >
-        <DialogContent>
+        <DialogContent className="recurrence-dialog">
           {processTask && (
             <>
-              <DialogTitle>Investigação de recorrência</DialogTitle>
+              <DialogTitle>{generatedTextLabel(processTask.title)}</DialogTitle>
               <DialogDescription>
-                Documente o diagnóstico do grupo. Os pedidos continuam com
-                tratativas independentes.
+                Confira as evidências, salve o andamento e registre a conclusão
+                quando terminar a verificação.
               </DialogDescription>
-              {processPattern && <SignalContext pattern={processPattern} />}
               {processTask.previousTaskId && (
                 <Button
                   variant="outline"
-                  onClick={() => setProcessId(processTask.previousTaskId)}
+                  onClick={() => changeProcess(processTask.previousTaskId)}
                 >
                   Consultar investigação anterior
                 </Button>
               )}
-              <TaskResult
+              <RecurrenceInvestigation
                 key={processTask.id}
                 task={processTask}
                 orders={orders}
-                tasks={tasks}
+                pattern={processPattern}
+                onDirtyChange={setProcessDirty}
+                onBusyChange={setProcessSaving}
                 onSaved={refresh}
               />
             </>
           )}
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={processDestination !== undefined}
+        onOpenChange={(open) => {
+          if (!open) setProcessDestination(undefined);
+        }}
+      >
+        <DialogContent className="new-plan-dialog">
+          <DialogTitle>Há alterações não salvas</DialogTitle>
+          <DialogDescription>
+            Para retomar estas anotações depois, volte e use “Salvar progresso”.
+            Sair agora descarta apenas as alterações desde o último salvamento.
+          </DialogDescription>
+          <div className="new-plan-footer">
+            <Button
+              variant="outline"
+              onClick={() => setProcessDestination(undefined)}
+            >
+              Continuar editando
+            </Button>
+            <Button
+              onClick={() => {
+                setProcessDirty(false);
+                setProcessId(processDestination || undefined);
+                setProcessDestination(undefined);
+              }}
+            >
+              Sair sem salvar alterações
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
       <Dialog open={confirmNewPlan} onOpenChange={setConfirmNewPlan}>

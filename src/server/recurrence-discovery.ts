@@ -159,6 +159,18 @@ export async function executeRecurrenceTool(
                 title: previous.title,
                 hypothesis: previous.justification.slice(0, 400),
                 status: previous.status,
+                progress:
+                  !previous.conclusion && previous.processProgress
+                    ? {
+                        observations:
+                          previous.processProgress.observations.slice(0, 400),
+                        nextStep: previous.processProgress.nextStep.slice(
+                          0,
+                          400,
+                        ),
+                        checkedOrders: previous.processProgress.evidenceIds,
+                      }
+                    : undefined,
                 conclusion: previous.conclusion
                   ? {
                       outcome: previous.conclusion.outcome,
