@@ -2,7 +2,7 @@
 import { Expandable } from "./ui/expandable";
 import { useState } from "react";
 import type { Task, RankedOrder } from "@/domain/types";
-import { shortDate, statusLabel } from "@/lib/utils";
+import { shortDate, statusLabel, taskFactLabel } from "@/lib/utils";
 import { CircleCheck } from "lucide-react";
 import {
   ResolutionFields,
@@ -112,7 +112,7 @@ export function TaskResult({
       <Expandable>
         <summary>Fatos consultados pelo agente</summary>
         {task.facts?.map((f) => (
-          <p key={f}>{f}</p>
+          <p key={f}>{taskFactLabel(f)}</p>
         ))}
       </Expandable>
       {task.status === "pendente_aprovacao" && (

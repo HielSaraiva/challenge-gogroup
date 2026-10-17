@@ -33,3 +33,12 @@ export function statusLabel(status: string) {
     )[status] || status.replaceAll("_", " ")
   );
 }
+
+// Older tasks persist their status as part of a human-readable fact string.
+export function taskFactLabel(fact: string) {
+  return fact.replace(
+    /^(Status:\s*)([a-z_]+)(\.)?$/i,
+    (_, prefix: string, status: string, punctuation: string = "") =>
+      `${prefix}${statusLabel(status)}${punctuation}`,
+  );
+}

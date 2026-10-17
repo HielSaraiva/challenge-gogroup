@@ -1,4 +1,5 @@
 import Groq from "groq-sdk";
+import { statusLabel } from "@/lib/utils";
 import { withShortRateLimitRetry } from "./provider-retry";
 import type {
   ChatCompletionMessageParam,
@@ -355,7 +356,7 @@ export async function executeTool(
       .digest("hex");
     const facts = [
       `Exceção registrada: ${exceptionLabels[order.exception]}.`,
-      `Status: ${order.status}.`,
+      `Status: ${statusLabel(order.status)}.`,
       `Idade da exceção: ${order.priority.age} dias úteis; atraso até ${order.deliveredAt ? "a entrega" : "a referência"}: ${order.priority.delay} dias úteis.`,
       `Valor do pedido: R$ ${order.value}; reenvio estimado: R$ ${order.priority.resendCost}; exposição elegível a cancelamento: R$ ${order.priority.cancellationRisk}.`,
     ];
