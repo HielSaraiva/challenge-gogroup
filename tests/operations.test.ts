@@ -16,7 +16,7 @@ import {
   type AgentContext,
   type AgentCompletion,
 } from "@/server/agent";
-import { createSession, getSession } from "@/server/store";
+import { createSession, getSession, updateTask } from "@/server/store";
 import type { Dataset, Order, Task, DailyPlan } from "@/domain/types";
 const baseOrder: Order = {
   id: "SYNTHETIC-CASE",
@@ -508,6 +508,36 @@ describe("causas e ações de processo", () => {
     const task = (await executeTool("criar_acao_processo", args, ctx)) as Task;
     expect(task.scope).toBe("process");
     expect(task.affectedOrderIds).toHaveLength(20);
+    expect(
+      ((await executeTool("criar_acao_processo", args, ctx)) as Task).id,
+    ).toBe(task.id);
+    await updateTask(ctx.sessionId, task.id, "concluida", undefined, {
+      outcome: "inconclusiva",
+      observations: "A amostra conferida ainda não permite concluir a causa",
+      evidenceIds: args.evidenceIds,
+      nextStep: "Ampliar a verificação com os registros da operação",
+    });
+    expect(
+      ((await executeTool("criar_acao_processo", args, ctx)) as Task).id,
+    ).toBe(task.id);
+    const nextContext = { ...ctx, renewFromTaskId: task.id };
+    const followup = (await executeTool(
+      "criar_acao_processo",
+      args,
+      nextContext,
+    )) as Task;
+    expect(followup.id).not.toBe(task.id);
+    expect(followup.previousTaskId).toBe(task.id);
+    expect(
+      ((await executeTool("criar_acao_processo", args, nextContext)) as Task)
+        .id,
+    ).toBe(followup.id);
+    expect(
+      (await getSession(ctx.sessionId))!.tasks.filter(
+        (task) => task.scope === "process" && task.insightId === signal.id,
+      ),
+    ).toHaveLength(2);
+
     await expect(
       executeTool("consultar_padroes", { insightId: "outro" }, ctx),
     ).rejects.toThrow("escopo");

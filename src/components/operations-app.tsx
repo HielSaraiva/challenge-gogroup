@@ -12,6 +12,9 @@ import {
 import { DataImport } from "./data-import";
 import { Methodology } from "./methodology";
 import { OperationsSummary } from "./operations-summary";
+import { ImprovementsWorkspace } from "./improvements-workspace";
+import { PendingWorkspace } from "./pending-workspace";
+import { pendingWork } from "@/domain/pending-work";
 import { FinancialImpact } from "./financial-impact";
 import { CaseControls } from "./case-controls";
 import { TaskResult } from "./task-result";
@@ -26,26 +29,14 @@ import {
   type Task,
   type Investigation,
   type ToolEvent,
-  type DailyPlan,
 } from "@/domain/types";
 import type { dashboard } from "@/domain/analytics";
 import type { planQueue } from "@/domain/planning";
 import type { financialReport } from "@/domain/operations";
-import {
-  money,
-  shortDate,
-  statusLabel,
-  generatedTextLabel,
-  insightGroupLabel,
-} from "@/lib/utils";
+import { money, shortDate, statusLabel, generatedTextLabel } from "@/lib/utils";
 import { paginationItems } from "@/lib/pagination";
 import { orderList, PAGE_SIZES } from "@/lib/order-list";
-import {
-  currentCaseTasks,
-  latestReopen,
-  ordersNeedingInvestigation,
-} from "@/domain/case-cycle";
-import { awaitingResultOrders } from "@/domain/task-resolution";
+import { currentCaseTasks, latestReopen } from "@/domain/case-cycle";
 import { outcomeLabels } from "@/domain/cases";
 type Tab =
   "overview" | "queue" | "agent" | "impact" | "insights" | "data" | "method";
@@ -58,36 +49,6 @@ const nav = [
   ["data", "Dados"],
   ["method", "Metodologia"],
 ] as const;
-function recurrenceQuestion(p: Insight) {
-  if (p.dimension === "promise_rule")
-    return "Por que a promessa difere do contrato?";
-  const problem: Record<string, string> = {
-    vazamento_produto: "há vazamentos",
-    atraso_entrega: "há atrasos",
-    item_faltante: "faltam itens",
-    falha_personalizacao: "a personalização falha",
-    avaria_transporte: "há avarias",
-    extravio: "há extravios",
-    rastreio_parado: "o rastreio fica parado",
-    devolvido_transportadora: "há devoluções",
-  };
-  const group = p.group.replaceAll("|", " / ");
-  const where =
-    (
-      {
-        lot: `no lote ${group}`,
-        machine: `na máquina ${group}`,
-        carrier: `com a transportadora ${group}`,
-        shift: `no turno ${group}`,
-        dc: `no CD ${group}`,
-        gift:
-          p.group === "true"
-            ? "nos pedidos com brinde"
-            : "nos pedidos sem brinde",
-      } as Record<string, string>
-    )[p.dimension] || `no grupo ${group}`;
-  return `Por que ${problem[p.exception] || "este problema se repete"} ${where}?`;
-}
 async function get<T>(path: string): Promise<T> {
   const r = await fetch(path, { cache: "no-store" });
   const b = await r.json();
@@ -109,9 +70,9 @@ export function OperationsApp() {
   const [patterns, setPatterns] = useState<Insight[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [runs, setRuns] = useState<Investigation[]>([]);
-  const [plans, setPlans] = useState<DailyPlan[]>([]);
   const [selectedId, setSelectedId] = useState<string>();
   const [processId, setProcessId] = useState<string>();
+  const [activePatternId, setActivePatternId] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [activeRun, setActiveRun] = useState<Investigation>();
@@ -146,8 +107,6 @@ export function OperationsApp() {
   const [statusFilter, setStatusFilter] = useState("");
   const [all, setAll] = useState(false);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(4);
-  const [pendingOnly, setPendingOnly] = useState(true);
   function navigate(next: Tab) {
     setActive(next);
     setMenu(false);
@@ -189,7 +148,6 @@ export function OperationsApp() {
       get<Investigation[]>("/api/investigations"),
       get<{
         financial: ReturnType<typeof financialReport>;
-        plans: DailyPlan[];
       }>("/api/operations"),
     ]);
     setSummary(s);
@@ -199,7 +157,6 @@ export function OperationsApp() {
     setTasks(t);
     setRuns(r);
     setFinancial(op.financial);
-    setPlans(op.plans);
   }, []);
   const load = useCallback(async () => {
     setLoading(true);
@@ -223,12 +180,18 @@ export function OperationsApp() {
     const timer = setInterval(() => void refresh().catch(() => {}), 2500);
     return () => clearInterval(timer);
   }, [busy, runs, refresh]);
-  async function investigate(target: string, type: Investigation["type"]) {
+  async function investigate(
+    target: string,
+    type: Investigation["type"],
+    renewFromTaskId?: string,
+  ) {
     if (busy) return;
     setBusy(true);
+    if (type === "pattern") setActivePatternId(target);
     setEvents([]);
     setNotice("");
     let completed = false;
+    let processToOpen: string | undefined;
     const requestId = crypto.randomUUID();
     setActiveRun({
       id: requestId,
@@ -250,14 +213,25 @@ export function OperationsApp() {
           target,
           type,
           requestId,
+          ...(renewFromTaskId ? { renewFromTaskId } : {}),
           ...(type === "daily" ? { strategy: planStrategy } : {}),
         }),
       });
       if (!r.ok) throw new Error((await r.json()).error);
       if (r.headers.get("content-type")?.includes("application/json")) {
-        const result = (await r.json()).investigation;
-        setActiveRun(result);
-        completed = result?.status === "completed";
+        const body = await r.json();
+        if (body.taskId) {
+          processToOpen = body.taskId;
+          setActiveRun(undefined);
+          setNotice(
+            "Investigação já registrada. Abrindo o registro existente, sem nova chamada à IA.",
+          );
+        } else {
+          const result = body.investigation;
+          setActiveRun(result);
+          completed = result?.status === "completed";
+          if (type === "pattern") processToOpen = result?.taskIds?.[0];
+        }
       } else {
         const reader = r.body!.getReader();
         const decoder = new TextDecoder();
@@ -278,16 +252,17 @@ export function OperationsApp() {
                 type === "pattern" &&
                 payload.investigation.status === "completed"
               )
-                setProcessId(payload.investigation.taskIds[0]);
+                processToOpen = payload.investigation.taskIds[0];
             }
           }
           if (done) break;
         }
       }
       await refresh();
+      if (processToOpen && type === "pattern") setProcessId(processToOpen);
       if (completed && type === "pattern")
         setNotice(
-          "Encaminhamento registrado. Abra a investigação em Pendências.",
+          "Investigação registrada. Confira a hipótese e documente a verificação pela equipe.",
         );
     } catch (e) {
       const message = (e as Error).message;
@@ -317,6 +292,7 @@ export function OperationsApp() {
       setActiveRun(undefined);
       setSelectedId(undefined);
       setProcessId(undefined);
+      setActivePatternId(undefined);
       await load();
       setNotice("Tratativas reiniciadas. A base escolhida foi preservada.");
     } catch (e) {
@@ -370,11 +346,7 @@ export function OperationsApp() {
     setProcessId(undefined);
     setSelectedId(id);
   }
-  const pending = tasks.filter((t) =>
-    ["aberta", "aprovada", "pendente_aprovacao"].includes(t.status),
-  );
-  const awaitingResults = awaitingResultOrders(orders, tasks);
-  const awaitingInvestigation = ordersNeedingInvestigation(orders, tasks);
+  const pendingCount = pendingWork(orders, tasks).length;
   return (
     <div className="app-layout">
       <header className="sidebar">
@@ -410,17 +382,9 @@ export function OperationsApp() {
               onClick={() => navigate(id)}
             >
               {label}
-              {id === "agent" &&
-                pending.length +
-                  awaitingResults.length +
-                  awaitingInvestigation.length >
-                  0 && (
-                  <span className="nav-count">
-                    {pending.length +
-                      awaitingResults.length +
-                      awaitingInvestigation.length}
-                  </span>
-                )}
+              {id === "agent" && pendingCount > 0 && (
+                <span className="nav-count">{pendingCount}</span>
+              )}
             </button>
           ))}
         </nav>
@@ -924,255 +888,36 @@ export function OperationsApp() {
                 </>
               )}
               {tab === "agent" && (
-                <>
-                  <section className="panel prose">
-                    <h2>O que precisa de acompanhamento?</h2>
-                    <p>
-                      Execuções concluídas continuam aqui enquanto o resultado
-                      do pedido não for confirmado.
-                    </p>
-                    <label className="check-label">
-                      <input
-                        type="checkbox"
-                        checked={pendingOnly}
-                        onChange={(e) => setPendingOnly(e.target.checked)}
-                      />
-                      Mostrar somente pendências
-                    </label>
-                    {awaitingInvestigation.map((order) => (
-                      <article
-                        className="result-row"
-                        key={`reopened-${order.id}`}
-                      >
-                        <span className="badge">
-                          {latestReopen(order.caseHistory)
-                            ? "Pedido reaberto — aguardando nova investigação"
-                            : "Aguardando outra tratativa"}
-                        </span>
-                        <h3>
-                          {order.id} · {exceptionLabels[order.exception]}
-                        </h3>
-                        <p>
-                          {latestReopen(order.caseHistory)
-                            ? "A etapa anterior foi preservada."
-                            : currentCaseTasks(order, tasks).some(
-                                  (task) => task.status === "rejeitada",
-                                )
-                              ? "A proposta foi rejeitada; o pedido continua aberto."
-                              : "O status foi conferido; a exceção ainda precisa de uma tratativa."}{" "}
-                          Investigue o pedido para gerar um novo encaminhamento.
-                        </p>
-                        <Button
-                          variant="outline"
-                          onClick={() => openOrder(order.id)}
-                        >
-                          Abrir pedido e iniciar nova etapa
-                        </Button>
-                      </article>
-                    ))}
-                    {awaitingResults.map((order) => (
-                      <article
-                        key={`result-${order.id}`}
-                        className="result-row"
-                      >
-                        <span className="badge">
-                          {currentCaseTasks(order, tasks).some(
-                            (task) => task.execution?.stage === "dispatched",
-                          )
-                            ? "Reenvio despachado — aguardando recebimento"
-                            : "Aguardando resultado do pedido"}
-                        </span>
-                        <h3>
-                          {order.id} · {exceptionLabels[order.exception]}
-                        </h3>
-                        <p>
-                          A execução foi registrada, mas o pedido permanece
-                          aberto. Confirme o resultado ou acompanhe o que ainda
-                          falta resolver.
-                        </p>
-                        <Button
-                          variant="outline"
-                          onClick={() => openOrder(order.id)}
-                        >
-                          Abrir pedido e confirmar resultado
-                        </Button>
-                      </article>
-                    ))}
-                    {tasks
-                      .filter(
-                        (t) =>
-                          !pendingOnly ||
-                          ["aberta", "aprovada", "pendente_aprovacao"].includes(
-                            t.status,
-                          ),
-                      )
-                      .map((t) => (
-                        <article key={t.id} className="result-row">
-                          <span className="badge">
-                            {t.scope === "process" ? "Recorrência" : t.area} ·{" "}
-                            {statusLabel(t.status)}
-                          </span>
-                          <h3>{generatedTextLabel(t.title)}</h3>
-                          <p>{generatedTextLabel(t.justification)}</p>
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              t.scope === "process"
-                                ? setProcessId(t.id)
-                                : openOrder(t.orderId)
-                            }
-                          >
-                            {t.scope === "process"
-                              ? "Abrir investigação"
-                              : "Abrir pedido e acompanhar"}
-                          </Button>
-                        </article>
-                      ))}
-                    {tasks.length > 0 &&
-                      pendingOnly &&
-                      !pending.length &&
-                      !awaitingResults.length &&
-                      !awaitingInvestigation.length && (
-                        <p>
-                          Não há pendências. Desmarque o filtro para consultar
-                          os registros concluídos.
-                        </p>
-                      )}
-                    {!tasks.length && !awaitingInvestigation.length && (
-                      <p>
-                        O agente ainda não registrou tarefas. Prepare o dia e
-                        investigue um pedido, ou escolha uma recorrência em
-                        Melhorias.
-                      </p>
-                    )}
-                  </section>
-                  <Expandable className="panel prose">
-                    <summary>Histórico de análises e planos</summary>
-                    {plans.map((plan) => (
-                      <article key={plan.id} className="result-row">
-                        <b>
-                          Plano de{" "}
-                          {new Date(plan.createdAt).toLocaleString("pt-BR")} ·{" "}
-                          {plan.strategy
-                            ? STRATEGIES[plan.strategy].label
-                            : "Plano legado"}
-                        </b>
-                        <p>
-                          {(plan.strategyReason &&
-                            generatedTextLabel(plan.strategyReason)) ||
-                            "Política anterior, sem comparação de estratégias registrada."}
-                        </p>
-                        <p>{generatedTextLabel(plan.briefing)}</p>
-                        <Expandable>
-                          <summary>Consultar orientações salvas</summary>
-                          {plan.workstreams.map((stream) => (
-                            <p key={stream.area}>
-                              <b>{stream.area}:</b>{" "}
-                              {generatedTextLabel(stream.nextStep)}
-                            </p>
-                          ))}
-                        </Expandable>
-                      </article>
-                    ))}
-                    {runs.map((r) => (
-                      <article className="result-row" key={r.id}>
-                        <b>
-                          {r.type === "daily"
-                            ? "Plano do dia"
-                            : r.type === "pattern"
-                              ? "Recorrência"
-                              : "Pedido"}{" "}
-                          · {statusLabel(r.status)}
-                        </b>
-                        <p>
-                          {shortDate(r.createdAt.slice(0, 10))} ·{" "}
-                          {generatedTextLabel(r.summary)}
-                        </p>
-                      </article>
-                    ))}
-                  </Expandable>
-                </>
+                <PendingWorkspace
+                  key={sessionRevision}
+                  orders={orders}
+                  tasks={tasks}
+                  onOrder={openOrder}
+                  onProcess={setProcessId}
+                />
               )}
               {tab === "impact" && financial && (
                 <FinancialImpact report={financial} onOrder={openOrder} />
               )}
               {tab === "insights" && (
-                <>
-                  <section className="panel prose">
-                    <h2>Qual problema pode estar se repetindo?</h2>
-                    <p>
-                      Escolha um sinal. A IA consulta evidências e cria uma
-                      investigação para a equipe conferir a hipótese. Finalizar
-                      esse diagnóstico não resolve os pedidos nem implanta uma
-                      melhoria.
-                    </p>
-                    <p>
-                      Os sinais usam somente a base de exceções; não demonstram
-                      taxa de falha sobre todas as vendas.
-                    </p>
-                    <Button variant="outline" onClick={() => navigate("agent")}>
-                      Acompanhar investigações abertas
-                    </Button>
-                  </section>
-                  <div className="insight-grid">
-                    {patterns
-                      .filter((p) => p.scope === "process")
-                      .slice(0, limit)
-                      .map((p) => (
-                        <article className="panel prose" key={p.id}>
-                          <span className="badge">
-                            {exceptionLabels[p.exception] || "Prazo prometido"}
-                          </span>
-                          <h2>{recurrenceQuestion(p)}</h2>
-                          <p>
-                            <b>
-                              Grupo a conferir: {insightGroupLabel(p.group)}
-                            </b>
-                          </p>
-                          <p>
-                            {p.count} casos relacionados dentro desta análise.
-                          </p>
-                          <p>{p.investigationQuestion}</p>
-                          <Expandable>
-                            <summary>
-                              Por que este sinal merece investigação?
-                            </summary>
-                            <p>
-                              {p.title}. A concentração é um ponto de partida; é
-                              preciso conferir os registros dos pedidos e
-                              validar em campo.
-                            </p>
-                            <p>
-                              Referências:{" "}
-                              {p.evidenceIds.slice(0, 3).join(", ")}
-                            </p>
-                          </Expandable>
-                          <Button
-                            disabled={busy}
-                            onClick={() => void investigate(p.id, "pattern")}
-                          >
-                            Investigar recorrência com IA
-                          </Button>
-                        </article>
-                      ))}
-                  </div>
-                  {!patterns.some((p) => p.scope === "process") && (
-                    <p>
-                      Nenhum sinal suficiente para investigação de recorrência
-                      nesta base. Continue pelas tratativas individuais.
-                    </p>
-                  )}
-                  {patterns.filter((p) => p.scope === "process").length >
-                    limit && (
-                    <Button
-                      variant="outline"
-                      onClick={() => setLimit(limit + 4)}
-                    >
-                      Ver outros sinais
-                    </Button>
-                  )}
-                  {activity("pattern")}
-                </>
+                <ImprovementsWorkspace
+                  key={sessionRevision}
+                  patterns={patterns}
+                  tasks={tasks}
+                  runs={runs}
+                  busy={busy}
+                  activePatternId={activePatternId}
+                  activity={
+                    activePatternId
+                      ? activity("pattern", activePatternId)
+                      : null
+                  }
+                  onInvestigate={(id, previousId) =>
+                    investigate(id, "pattern", previousId)
+                  }
+                  onProcess={setProcessId}
+                  onPending={() => navigate("agent")}
+                />
               )}
             </>
           )}
@@ -1509,6 +1254,14 @@ export function OperationsApp() {
                 Documente o diagnóstico do grupo. Os pedidos continuam com
                 tratativas independentes.
               </DialogDescription>
+              {processTask.previousTaskId && (
+                <Button
+                  variant="outline"
+                  onClick={() => setProcessId(processTask.previousTaskId)}
+                >
+                  Consultar investigação anterior
+                </Button>
+              )}
               <TaskResult
                 key={processTask.id}
                 task={processTask}

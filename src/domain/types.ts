@@ -150,6 +150,7 @@ export type Task = {
   conclusion?: ProcessConclusion;
   scope?: "case" | "process";
   insightId?: string;
+  previousTaskId?: string;
   affectedOrderIds?: string[];
   nextStep?: string;
 };

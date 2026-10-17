@@ -1,3 +1,4 @@
+import { patternDecision } from "@/domain/pattern-lifecycle";
 import { investigate, investigationInput } from "@/server/agent";
 import { failure, json, session, verifyOrigin } from "@/server/http";
 import {
@@ -42,6 +43,24 @@ export async function POST(request: Request) {
     const input = investigationInput.parse(await request.json());
     const previous = state.investigations.find((r) => r.id === input.requestId);
     if (previous) return json({ investigation: previous });
+    if (input.renewFromTaskId && input.type !== "pattern")
+      throw new AppError(
+        "Uma nova investigação de recorrência deve ser solicitada em Melhorias.",
+      );
+    if (input.type === "pattern") {
+      let decision;
+      try {
+        decision = patternDecision(
+          state.tasks,
+          input.target,
+          input.renewFromTaskId,
+        );
+      } catch (error) {
+        throw new AppError((error as Error).message, 409);
+      }
+      if (decision.kind === "reuse")
+        return json({ taskId: decision.task.id, reused: true });
+    }
     if (!process.env.GROQ_API_KEY)
       return json(
         {
@@ -55,6 +74,22 @@ export async function POST(request: Request) {
     try {
       const latestState = await getSession(id);
       if (!latestState) throw new AppError("Sessão expirada.", 401);
+      if (input.type === "pattern") {
+        let decision;
+        try {
+          decision = patternDecision(
+            latestState.tasks,
+            input.target,
+            input.renewFromTaskId,
+          );
+        } catch (error) {
+          throw new AppError((error as Error).message, 409);
+        }
+        if (decision.kind === "reuse") {
+          await release();
+          return json({ taskId: decision.task.id, reused: true });
+        }
+      }
       data = sessionDataset(await getDataset(latestState), latestState);
       await consumeLimit(`request:${id}:${input.requestId}`, 1);
     } catch (error) {

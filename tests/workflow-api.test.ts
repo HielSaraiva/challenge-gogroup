@@ -1,3 +1,5 @@
+import { pendingWork } from "@/domain/pending-work";
+import { POST as investigationPOST } from "@/app/api/investigations/route";
 import {
   currentCaseTasks,
   reopenedWithoutTask,
@@ -666,6 +668,87 @@ describe("fluxo persistido pelos endpoints", () => {
       expect(state.cases!["SYN-A"].history).toHaveLength(3);
     },
   );
+  it("lista só pendências, agrega tarefas por pedido e mantém a próxima ação", async () => {
+    const first = newTask();
+    const second = newTask();
+    const process = newTask({
+      scope: "process",
+      kind: "melhoria_processo",
+      insightId: "sinal",
+      status: "concluida",
+      conclusion: {
+        outcome: "inconclusiva",
+        observations: "Conclusão documentada na amostra sintética",
+        evidenceIds: ["SYN-A", "SYN-B"],
+        nextStep: "Verificar outra hipótese antes de mudar a operação",
+      },
+    });
+    let items = pendingWork(data.orders, [first, second, process]);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      kind: "order",
+      phase: "execution",
+      tasks: [first, second],
+    });
+    expect(
+      pendingWork(data.orders, [{ ...first, status: "rejeitada" }])[0],
+    ).toMatchObject({ phase: "investigate" });
+    expect(
+      pendingWork(data.orders, [
+        { ...first, status: "concluida", execution },
+      ])[0],
+    ).toMatchObject({ phase: "result" });
+    expect(
+      pendingWork(data.orders, [
+        {
+          ...first,
+          status: "concluida",
+          execution: { ...execution, stage: "dispatched" },
+        },
+      ])[0],
+    ).toMatchObject({ phase: "receipt" });
+    expect(
+      pendingWork(
+        data.orders.map((order) => ({
+          ...order,
+          resolution: {
+            note: execution.note,
+            resolvedAt: new Date().toISOString(),
+          },
+        })),
+        [first, second, process],
+      ),
+    ).toEqual([]);
+  });
+  it("abrir uma recorrência já criada reutiliza o registro sem iniciar outra execução de IA", async () => {
+    const task = newTask({
+      scope: "process",
+      kind: "melhoria_processo",
+      insightId: "sinal-testado",
+    });
+    await upsertTask(sessionId, task);
+    for (let click = 0; click < 2; click++) {
+      const response = await investigationPOST(
+        new Request("http://localhost:3000/api/investigations", {
+          method: "POST",
+          headers: {
+            origin: "http://localhost:3000",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            type: "pattern",
+            target: task.insightId,
+            requestId: randomUUID(),
+          }),
+        }),
+      );
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ taskId: task.id, reused: true });
+    }
+    const state = (await getSession(sessionId))!;
+    expect(state.tasks).toHaveLength(1);
+    expect(state.investigations).toHaveLength(0);
+  });
   it("registra execução sem encerrar e mantém pedido aguardando resultado", async () => {
     const task = newTask();
     await upsertTask(sessionId, task);

@@ -1167,3 +1167,236 @@ main > .panel {
 .check-label input {
   flex-shrink: 0;
 }
+
+.paged-workspace,
+.pattern-analysis {
+  scroll-margin-top: 110px;
+}
+.paged-workspace:focus,
+.pattern-analysis:focus {
+  outline: none;
+}
+.list-count {
+  color: #62636b;
+  font-size: 13px;
+  margin: 20px 0;
+}
+.pending-list,
+.resolved-list {
+  display: grid;
+  gap: 18px;
+}
+.pending-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 22px;
+  min-width: 0;
+}
+.pending-card > div {
+  min-width: 0;
+}
+.pending-card h3 {
+  margin: 12px 0 8px;
+}
+.pending-card p {
+  margin: 8px 0 0;
+}
+.pending-card > button {
+  flex-shrink: 0;
+  max-width: 100%;
+}
+.workspace-empty {
+  padding: 24px 0;
+}
+.page-size-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.page-size-control select {
+  min-height: 44px;
+  padding: 8px 32px 8px 12px;
+  border: 1px solid #aeb8c6;
+  border-radius: 6px;
+  background: white;
+  font: inherit;
+}
+.list-pagination {
+  margin-top: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.list-pagination > span {
+  font-size: 13px;
+}
+.resolved-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px;
+  min-width: 0;
+}
+.resolved-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.resolved-card-heading .plain-link {
+  font-weight: 600;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.resolved-card-heading h3 {
+  margin: 4px 0 8px;
+  font-size: 19px;
+}
+.resolved-card-heading p {
+  margin: 0;
+}
+.resolved-card-heading time {
+  color: #62636b;
+  font-size: 12px;
+  flex-shrink: 0;
+  padding-top: 12px;
+}
+.resolved-details {
+  display: grid;
+  gap: 18px;
+  padding: 20px 0;
+  margin: 20px 0 0;
+  border-top: 1px solid var(--line);
+}
+.resolved-details dt,
+.resolved-amounts dt {
+  font-size: 12px;
+  font-weight: 600;
+  color: #62636b;
+  margin-bottom: 6px;
+}
+.resolved-details dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
+.resolved-amounts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 20px;
+  margin: 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.resolved-amounts dd {
+  margin: 0;
+  font-weight: 600;
+}
+.resolved-amounts small {
+  display: block;
+  font-weight: 400;
+  color: #62636b;
+  margin-top: 5px;
+}
+.outcome-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.outcome-summary > div {
+  border-left: 3px solid #285caf;
+  padding: 8px 16px;
+}
+.outcome-summary dt {
+  font-size: 13px;
+}
+.outcome-summary dd {
+  margin: 8px 0 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #285caf;
+}
+.improvements-workspace > .insight-grid {
+  margin-top: 20px;
+  align-items: stretch;
+}
+.signal-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.signal-card h3 {
+  font-size: 21px;
+  line-height: 1.4;
+  color: #285caf;
+  margin: 16px 0;
+}
+.signal-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.signal-group {
+  overflow-wrap: anywhere;
+}
+.signal-actions {
+  margin-top: auto;
+  padding-top: 20px;
+  display: grid;
+  gap: 12px;
+}
+.signal-actions button {
+  white-space: normal;
+  min-height: 46px;
+}
+.signal-feedback {
+  padding: 12px;
+  border-left: 3px solid #285caf;
+  background: #edf3fc;
+}
+.improvements-workspace > .list-pagination {
+  padding: 16px 0;
+}
+@media (max-width: 720px) {
+  .pending-card,
+  .resolved-card {
+    padding: 18px;
+  }
+  .pending-card,
+  .resolved-card-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .pending-card > button {
+    width: 100%;
+  }
+  .resolved-card-heading time {
+    padding-top: 0;
+  }
+  .list-pagination {
+    align-items: flex-start;
+  }
+  .list-pagination .pagination-numbers {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  .outcome-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+.list-pagination {
+  color: #62636b;
+}
+@media (max-width: 720px) {
+  .page-size-control select {
+    font-size: 16px;
+  }
+}

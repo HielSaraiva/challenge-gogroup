@@ -57,7 +57,13 @@ export function workstreams(data: Dataset, weights: Weights = DEFAULT_WEIGHTS) {
   }));
 }
 export function financialReport(data: Dataset, state: SessionState) {
-  const resolved = data.orders.filter((o) => o.resolution);
+  const resolved = data.orders
+    .filter((o) => o.resolution)
+    .sort(
+      (a, b) =>
+        b.resolution!.resolvedAt.localeCompare(a.resolution!.resolvedAt) ||
+        a.id.localeCompare(b.id),
+    );
   const outcomes = resolved.flatMap((o) =>
     o.resolution?.outcome ? [o.resolution.outcome] : [],
   );
@@ -73,6 +79,11 @@ export function financialReport(data: Dataset, state: SessionState) {
   return {
     resolvedCount: resolved.length,
     pendingCount: data.orders.length - resolved.length,
+    reopenedCount: data.orders.filter(
+      (order) =>
+        !order.resolution &&
+        order.caseHistory?.some((event) => event.action === "reopen"),
+    ).length,
     treatedValue: sumMoney(resolved.map((o) => o.value)),
     refunds: {
       count: refunds.length,
@@ -92,6 +103,9 @@ export function financialReport(data: Dataset, state: SessionState) {
     ).length,
     resolvedOrders: resolved.map((o) => ({
       id: o.id,
+      brand: o.brand,
+      product: o.product,
+      resolvedAt: o.resolution!.resolvedAt,
       value: o.value,
       outcome: o.resolution?.outcome,
       note: o.resolution!.note,

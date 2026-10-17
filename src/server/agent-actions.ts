@@ -1,3 +1,4 @@
+import { patternDecision } from "@/domain/pattern-lifecycle";
 import { insightGroupLabel } from "@/lib/utils";
 import { z } from "zod";
 import { randomUUID, createHash } from "node:crypto";
@@ -11,7 +12,7 @@ import {
   REFERENCE_DATE,
   type DailyPlan,
 } from "@/domain/types";
-import { AppError, upsertDailyPlan, upsertTask } from "./store";
+import { AppError, upsertDailyPlan, upsertTask, getSession } from "./store";
 import type { AgentContext } from "./agent";
 import { datasetReference, POLICY_VERSION } from "@/domain/planning";
 import { requireQualitative } from "./agent-evidence";
@@ -399,9 +400,17 @@ export async function executeStrategicTool(
       throw new AppError(
         "Use ao menos dois pedidos distintos da amostra consultada como evidências.",
       );
+    const decision = patternDecision(
+      (await getSession(context.sessionId))?.tasks || [],
+      insight.id,
+      context.renewFromTaskId,
+    );
+    if (decision.kind === "reuse") return decision.task;
     const now = new Date().toISOString();
     const key = createHash("sha256")
-      .update(`process:${insight.id}`)
+      .update(
+        `process:${insight.id}${decision.previousTaskId ? `:${decision.previousTaskId}` : ""}`,
+      )
       .digest("hex");
     const area =
       (
@@ -425,6 +434,9 @@ export async function executeStrategicTool(
       kind: "melhoria_processo",
       scope: "process",
       insightId: insight.id,
+      ...(decision.previousTaskId
+        ? { previousTaskId: decision.previousTaskId }
+        : {}),
       affectedOrderIds: insight.evidenceIds,
       title: args.title,
       justification: `Hipótese do agente: ${args.justification}`,

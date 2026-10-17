@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { paginationItems } from "@/lib/pagination";
+import { paginationItems, paginate } from "@/lib/pagination";
 
 describe("paginação compacta de pedidos", () => {
   it("mostra todas as páginas de uma seleção pequena", () => {
@@ -32,5 +32,37 @@ describe("paginação compacta de pedidos", () => {
   });
   it("mantém uma página para uma busca vazia", () => {
     expect(paginationItems(1, 0)).toEqual([1]);
+  });
+});
+
+describe("paginação de listas operacionais", () => {
+  it("limita a última página quando o último item é concluído", () => {
+    const before = paginate(
+      Array.from({ length: 11 }, (_, i) => i),
+      2,
+      10,
+    );
+    expect(before.items).toEqual([10]);
+    const after = paginate(
+      Array.from({ length: 10 }, (_, i) => i),
+      2,
+      10,
+    );
+    expect(after.page).toBe(1);
+    expect(after.items).toHaveLength(10);
+  });
+  it("não perde itens entre páginas e mantém limites de tamanho", () => {
+    const rows = Array.from({ length: 27 }, (_, i) => i);
+    expect([1, 2, 3].flatMap((page) => paginate(rows, page, 10).items)).toEqual(
+      rows,
+    );
+    expect(paginate(rows, 100, 1000).page).toBe(1);
+    expect(paginate([], 5, 10)).toMatchObject({
+      page: 1,
+      totalPages: 1,
+      start: 0,
+      end: 0,
+      items: [],
+    });
   });
 });

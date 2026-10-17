@@ -36,6 +36,7 @@ export const investigationInput = z.object({
   type: z.enum(["order", "pattern", "daily"]),
   target: z.string().min(1).max(200),
   requestId: z.uuid(),
+  renewFromTaskId: z.uuid().optional(),
   strategy: z.enum(["equilibrada", "urgencia", "relacionamento"]).optional(),
   weights: z
     .object({
@@ -207,6 +208,8 @@ export type AgentContext = {
   patternConsulted?: boolean;
   mode?: "order" | "pattern" | "daily";
   patternId?: string;
+  processInvestigation?: boolean;
+  renewFromTaskId?: string;
   consultedInsights?: Set<string>;
   weights?: Weights;
   queueConsulted?: boolean;
@@ -224,12 +227,12 @@ export async function executeTool(
   if (strategicTools.some((tool) => tool.function?.name === name))
     return executeStrategicTool(name, raw, context);
   const orders = rankOrders(context.data);
-  const findOrder = (id: string): RankedOrder => {
+  const findOrder = (id: string, allowResolved = false): RankedOrder => {
     if (!context.allowedIds.has(id))
       throw new AppError("Pedido fora do escopo desta investigação.");
     const order = orders.find((o) => o.id === id);
     if (!order) throw new AppError("Pedido inexistente.", 404);
-    if (order.resolution)
+    if (order.resolution && !allowResolved)
       throw new AppError(
         "Esta exceção foi encerrada na sessão. Reabra antes de investigar.",
         409,
@@ -238,7 +241,7 @@ export async function executeTool(
   };
   if (name === "consultar_pedido") {
     const { orderId } = orderArgs.parse(raw);
-    const o = findOrder(orderId);
+    const o = findOrder(orderId, context.processInvestigation === true);
     context.consulted.add(orderId);
     context.evidence.add(orderId);
     const c = context.data.customers.find((c) => c.id === o.customerId)!;
@@ -312,6 +315,14 @@ export async function executeTool(
     context.consultedInsights.add(insightId);
     return {
       ...insight,
+      ...(context.renewFromTaskId
+        ? {
+            investigacaoAnterior: (
+              await getSession(context.sessionId)
+            )?.tasks.find((task) => task.id === context.renewFromTaskId)
+              ?.conclusion,
+          }
+        : {}),
       evidenceIds,
       warning:
         "Amostra somente de exceções; não há denominador de todas as vendas. Não afirmar causalidade.",
@@ -465,6 +476,7 @@ export async function investigate(
     throw new AppError("Reabra a exceção antes de investigar.", 409);
   if (
     pattern &&
+    pattern.scope !== "process" &&
     !data.orders.some(
       (order) => pattern.evidenceIds.includes(order.id) && !order.resolution,
     )
@@ -500,7 +512,9 @@ export async function investigate(
     data,
     allowedIds: new Set(
       (pattern ? pattern.evidenceIds : [input.target]).filter(
-        (id) => !data.orders.find((order) => order.id === id)?.resolution,
+        (id) =>
+          pattern?.scope === "process" ||
+          !data.orders.find((order) => order.id === id)?.resolution,
       ),
     ),
     consulted: new Set(),
@@ -510,6 +524,9 @@ export async function investigate(
     mode: input.type,
     requestedStrategy: input.type === "daily" ? input.strategy : undefined,
     patternId: pattern?.id,
+    processInvestigation: pattern?.scope === "process",
+    renewFromTaskId:
+      input.type === "pattern" ? input.renewFromTaskId : undefined,
     weights: input.weights || DEFAULT_WEIGHTS,
     consultedInsights: new Set(),
   };
