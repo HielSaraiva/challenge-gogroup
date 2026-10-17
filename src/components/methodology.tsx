@@ -338,6 +338,15 @@ export function Methodology({
             uma evidência complementar. No salvamento conjunto, o servidor grava
             a execução e o encerramento de forma atômica.
           </p>
+          <p>
+            Para reenvio, registre primeiro o despacho e aguarde a confirmação
+            de recebimento. O comprovante de despacho não pode ser reutilizado
+            como prova de recebimento. Uma proposta rejeitada mantém o pedido em
+            acompanhamento, com motivo registrado e possibilidade de outra
+            investigação. A validação de status conclui a tarefa de revisão
+            correspondente, mas exige uma tratativa real para encerrar a
+            exceção.
+          </p>
           <Expandable open>
             <summary>Quando há resultado sem dinheiro?</summary>
             <p>

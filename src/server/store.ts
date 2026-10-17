@@ -1,4 +1,9 @@
-import { completedTask } from "@/domain/task-results";
+import { currentCaseTasks, latestReopen } from "@/domain/case-cycle";
+import {
+  completedTask,
+  rejectionSchema,
+  statusReviewTaskPatch,
+} from "@/domain/task-results";
 import { prepareTaskResolution } from "@/domain/task-resolution";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -139,6 +144,30 @@ export async function createSession(id: string) {
   }
   return state;
 }
+function reconcileStatusReviews(state: SessionState): SessionState {
+  return {
+    ...state,
+    tasks: state.tasks.map((task) => {
+      const record = state.cases?.[task.orderId];
+      if (
+        task.scope === "process" ||
+        task.kind !== "revisao_status" ||
+        task.status !== "aberta" ||
+        !record?.statusReview ||
+        record.statusReview.reviewedAt < task.createdAt
+      )
+        return task;
+      const reopened = latestReopen(record.history);
+      if (
+        reopened &&
+        (task.createdAt < reopened.at ||
+          record.statusReview.reviewedAt < reopened.at)
+      )
+        return task;
+      return { ...task, ...statusReviewTaskPatch(record, true) };
+    }),
+  };
+}
 export async function getSession(id: string): Promise<SessionState | null> {
   if (!process.env.DATABASE_URL) {
     const state = await readLocal<SessionState | null>(
@@ -146,7 +175,7 @@ export async function getSession(id: string): Promise<SessionState | null> {
       null,
     );
     return state && new Date(state.expiresAt).getTime() > Date.now()
-      ? state
+      ? reconcileStatusReviews(state)
       : null;
   }
   const [row] = await db()
@@ -171,12 +200,12 @@ export async function getSession(id: string): Promise<SessionState | null> {
     .select()
     .from(schema.dailyPlans)
     .where(eq(schema.dailyPlans.sessionId, id));
-  return {
+  return reconcileStatusReviews({
     ...row.payload,
     tasks: tasks.map((t) => t.payload),
     cases: Object.fromEntries(cases.map((c) => [c.orderId, c.payload])),
     plans: plans.map((plan) => plan.payload),
-  };
+  });
 }
 export async function saveInvestigation(sessionId: string, run: Investigation) {
   if (!process.env.DATABASE_URL)
@@ -299,7 +328,12 @@ export async function updateTask(
   status: Task["status"],
   execution?: import("@/domain/types").TaskExecution,
   conclusion?: import("@/domain/types").ProcessConclusion,
+  rejection?: { note: string },
 ) {
+  const rejectionRecord =
+    status === "rejeitada"
+      ? { ...rejectionSchema.parse(rejection), at: new Date().toISOString() }
+      : undefined;
   const allowed = (previous: Task) =>
     previous.status === "pendente_aprovacao"
       ? ["aprovada", "rejeitada"].includes(status)
@@ -325,6 +359,9 @@ export async function updateTask(
           );
         }
       }
+      if (rejectionRecord) task.rejection = rejectionRecord;
+      if (status === "aprovada")
+        task.approval = { at: new Date().toISOString() };
       task.status = status;
       task.updatedAt = new Date().toISOString();
       await writeLocal(`session-${sessionId}.json`, state);
@@ -352,6 +389,10 @@ export async function updateTask(
   const task = {
     ...record.payload,
     ...result,
+    ...(rejectionRecord ? { rejection: rejectionRecord } : {}),
+    ...(status === "aprovada"
+      ? { approval: { at: new Date().toISOString() } }
+      : {}),
     status,
     updatedAt: new Date().toISOString(),
   };
@@ -396,6 +437,7 @@ export async function consumeLimit(key: string, limit: number): Promise<void> {
     throw new AppError("Limite diário de investigações atingido.", 429);
 }
 export async function saveCase(sessionId: string, record: CaseRecord) {
+  const reviewPatch = statusReviewTaskPatch(record);
   if (!process.env.DATABASE_URL)
     return locked(async () => {
       const state = await getSession(sessionId);
@@ -403,9 +445,55 @@ export async function saveCase(sessionId: string, record: CaseRecord) {
       if ((state.cases?.[record.orderId]?.version || 0) !== record.version - 1)
         throw new AppError("O pedido foi alterado. Atualize os dados.", 409);
       state.cases = { ...state.cases, [record.orderId]: record };
+      if (reviewPatch) {
+        const current = new Set(
+          currentCaseTasks(
+            { id: record.orderId, caseHistory: record.history },
+            state.tasks,
+          ).map((task) => task.id),
+        );
+        state.tasks = state.tasks.map((task) =>
+          current.has(task.id) &&
+          task.kind === "revisao_status" &&
+          task.status === "aberta"
+            ? { ...task, ...reviewPatch }
+            : task,
+        );
+      }
       await writeLocal(`session-${sessionId}.json`, state);
     });
   const database = db();
+  if (reviewPatch) {
+    try {
+      await database.execute(sql`
+        WITH saved_case AS (
+          INSERT INTO demo_cases (session_id, order_id, version, payload)
+          VALUES (${sessionId}, ${record.orderId}, ${record.version}, ${JSON.stringify(record)}::jsonb)
+          ON CONFLICT (session_id, order_id) DO UPDATE
+            SET version = EXCLUDED.version, payload = EXCLUDED.payload
+            WHERE demo_cases.version = ${record.version - 1}
+          RETURNING session_id, order_id
+        ), updated_tasks AS (
+          UPDATE demo_tasks SET payload = payload || ${JSON.stringify(reviewPatch)}::jsonb
+          FROM saved_case
+          WHERE demo_tasks.session_id = saved_case.session_id
+            AND payload->>'orderId' = saved_case.order_id
+            AND payload->>'kind' = 'revisao_status'
+            AND payload->>'status' = 'aberta'
+            AND COALESCE(payload->>'createdAt', '') >= ${latestReopen(record.history)?.at || ""}
+          RETURNING key
+        ) SELECT 1 / count(*)::integer AS committed FROM saved_case
+      `);
+    } catch (error) {
+      const code =
+        (error as { code?: string; cause?: { code?: string } }).cause?.code ||
+        (error as { code?: string }).code;
+      if (code === "22012")
+        throw new AppError("O pedido foi alterado. Atualize os dados.", 409);
+      throw error;
+    }
+    return;
+  }
   const result = await database
     .insert(schema.caseRecords)
     .values({

@@ -34,3 +34,31 @@ export function reopenedWithoutTask<T extends Order>(
       ),
   );
 }
+
+export function ordersNeedingInvestigation<T extends Order>(
+  orders: T[],
+  tasks: Task[],
+) {
+  return orders.filter((order) => {
+    if (order.resolution) return false;
+    const related = currentCaseTasks(order, tasks);
+    const needsNext =
+      latestReopen(order.caseHistory) ||
+      order.statusReview ||
+      related.some(
+        (task) =>
+          task.status === "rejeitada" ||
+          (task.kind === "revisao_status" && task.status === "concluida"),
+      );
+    return (
+      Boolean(needsNext) &&
+      !related.some(
+        (task) =>
+          ["aberta", "aprovada", "pendente_aprovacao"].includes(task.status) ||
+          (task.status === "concluida" &&
+            task.kind !== "revisao_status" &&
+            task.execution),
+      )
+    );
+  });
+}

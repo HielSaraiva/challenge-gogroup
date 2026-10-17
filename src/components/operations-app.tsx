@@ -43,7 +43,7 @@ import { orderList, PAGE_SIZES } from "@/lib/order-list";
 import {
   currentCaseTasks,
   latestReopen,
-  reopenedWithoutTask,
+  ordersNeedingInvestigation,
 } from "@/domain/case-cycle";
 import { awaitingResultOrders } from "@/domain/task-resolution";
 import { outcomeLabels } from "@/domain/cases";
@@ -374,7 +374,7 @@ export function OperationsApp() {
     ["aberta", "aprovada", "pendente_aprovacao"].includes(t.status),
   );
   const awaitingResults = awaitingResultOrders(orders, tasks);
-  const awaitingInvestigation = reopenedWithoutTask(orders, tasks);
+  const awaitingInvestigation = ordersNeedingInvestigation(orders, tasks);
   return (
     <div className="app-layout">
       <header className="sidebar">
@@ -945,14 +945,22 @@ export function OperationsApp() {
                         key={`reopened-${order.id}`}
                       >
                         <span className="badge">
-                          Pedido reaberto — aguardando nova investigação
+                          {latestReopen(order.caseHistory)
+                            ? "Pedido reaberto — aguardando nova investigação"
+                            : "Aguardando outra tratativa"}
                         </span>
                         <h3>
                           {order.id} · {exceptionLabels[order.exception]}
                         </h3>
                         <p>
-                          A etapa anterior foi preservada. Investigue o pedido
-                          para gerar um novo encaminhamento.
+                          {latestReopen(order.caseHistory)
+                            ? "A etapa anterior foi preservada."
+                            : currentCaseTasks(order, tasks).some(
+                                  (task) => task.status === "rejeitada",
+                                )
+                              ? "A proposta foi rejeitada; o pedido continua aberto."
+                              : "O status foi conferido; a exceção ainda precisa de uma tratativa."}{" "}
+                          Investigue o pedido para gerar um novo encaminhamento.
                         </p>
                         <Button
                           variant="outline"
@@ -968,7 +976,11 @@ export function OperationsApp() {
                         className="result-row"
                       >
                         <span className="badge">
-                          Aguardando resultado do pedido
+                          {currentCaseTasks(order, tasks).some(
+                            (task) => task.execution?.stage === "dispatched",
+                          )
+                            ? "Reenvio despachado — aguardando recebimento"
+                            : "Aguardando resultado do pedido"}
                         </span>
                         <h3>
                           {order.id} · {exceptionLabels[order.exception]}
@@ -1325,14 +1337,31 @@ export function OperationsApp() {
                   <div key={t.id}>
                     {t.kind.startsWith("proposta") && (
                       <p className="case-next-step">
-                        Custo estimado pelo servidor:{" "}
+                        <strong>
+                          {t.kind === "proposta_reenvio"
+                            ? "Estimativa de reenvio"
+                            : "Valor proposto para reembolso"}
+                          :
+                        </strong>{" "}
                         {money(
                           t.kind === "proposta_reembolso"
                             ? selected.value
                             : selected.priority.resendCost,
                         )}
-                        . Verifique a viabilidade e os registros externos antes
-                        de executar.
+                        .{" "}
+                        {t.kind === "proposta_reenvio" ? (
+                          <>
+                            Cálculo do piloto: 24% do valor total do pedido +
+                            frete da transportadora.{" "}
+                            {selected.exception === "item_faltante" &&
+                              "Para item faltante, essa aproximação pode superestimar o custo: a base não informa o preço individual do item. "}
+                            Não é uma cotação nem um custo efetivamente
+                            realizado.
+                          </>
+                        ) : (
+                          "O valor efetivo deve ser comprovado e informado no resultado; aprovar não movimenta dinheiro."
+                        )}{" "}
+                        Verifique os registros externos antes de executar.
                       </p>
                     )}
                     <TaskResult

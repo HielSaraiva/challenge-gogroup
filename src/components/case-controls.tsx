@@ -163,14 +163,17 @@ export function CaseControls({
               <p>{lastExecutionTask.execution!.evidence}</p>
             </div>
             <p>
-              Falta apenas confirmar o resultado. Não é necessário descrever a
-              ação novamente.
+              {lastExecutionTask.execution?.stage === "dispatched"
+                ? "O despacho já foi registrado. Aguarde o recebimento e informe a confirmação complementar para encerrar."
+                : "Falta apenas confirmar o resultado."}{" "}
+              Não é necessário descrever a ação novamente.
             </p>
             <ResolutionFields
               order={order}
               value={draft}
               onChange={setDraft}
               executionEvidence={lastExecutionTask.execution!.evidence}
+              executionStage={lastExecutionTask.execution!.stage}
             />
           </>
         )}

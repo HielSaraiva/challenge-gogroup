@@ -1,4 +1,8 @@
-import { currentCaseTasks, reopenedWithoutTask } from "@/domain/case-cycle";
+import {
+  currentCaseTasks,
+  reopenedWithoutTask,
+  ordersNeedingInvestigation,
+} from "@/domain/case-cycle";
 import { financialReport, usedDailyCapacity } from "@/domain/operations";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
@@ -241,6 +245,427 @@ describe("fluxo persistido pelos endpoints", () => {
     expect(usedDailyCapacity(effective)).toBe(2);
     expect(reopenedWithoutTask(effective.orders, state.tasks)).toEqual([]);
   });
+  it("separa aprovação, despacho e recebimento do reenvio", async () => {
+    await saveSessionDataset(sessionId, {
+      ...data,
+      orders: data.orders.map((order) => ({
+        ...order,
+        exception: "item_faltante",
+      })),
+    });
+    const proposal = newTask({
+      kind: "proposta_reenvio",
+      status: "pendente_aprovacao",
+    });
+    await upsertTask(sessionId, proposal);
+    const outcome = {
+      type: "item_reenviado",
+      receiptConfirmed: true,
+      evidence: "Comprovante sintético do recebimento do item",
+    };
+    expect(
+      (
+        await taskPATCH(
+          request("tasks", {
+            id: proposal.id,
+            status: "concluida",
+            execution: { ...execution, stage: "received" },
+            resolution: outcome,
+          }),
+        )
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await taskPATCH(
+          request("tasks", { id: proposal.id, status: "aprovada", execution }),
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await taskPATCH(
+          request("tasks", { id: proposal.id, status: "aprovada" }),
+        )
+      ).status,
+    ).toBe(200);
+    expect((await getSession(sessionId))!.tasks[0].approval?.at).toBeTruthy();
+    expect(
+      (
+        await taskPATCH(
+          request("tasks", {
+            id: proposal.id,
+            status: "concluida",
+            execution: { ...execution, stage: "dispatched" },
+            resolution: outcome,
+          }),
+        )
+      ).status,
+    ).toBe(409);
+    expect((await getSession(sessionId))!.tasks[0].execution).toBeUndefined();
+    expect(
+      (
+        await taskPATCH(
+          request("tasks", {
+            id: proposal.id,
+            status: "concluida",
+            execution: { ...execution, stage: "dispatched" },
+          }),
+        )
+      ).status,
+    ).toBe(200);
+    let state = (await getSession(sessionId))!;
+    const effective = sessionDataset(
+      {
+        ...data,
+        orders: data.orders.map((order) => ({
+          ...order,
+          exception: "item_faltante",
+        })),
+      },
+      state,
+    );
+    expect(awaitingResultOrders(effective.orders, state.tasks)).toHaveLength(1);
+    expect(
+      (
+        await orderPATCH(
+          request("orders", {
+            action: "resolve",
+            orderId: "SYN-A",
+            note: execution.note,
+            outcome: { ...outcome, receiptConfirmed: false },
+          }),
+        )
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await orderPATCH(
+          request("orders", {
+            action: "resolve",
+            orderId: "SYN-A",
+            note: execution.note,
+            outcome: {
+              ...outcome,
+              evidence: execution.evidence,
+              evidenceTaskId: proposal.id,
+            },
+          }),
+        )
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await orderPATCH(
+          request("orders", {
+            action: "resolve",
+            orderId: "SYN-A",
+            note: execution.note,
+            outcome,
+          }),
+        )
+      ).status,
+    ).toBe(200);
+    state = (await getSession(sessionId))!;
+    expect(state.tasks[0].execution?.stage).toBe("dispatched");
+    expect(state.cases!["SYN-A"].resolution?.outcome?.receiptConfirmed).toBe(
+      true,
+    );
+    expect(
+      (
+        await taskPATCH(
+          request("tasks", { id: proposal.id, status: "concluida", execution }),
+        )
+      ).status,
+    ).toBe(409);
+  });
+  it("registra motivo da rejeição e permite outra proposta sem duplicar a nova tentativa", async () => {
+    const dataset = {
+      ...data,
+      orders: data.orders.map((order) => ({
+        ...order,
+        exception: "item_faltante",
+      })),
+    };
+    await saveSessionDataset(sessionId, dataset);
+    const ctx = { ...context("order"), data: dataset };
+    await executeTool("consultar_pedido", { orderId: "SYN-A" }, ctx);
+    await executeTool(
+      "simular_tratativa",
+      { orderId: "SYN-A", action: "reenvio" },
+      ctx,
+    );
+    const args = {
+      orderId: "SYN-A",
+      kind: "proposta_reenvio",
+      title: "Reenviar o item faltante",
+      justification:
+        "Avaliar o reenvio do item que não foi recebido pelo cliente.",
+      evidenceIds: ["SYN-A"],
+    };
+    const proposal = (await executeTool("criar_tarefa", args, ctx)) as Task;
+    expect(
+      (
+        await taskPATCH(
+          request("tasks", { id: proposal.id, status: "rejeitada" }),
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await taskPATCH(
+          request("tasks", {
+            id: proposal.id,
+            status: "rejeitada",
+            rejection: {
+              note: "Produto indisponível; avaliar solução alternativa",
+            },
+          }),
+        )
+      ).status,
+    ).toBe(200);
+    const state = (await getSession(sessionId))!;
+    expect(state.tasks[0].rejection?.note).toContain("Produto indisponível");
+    expect(
+      ordersNeedingInvestigation(
+        sessionDataset(dataset, state).orders,
+        state.tasks,
+      ),
+    ).toHaveLength(1);
+    const next = (await executeTool("criar_tarefa", args, ctx)) as Task;
+    expect(next.id).not.toBe(proposal.id);
+    const duplicate = (await executeTool("criar_tarefa", args, ctx)) as Task;
+    expect(duplicate.id).toBe(next.id);
+    expect((await getSession(sessionId))!.tasks).toHaveLength(2);
+  });
+  it("confirmar status conclui a revisão sem duplicar formulários e exige uma tratativa real", async () => {
+    const dataset = {
+      ...data,
+      orders: data.orders.map((order) => ({
+        ...order,
+        status: "status_divergente",
+        sourceStatuses: ["aberta", "em_analise"],
+      })),
+    };
+    await saveSessionDataset(sessionId, dataset);
+    const review = newTask({ kind: "revisao_status" });
+    await upsertTask(sessionId, review);
+    expect(
+      (
+        await taskPATCH(
+          request("tasks", { id: review.id, status: "concluida", execution }),
+        )
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await orderPATCH(
+          request("orders", {
+            action: "review_status",
+            orderId: "SYN-A",
+            status: "em_analise",
+            note: "Status conferido no registro sintético da origem",
+          }),
+        )
+      ).status,
+    ).toBe(200);
+    const state = (await getSession(sessionId))!;
+    expect(state.tasks[0].status).toBe("concluida");
+    expect(state.tasks[0].execution?.evidence).toContain("Em análise");
+    expect(
+      ordersNeedingInvestigation(
+        sessionDataset(dataset, state).orders,
+        state.tasks,
+      ),
+    ).toHaveLength(1);
+    expect(
+      (
+        await orderPATCH(
+          request("orders", {
+            action: "resolve",
+            orderId: "SYN-A",
+            note: execution.note,
+            outcome: {
+              type: "endereco_corrigido",
+              evidence: execution.evidence,
+            },
+          }),
+        )
+      ).status,
+    ).toBe(409);
+  });
+  it.each([
+    ["atraso_entrega", "investigacao_logistica", "entrega_confirmada"],
+    ["extravio", "investigacao_logistica", "entrega_confirmada"],
+    ["rastreio_parado", "investigacao_logistica", "entrega_confirmada"],
+    ["devolvido_transportadora", "revisao_cadastral", "entrega_confirmada"],
+    ["avaria_transporte", "inspecao_lote", "item_reenviado"],
+    ["vazamento_produto", "inspecao_lote", "item_reenviado"],
+    ["item_faltante", "revisao_separacao", "item_reenviado"],
+    ["falha_personalizacao", "manutencao_personalizacao", "item_reenviado"],
+    ["endereco_divergente", "revisao_cadastral", "endereco_corrigido"],
+    ["pagamento_pendente", "revisao_pagamento", "pagamento_regularizado"],
+    ["ruptura_pos_venda", "revisao_estoque", "estoque_regularizado"],
+  ] as const)(
+    "mantém execução, resolução e reabertura coerentes para %s",
+    async (exception, kind, type) => {
+      await saveSessionDataset(sessionId, {
+        ...data,
+        orders: data.orders.map((order) => ({ ...order, exception })),
+      });
+      const resolution = {
+        type,
+        evidence: "Referência sintética que comprova o resultado final",
+        ...(type === "item_reenviado" ? { receiptConfirmed: true } : {}),
+      };
+      for (let cycle = 0; cycle < 2; cycle++) {
+        const task = newTask({ kind, createdAt: new Date().toISOString() });
+        await upsertTask(sessionId, task);
+        expect(
+          (
+            await taskPATCH(
+              request("tasks", {
+                id: task.id,
+                status: "concluida",
+                execution,
+                resolution,
+              }),
+            )
+          ).status,
+        ).toBe(200);
+        if (cycle === 0)
+          expect(
+            (
+              await orderPATCH(
+                request("orders", {
+                  action: "reopen",
+                  orderId: "SYN-A",
+                  note: "Nova ocorrência confirmada após o encerramento",
+                }),
+              )
+            ).status,
+          ).toBe(200);
+      }
+      const state = (await getSession(sessionId))!;
+      expect(
+        state.cases!["SYN-A"].history.map((event) => event.action),
+      ).toEqual(["resolve", "reopen", "resolve"]);
+      expect(state.tasks).toHaveLength(2);
+      expect(state.tasks.every((task) => task.status === "concluida")).toBe(
+        true,
+      );
+    },
+  );
+  it.each(["proposta_reenvio", "proposta_reembolso"] as const)(
+    "exige nova aprovação e execução de %s após reabrir",
+    async (kind) => {
+      await saveSessionDataset(sessionId, {
+        ...data,
+        orders: data.orders.map((order) => ({
+          ...order,
+          exception: "item_faltante",
+        })),
+      });
+      for (let cycle = 0; cycle < 2; cycle++) {
+        const task = newTask({
+          kind,
+          status: "pendente_aprovacao",
+          createdAt: new Date().toISOString(),
+        });
+        await upsertTask(sessionId, task);
+        const performed = {
+          ...execution,
+          ...(kind === "proposta_reenvio"
+            ? { stage: "received" as const }
+            : {}),
+        };
+        const resolution =
+          kind === "proposta_reenvio"
+            ? {
+                type: "item_reenviado",
+                evidence: execution.evidence,
+                evidenceTaskId: task.id,
+                receiptConfirmed: true,
+              }
+            : {
+                type: "reembolso_registrado",
+                evidence: execution.evidence,
+                evidenceTaskId: task.id,
+                refund: "50.00",
+              };
+        expect(
+          (
+            await taskPATCH(
+              request("tasks", {
+                id: task.id,
+                status: "concluida",
+                execution: performed,
+                resolution,
+              }),
+            )
+          ).status,
+        ).toBe(409);
+        expect(
+          (
+            await taskPATCH(
+              request("tasks", { id: task.id, status: "aprovada" }),
+            )
+          ).status,
+        ).toBe(200);
+        if (kind === "proposta_reembolso") {
+          expect(
+            (
+              await taskPATCH(
+                request("tasks", {
+                  id: task.id,
+                  status: "concluida",
+                  execution: performed,
+                  resolution: { ...resolution, refund: "101.00" },
+                }),
+              )
+            ).status,
+          ).toBe(409);
+          expect(
+            (await getSession(sessionId))!.tasks.find(
+              (item) => item.id === task.id,
+            )?.execution,
+          ).toBeUndefined();
+        }
+        expect(
+          (
+            await taskPATCH(
+              request("tasks", {
+                id: task.id,
+                status: "concluida",
+                execution: performed,
+                resolution,
+              }),
+            )
+          ).status,
+        ).toBe(200);
+        if (!cycle)
+          expect(
+            (
+              await orderPATCH(
+                request("orders", {
+                  action: "reopen",
+                  orderId: "SYN-A",
+                  note: "Reabertura para avaliar nova ocorrência da pendência",
+                }),
+              )
+            ).status,
+          ).toBe(200);
+      }
+      const state = (await getSession(sessionId))!;
+      expect(state.tasks).toHaveLength(2);
+      expect(
+        state.tasks.every(
+          (task) => task.status === "concluida" && task.approval?.at,
+        ),
+      ).toBe(true);
+      expect(state.cases!["SYN-A"].history).toHaveLength(3);
+    },
+  );
   it("registra execução sem encerrar e mantém pedido aguardando resultado", async () => {
     const task = newTask();
     await upsertTask(sessionId, task);

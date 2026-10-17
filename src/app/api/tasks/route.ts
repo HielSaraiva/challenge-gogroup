@@ -1,5 +1,9 @@
 import { currentCaseTasks } from "@/domain/case-cycle";
-import { executionSchema, conclusionSchema } from "@/domain/task-results";
+import {
+  executionSchema,
+  conclusionSchema,
+  rejectionSchema,
+} from "@/domain/task-results";
 import { z } from "zod";
 import { failure, json, session, verifyOrigin } from "@/server/http";
 import {
@@ -30,6 +34,7 @@ export async function PATCH(request: Request) {
         execution: executionSchema.optional(),
         conclusion: conclusionSchema.optional(),
         resolution: outcomeSchema.optional(),
+        rejection: rejectionSchema.optional(),
         status: z.enum(["concluida", "aprovada", "rejeitada"]),
       })
       .strict()
@@ -38,6 +43,33 @@ export async function PATCH(request: Request) {
     const state = await getSession(sessionId);
     if (!state) throw new AppError("Sessão expirada.", 401);
     const task = state.tasks.find((item) => item.id === input.id);
+    if (
+      task?.scope !== "process" &&
+      task &&
+      state.cases?.[task.orderId]?.resolution
+    )
+      throw new AppError(
+        "O pedido está encerrado. Reabra para iniciar outra tratativa.",
+        409,
+      );
+    if (
+      input.status === "rejeitada"
+        ? !input.rejection ||
+          input.execution ||
+          input.conclusion ||
+          input.resolution
+        : Boolean(input.rejection)
+    )
+      throw new AppError(
+        "Para rejeitar a proposta, informe o motivo sem registrar execução ou resultado.",
+      );
+    if (
+      input.status === "aprovada" &&
+      (input.execution || input.conclusion || input.resolution)
+    )
+      throw new AppError(
+        "Aprovar a proposta não registra execução nem encerra o pedido.",
+      );
     if (
       task &&
       task.scope !== "process" &&
@@ -48,6 +80,11 @@ export async function PATCH(request: Request) {
     )
       throw new AppError(
         "Esta tarefa pertence a uma etapa anterior. Investigue o pedido reaberto novamente.",
+        409,
+      );
+    if (task?.kind === "revisao_status")
+      throw new AppError(
+        "Confirme o status no formulário do pedido. A tarefa de revisão será atualizada automaticamente.",
         409,
       );
     if (input.resolution) {
@@ -71,6 +108,7 @@ export async function PATCH(request: Request) {
         input.status,
         input.execution,
         input.conclusion,
+        input.rejection,
       ),
     );
   } catch (e) {

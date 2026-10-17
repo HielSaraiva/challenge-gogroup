@@ -138,6 +138,7 @@ As execuções têm orçamento de tempo, limite de chamadas e controle de concor
 ## Sessões, integridade e privacidade
 
 - A base importada permanece imutável. Revisões, encerramentos e reaberturas são sobreposições exclusivas da sessão.
+- Propostas de reenvio e reembolso exigem aprovação humana. A decisão não executa ações externas; a rejeição exige motivo e mantém o pedido em acompanhamento. Uma nova proposta após rejeição recebe uma identidade própria, mantendo a idempotência das repetições. Reenvio despachado aguarda recebimento; o comprovante do despacho não serve como evidência de recebimento. A validação de status conclui automaticamente a tarefa de revisão correspondente, sem encerrar a exceção original.
 - Reabrir inicia uma nova etapa de atendimento: o pedido fica em Pendências aguardando investigação, os encaminhamentos e análises anteriores ficam disponíveis apenas para consulta, e o novo encerramento exige tarefa e execução posteriores à reabertura. Repetir a criação da mesma tarefa dentro da etapa preserva a idempotência. Os totais financeiros consideram apenas encerramentos atuais; reabrir preserva os valores no histórico e não estorna pagamentos ou despesas.
 - Um cookie aleatório `HttpOnly`, `SameSite=Lax` e seguro em produção identifica o visitante. O servidor armazena seu hash.
 - Tarefas, investigações e decisões são isoladas por visitante. Sessões possuem expiração.

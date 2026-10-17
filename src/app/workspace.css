@@ -1158,3 +1158,12 @@ main > .panel {
   border-left-color: #ad3565;
   background: #fcf4f7;
 }
+
+.task-actions > .guided-form {
+  flex: 1 0 100%;
+  width: 100%;
+  min-width: 0;
+}
+.check-label input {
+  flex-shrink: 0;
+}

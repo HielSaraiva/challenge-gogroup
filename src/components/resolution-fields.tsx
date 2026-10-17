@@ -11,6 +11,7 @@ export type ResolutionDraft = {
   refund: string;
   cost: string;
   costKind: "estimated" | "declared";
+  receiptConfirmed: boolean;
 };
 export const emptyResolution: ResolutionDraft = {
   type: "",
@@ -19,6 +20,7 @@ export const emptyResolution: ResolutionDraft = {
   refund: "",
   cost: "",
   costKind: "estimated",
+  receiptConfirmed: false,
 };
 
 export function resolutionPayload(
@@ -27,6 +29,10 @@ export function resolutionPayload(
 ): ResolutionOutcome {
   if (!draft.type)
     throw new Error("Selecione o resultado confirmado para encerrar o pedido.");
+  if (draft.type === "item_reenviado" && !draft.receiptConfirmed)
+    throw new Error(
+      "Confirme o recebimento do item reenviado antes de encerrar.",
+    );
   const evidence = draft.reuseEvidence
     ? execution.evidence
     : draft.evidence.trim();
@@ -37,6 +43,7 @@ export function resolutionPayload(
   return {
     type: draft.type,
     evidence,
+    ...(draft.type === "item_reenviado" ? { receiptConfirmed: true } : {}),
     ...(draft.reuseEvidence ? { evidenceTaskId: execution.taskId } : {}),
     ...(draft.type === "reembolso_registrado"
       ? { refund: parseCurrencyInput(draft.refund) }
@@ -57,14 +64,18 @@ export function ResolutionFields({
   value,
   onChange,
   executionEvidence,
+  executionStage,
 }: {
   order: RankedOrder;
   value: ResolutionDraft;
   onChange: (value: ResolutionDraft) => void;
   executionEvidence: string;
+  executionStage?: "dispatched" | "received";
 }) {
   const change = (patch: Partial<ResolutionDraft>) =>
     onChange({ ...value, ...patch });
+  const canReuse =
+    value.type !== "item_reenviado" || executionStage === "received";
   return (
     <div className="resolution-fields">
       <label>
@@ -73,26 +84,57 @@ export function ResolutionFields({
           required
           value={value.type}
           onChange={(event) =>
-            change({ type: event.target.value as ResolutionDraft["type"] })
+            change({
+              type: event.target.value as ResolutionDraft["type"],
+              reuseEvidence: false,
+              receiptConfirmed: false,
+            })
           }
         >
           <option value="">Selecione o resultado</option>
           {allowedOutcomes(order.exception).map((type) => (
             <option key={type} value={type}>
-              {outcomeLabels[type]}
+              {type === "item_reenviado"
+                ? "Recebimento do item reenviado confirmado"
+                : outcomeLabels[type]}
             </option>
           ))}
         </select>
       </label>
-      <label className="check-label">
-        <input
-          type="checkbox"
-          checked={value.reuseEvidence}
-          onChange={(event) => change({ reuseEvidence: event.target.checked })}
-        />
-        A evidência da execução também comprova este resultado
-      </label>
-      {value.reuseEvidence ? (
+      {value.type === "item_reenviado" && (
+        <label className="check-label">
+          <input
+            type="checkbox"
+            required
+            checked={value.receiptConfirmed}
+            onChange={(event) =>
+              change({ receiptConfirmed: event.target.checked })
+            }
+          />
+          Confirmei o recebimento do item reenviado e que a pendência foi
+          resolvida.
+        </label>
+      )}
+      {canReuse && (
+        <label className="check-label">
+          <input
+            type="checkbox"
+            checked={value.reuseEvidence}
+            onChange={(event) =>
+              change({ reuseEvidence: event.target.checked })
+            }
+          />
+          A evidência da execução também comprova este resultado
+        </label>
+      )}
+      {!canReuse && (
+        <p>
+          A evidência do despacho não comprova o recebimento. Informe somente a
+          confirmação complementar abaixo; não é necessário repetir a ação
+          realizada.
+        </p>
+      )}
+      {value.reuseEvidence && canReuse ? (
         <div className="reused-evidence">
           <strong>Evidência que será vinculada ao resultado</strong>
           <p>
@@ -109,7 +151,11 @@ export function ResolutionFields({
             maxLength={1500}
             value={value.evidence}
             onChange={(event) => change({ evidence: event.target.value })}
-            placeholder="Informe o registro que confirma a resolução. Se a evidência da execução já comprova o resultado, marque a opção acima para reutilizá-la."
+            placeholder={
+              value.type === "item_reenviado"
+                ? "Informe a referência do comprovante de recebimento ou protocolo que confirma a entrega do item e a resolução da falta, sem dados pessoais."
+                : "Informe o registro que confirma a resolução. Se a evidência da execução já comprova o resultado, marque a opção acima para reutilizá-la."
+            }
           />
         </label>
       )}

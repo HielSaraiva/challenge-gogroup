@@ -30,6 +30,17 @@ export function prepareTaskResolution(
     );
   const order = data.orders.find((order) => order.id === previous.orderId);
   if (!order) throw new Error("Pedido não encontrado.");
+  if (previous.kind === "proposta_reenvio" && execution.stage !== "received")
+    throw new Error(
+      "Registre o despacho sem encerrar. Confirme o recebimento para registrar o resultado depois.",
+    );
+  if (
+    previous.kind === "proposta_reembolso" &&
+    outcome.type !== "reembolso_registrado"
+  )
+    throw new Error(
+      "A execução de um reembolso deve ser encerrada com o resultado de reembolso registrado.",
+    );
   if (
     !currentCaseTasks(
       { ...order, caseHistory: state.cases?.[order.id]?.history },

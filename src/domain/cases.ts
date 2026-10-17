@@ -15,6 +15,7 @@ export const outcomeSchema = z
     ]),
     evidence: z.string().trim().min(15).max(1500),
     evidenceTaskId: z.string().min(1).max(100).optional(),
+    receiptConfirmed: z.boolean().optional(),
     refund: amount.optional(),
     cost: z
       .object({ amount, kind: z.enum(["estimated", "declared"]) })
@@ -154,12 +155,18 @@ export function transitionCase(
         "Existem tarefas ou propostas pendentes para este pedido.",
       );
     const outcome = outcomeSchema.parse(action.outcome);
+    if (outcome.type === "item_reenviado" && !outcome.receiptConfirmed)
+      throw new Error(
+        "Confirme o recebimento do item reenviado. O despacho sozinho não encerra a pendência.",
+      );
     if (outcome.evidenceTaskId) {
       const source = related.find((task) => task.id === outcome.evidenceTaskId);
       if (
         !source?.execution ||
         source.status !== "concluida" ||
         source.kind === "revisao_status" ||
+        (outcome.type === "item_reenviado" &&
+          source.execution.stage !== "received") ||
         (lastReopen &&
           (!source.execution.at || source.execution.at < lastReopen.at)) ||
         source.execution.evidence !== outcome.evidence

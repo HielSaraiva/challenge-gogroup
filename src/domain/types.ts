@@ -145,6 +145,8 @@ export type Task = {
   idempotencyKey: string;
   facts?: string[];
   execution?: TaskExecution;
+  rejection?: { note: string; at: string };
+  approval?: { at: string };
   conclusion?: ProcessConclusion;
   scope?: "case" | "process";
   insightId?: string;
@@ -161,10 +163,16 @@ export type ResolutionOutcome = {
     | "reembolso_registrado";
   evidence: string;
   evidenceTaskId?: string;
+  receiptConfirmed?: boolean;
   refund?: string;
   cost?: { amount: string; kind: "estimated" | "declared" };
 };
-export type TaskExecution = { note: string; evidence: string; at?: string };
+export type TaskExecution = {
+  note: string;
+  evidence: string;
+  at?: string;
+  stage?: "dispatched" | "received";
+};
 export type ProcessConclusion = {
   outcome: "confirmada" | "descartada" | "inconclusiva";
   observations: string;

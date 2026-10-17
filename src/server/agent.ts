@@ -1,5 +1,5 @@
 import Groq from "groq-sdk";
-import { latestReopen } from "@/domain/case-cycle";
+import { currentCaseTasks, latestReopen } from "@/domain/case-cycle";
 import { statusLabel, insightGroupLabel } from "@/lib/utils";
 import { withShortRateLimitRetry } from "./provider-retry";
 import type {
@@ -20,7 +20,13 @@ import {
   type Task,
   type ToolEvent,
 } from "@/domain/types";
-import { AppError, consumeLimit, saveInvestigation, upsertTask } from "./store";
+import {
+  AppError,
+  consumeLimit,
+  saveInvestigation,
+  upsertTask,
+  getSession,
+} from "./store";
 import { executeStrategicTool, strategicTools } from "./agent-actions";
 import { DEFAULT_WEIGHTS, type DailyPlan, type Weights } from "@/domain/types";
 import { queue } from "@/domain/analytics";
@@ -182,8 +188,12 @@ const allowedKinds: Record<string, Task["kind"][]> = {
     "proposta_reembolso",
   ],
   endereco_divergente: ["revisao_cadastral"],
-  pagamento_pendente: ["revisao_pagamento"],
-  ruptura_pos_venda: ["revisao_estoque", "proposta_reembolso"],
+  pagamento_pendente: ["revisao_pagamento", "proposta_reembolso"],
+  ruptura_pos_venda: [
+    "revisao_estoque",
+    "proposta_reenvio",
+    "proposta_reembolso",
+  ],
 };
 export type AgentContext = {
   sessionId: string;
@@ -255,6 +265,16 @@ export async function executeTool(
       cliente: { pedidos: c.orders, receita: c.revenue, contatos: c.contacts },
       indicadores: o.priority,
       problemasDados: o.issues,
+      propostasRejeitadas: currentCaseTasks(
+        o,
+        (await getSession(context.sessionId))?.tasks || [],
+      )
+        .filter((task) => task.status === "rejeitada")
+        .map((task) => ({
+          tipo: task.kind,
+          motivo:
+            task.rejection?.note || "Motivo não informado em registro antigo",
+        })),
       reabertura: latestReopen(o.caseHistory)
         ? {
             em: latestReopen(o.caseHistory)!.at,
@@ -360,8 +380,14 @@ export async function executeTool(
     const reopenId = [...(order.caseHistory || [])]
       .reverse()
       .find((event) => event.action === "reopen")?.id;
+    const state = await getSession(context.sessionId);
+    const rejected = currentCaseTasks(order, state?.tasks || [])
+      .filter((task) => task.kind === args.kind && task.status === "rejeitada")
+      .at(-1);
     const key = createHash("sha256")
-      .update(`${order.id}:${args.kind}${reopenId ? `:${reopenId}` : ""}`)
+      .update(
+        `${order.id}:${args.kind}${reopenId ? `:${reopenId}` : ""}${rejected ? `:retry:${rejected.id}` : ""}`,
+      )
       .digest("hex");
     const facts = [
       `Exceção registrada: ${exceptionLabels[order.exception]}.`,
