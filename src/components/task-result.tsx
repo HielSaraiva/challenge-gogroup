@@ -175,7 +175,7 @@ export function TaskResult({
                           <summary>Conferir evidências de {id}</summary>
                           <p>
                             {exceptionLabels[o.exception]} · {o.product} ·{" "}
-                            {o.status}
+                            {statusLabel(o.status)}
                           </p>
                           <p>
                             Exceção aberta em {o.openedAt}; promessa{" "}

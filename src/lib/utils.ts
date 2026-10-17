@@ -26,6 +26,9 @@ export function statusLabel(status: string) {
         pendente_aprovacao: "Aguardando aprovação",
         aprovada: "Aprovada",
         rejeitada: "Rejeitada",
+        running: "Em andamento",
+        completed: "Concluída",
+        failed: "Não concluída",
       } as Record<string, string>
     )[status] || status.replaceAll("_", " ")
   );

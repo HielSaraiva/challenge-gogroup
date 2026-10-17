@@ -1022,7 +1022,7 @@ export function OperationsApp() {
                             : r.type === "pattern"
                               ? "Recorrência"
                               : "Pedido"}{" "}
-                          · {r.status}
+                          · {statusLabel(r.status)}
                         </b>
                         <p>
                           {shortDate(r.createdAt.slice(0, 10))} · {r.summary}

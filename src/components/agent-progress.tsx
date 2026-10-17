@@ -154,7 +154,7 @@ export function AgentProgress({
         <p className="agent-current" role="status">
           <span className="agent-working-dot" aria-hidden="true" />
           {current?.state === "running" && current.tool !== "agente"
-            ? `${toolDescriptions[current.tool]?.[0] || current.tool.replaceAll("_", " ")} em andamento…`
+            ? `${toolDescriptions[current.tool]?.[0] || "Etapa da análise"} em andamento…`
             : "O agente está preparando a próxima etapa…"}
         </p>
       )}
