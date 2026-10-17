@@ -1,5 +1,6 @@
 "use client";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { useRef } from "react";
 import { X } from "lucide-react";
 export const Dialog = DialogPrimitive.Root;
 export const DialogTitle = DialogPrimitive.Title;
@@ -11,10 +12,19 @@ export function DialogContent({
   children: React.ReactNode;
   className?: string;
 }) {
+  const contentRef = useRef<HTMLDivElement>(null);
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="dialog-overlay" />
-      <DialogPrimitive.Content className={`dialog-content ${className}`}>
+      <DialogPrimitive.Content
+        ref={contentRef}
+        className={`dialog-content ${className}`}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          contentRef.current?.focus({ preventScroll: true });
+          contentRef.current?.scrollTo({ top: 0 });
+        }}
+      >
         {children}
         <DialogPrimitive.Close
           className="dialog-close"

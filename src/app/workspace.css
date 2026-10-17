@@ -382,6 +382,12 @@ main > .panel {
 .page-heading h1:focus {
   outline: none;
 }
+.dialog-content {
+  top: max(16px, 5dvh);
+  transform: translateX(-50%);
+  max-height: calc(90dvh - 16px);
+  overscroll-behavior: contain;
+}
 .dialog-content.new-plan-dialog {
   width: min(520px, calc(100vw - 32px));
   padding: 28px;
