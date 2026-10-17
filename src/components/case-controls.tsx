@@ -95,16 +95,16 @@ export function CaseControls({
       <section className="panel prose case-result-panel">
         <h3>Encerramento do pedido</h3>
         <p>
-          O resultado poderá ser registrado depois que uma tarefa de tratativa
-          for executada e documentada.{" "}
+          Para encerrar, primeiro investigue o pedido com IA, execute a tarefa
+          sugerida e registre a evidência.{" "}
           {related.length
-            ? "Revise os encaminhamentos acima e conclua as pendências."
-            : "Use “Investigar este pedido com IA” para receber um encaminhamento."}
+            ? "Confira as tarefas acima para saber o que ainda falta concluir."
+            : "Comece pelo botão “Investigar este pedido com IA”."}
         </p>
         <p className="muted">
-          Preparar o plano do dia é opcional para investigar este pedido.
-          Aprovar uma proposta ou revisar o status, sozinho, não comprova a
-          resolução da exceção.
+          Não é necessário preparar o plano do dia. Aprovar uma proposta ou
+          confirmar um status não basta: é preciso registrar a ação realizada
+          para resolver o problema.
         </p>
       </section>
     );
