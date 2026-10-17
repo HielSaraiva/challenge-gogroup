@@ -688,7 +688,7 @@ main > .panel {
   padding: 20px;
 }
 .order-task-section {
-  margin-block: 24px;
+  margin-block: 40px 24px;
 }
 .order-empty-tasks {
   padding: 14px 16px;
