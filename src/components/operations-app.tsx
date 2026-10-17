@@ -125,6 +125,7 @@ export function OperationsApp() {
   const [resetting, setResetting] = useState(false);
   const [sessionRevision, setSessionRevision] = useState(0);
   const [confirmNewPlan, setConfirmNewPlan] = useState(false);
+  const [confirmOrderId, setConfirmOrderId] = useState<string | null>(null);
   const [planStrategy, setPlanStrategy] = useState<Strategy>("equilibrada");
   const [query, setQuery] = useState("");
   const [pageSize, setPageSize] = useState<number>(10);
@@ -1149,7 +1150,21 @@ export function OperationsApp() {
                   selected.status !== "status_divergente" && (
                     <Button
                       disabled={busy}
-                      onClick={() => void investigate(selected.id, "order")}
+                      onClick={() => {
+                        const alreadyAnalyzed =
+                          related.length > 0 ||
+                          runs.some(
+                            (run) =>
+                              run.type === "order" &&
+                              run.target === selected.id &&
+                              run.status === "completed",
+                          ) ||
+                          (activeRun?.type === "order" &&
+                            activeRun.target === selected.id &&
+                            activeRun.status === "completed");
+                        if (alreadyAnalyzed) setConfirmOrderId(selected.id);
+                        else void investigate(selected.id, "order");
+                      }}
                     >
                       {busy ? "Investigando…" : "Investigar este pedido com IA"}
                     </Button>
@@ -1239,6 +1254,53 @@ export function OperationsApp() {
                   </p>
                 ))}
               </Expandable>
+              <Dialog
+                open={confirmOrderId === selected.id}
+                onOpenChange={(open) => {
+                  if (!open) setConfirmOrderId(null);
+                }}
+              >
+                <DialogContent className="new-plan-dialog">
+                  <span className="new-plan-icon" aria-hidden="true">
+                    <Bot size={24} />
+                  </span>
+                  <DialogTitle>Investigar este pedido novamente?</DialogTitle>
+                  <DialogDescription>
+                    O pedido {selected.id} já tem uma análise ou encaminhamentos
+                    registrados. A IA consultará novamente as evidências para
+                    reavaliar o caso.
+                  </DialogDescription>
+                  <div className="new-plan-consequences">
+                    <div>
+                      <strong>Os registros anteriores serão preservados</strong>
+                      <p>
+                        A nova análise não apaga tarefas, execuções ou
+                        histórico. Encaminhamentos existentes podem ser
+                        mantidos, sem criar tarefas duplicadas.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="new-plan-footer">
+                    <Button
+                      variant="outline"
+                      onClick={() => setConfirmOrderId(null)}
+                    >
+                      Manter análise atual
+                    </Button>
+                    <Button
+                      disabled={busy || Boolean(selected.resolution)}
+                      onClick={() => {
+                        const orderId = confirmOrderId;
+                        setConfirmOrderId(null);
+                        if (orderId === selected.id)
+                          void investigate(orderId, "order");
+                      }}
+                    >
+                      Investigar novamente
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </>
           )}
         </DialogContent>
