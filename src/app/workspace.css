@@ -573,6 +573,9 @@ main > .panel {
 .page-heading h1:focus {
   outline: none;
 }
+.case-history {
+  margin-top: 20px;
+}
 .order-row {
   cursor: pointer;
 }

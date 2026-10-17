@@ -1198,7 +1198,7 @@ export function OperationsApp() {
                 disabled={busy}
                 onSaved={refresh}
               />
-              <details className="panel prose">
+              <details className="panel prose case-history">
                 <summary>Histórico deste caso</summary>
                 {selected.caseHistory?.map((e) => (
                   <p key={e.id}>
