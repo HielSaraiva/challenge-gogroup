@@ -98,18 +98,11 @@ summary:focus-visible,
   font-size: 13px;
   line-height: 1.5;
   border-left: 3px solid transparent;
-  transition:
-    background-color 180ms ease,
-    border-color 180ms ease,
-    color 180ms ease;
 }
 .method-index a[aria-current="location"] {
   background: #edf2fa;
   border-left-color: #2659a5;
   font-weight: 600;
-}
-.method-index-toggle svg:last-child {
-  transition: transform 180ms ease;
 }
 .method-index-toggle[aria-expanded="true"] svg:last-child {
   transform: rotate(180deg);
@@ -166,29 +159,9 @@ summary:focus-visible,
   }
   .method-index.is-open {
     display: flex;
-    animation: method-index-enter 180ms ease-out;
   }
   .methodology section {
     scroll-margin-top: 148px;
-  }
-}
-@keyframes method-index-enter {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .method-index a,
-  .method-index-toggle svg:last-child {
-    transition: none;
-  }
-  .method-index.is-open {
-    animation: none;
   }
 }
 .workflow-steps li {
