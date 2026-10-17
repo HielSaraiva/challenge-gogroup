@@ -316,6 +316,9 @@ summary:focus-visible,
   flex-wrap: wrap;
   gap: 8px 16px;
 }
+.agent-event-header b {
+  color: #2659a5;
+}
 .agent-event-header time {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
