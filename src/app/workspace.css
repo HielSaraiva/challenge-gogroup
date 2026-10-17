@@ -1516,3 +1516,51 @@ main > .panel {
     padding: 16px;
   }
 }
+
+.pattern-analysis .expandable-content > .agent-progress {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.agent-progress-caption {
+  color: #62636b;
+  font-size: 13px;
+}
+.agent-failure {
+  margin-block: 20px;
+  padding: 20px;
+  border: 1px solid #ead9bf;
+  border-left: 3px solid #986526;
+  border-radius: 8px;
+  background: #fffaf2;
+  overflow-wrap: anywhere;
+}
+.agent-failure > p {
+  margin: 0 0 12px;
+}
+.agent-failure > p:last-child {
+  margin-bottom: 0;
+}
+.agent-failure-context,
+.agent-failure-reason {
+  color: #64431e;
+}
+.agent-failure-next {
+  padding-top: 16px;
+  border-top: 1px solid #ead9bf;
+}
+.agent-failure-next > strong {
+  display: block;
+  margin-bottom: 4px;
+}
+@media (max-width: 720px) {
+  .agent-failure {
+    padding: 16px;
+  }
+}
+.agent-progress .agent-completion-stack:empty {
+  display: none;
+}

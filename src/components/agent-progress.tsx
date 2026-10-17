@@ -143,7 +143,10 @@ export function AgentProgress({
       .map(([id]) => id),
   );
   return (
-    <section className="panel prose" aria-label="Atividade do agente">
+    <section
+      className="panel prose agent-progress"
+      aria-label="Atividade do agente"
+    >
       <h2>
         {busy
           ? "O agente está trabalhando"
@@ -152,17 +155,20 @@ export function AgentProgress({
               ? "Preparação do plano concluída"
               : run?.type === "order"
                 ? `Análise do pedido ${run.target} concluída`
-                : "Análise da recorrência concluída"
+                : run?.type === "recurrences"
+                  ? "Análise de recorrências concluída"
+                  : "Análise da recorrência concluída"
             : failed
               ? quotaExceeded
                 ? "Análise interrompida pelo limite do Groq"
-                : "A análise não foi concluída"
+                : "Análise interrompida"
               : "Atividade do agente"}
       </h2>
-      <p>
-        As tentativas aparecem ao terminar, com sucesso ou erro. A mais recente
-        fica no topo.
-      </p>
+      {stack.length > 1 && (
+        <p className="agent-progress-caption">
+          Etapas finalizadas, da mais recente para a mais antiga.
+        </p>
+      )}
       {busy && (
         <p className="agent-current" role="status">
           <span className="agent-working-dot" aria-hidden="true" />
@@ -218,95 +224,123 @@ export function AgentProgress({
           </li>
         ))}
       </ol>
-      {!busy && !stack.length && (
-        <p>Nenhuma etapa foi finalizada nesta execução.</p>
+      {!busy && !stack.length && !failed && (
+        <p>Nenhuma etapa concluída nesta análise.</p>
       )}
       {!busy && failed && (
-        <p role="alert">
-          A análise não foi concluída. Confira acima o ponto de interrupção; se
-          já havia um plano ativo, ele continua disponível.
-        </p>
-      )}
-      <Expandable>
-        <summary>Detalhes técnicos da execução</summary>
-        <>
-          <p>
-            Histórico das chamadas do agente, da mais recente para a mais
-            antiga. Tentativas não concluídas ficam registradas mesmo quando o
-            agente corrige o conteúdo e consegue concluir a etapa depois.
-          </p>
-          {recovered.size > 0 && (
-            <p>
-              O agente corrigiu uma tentativa anterior e concluiu a etapa em
-              seguida. O resultado válido é o registro concluído mais recente.
+        <div className="agent-failure" role="alert">
+          {!stack.length && (
+            <p className="agent-failure-context">
+              A análise parou antes de concluir a primeira etapa.
             </p>
           )}
-          {calls
-            .reverse()
-            .sort(([, a], [, b]) => Date.parse(b.at) - Date.parse(a.at))
-            .map(([id, e]) => (
-              <article
-                className={`agent-event ${e.state === "error" ? "agent-event-error" : ""}`}
-                key={id}
-              >
-                <header className="agent-event-header">
-                  <b>
-                    {toolDescriptions[e.tool]?.[0] || "Etapa da análise"} ·{" "}
-                    {e.state === "ok"
-                      ? "Concluída"
-                      : e.state === "error"
-                        ? recovered.has(id)
-                          ? "Tentativa corrigida depois"
-                          : e.tool === "agente" && failed
-                            ? "Análise interrompida"
-                            : "Tentativa não concluída"
-                        : "Em andamento"}
-                  </b>
-                  <time dateTime={e.at}>
-                    {new Date(e.at).toLocaleTimeString("pt-BR")}
-                  </time>
-                </header>
-                <p>{generatedTextLabel(eventDescription(e, run?.type))}</p>
-                {e.state === "error" &&
-                  e.message.includes(
-                    "Escreva apenas orientação qualitativa",
-                  ) && (
-                    <Expandable>
-                      <summary>O que a validação identificou?</summary>
-                      <p>
-                        A justificativa incluiu informações numéricas em um
-                        campo destinado a orientações. Nesta versão,
-                        quantidades, valores e prazos são apresentados em campos
-                        separados, calculados pelo servidor. Esta regra valida o
-                        formato; não significa que os números gerados estavam
-                        incorretos.
-                      </p>
-                    </Expandable>
-                  )}
-                {recovered.has(id) && (
-                  <p>
-                    Depois dessa rejeição, o agente fez uma nova tentativa da
-                    mesma etapa e conseguiu concluí-la.
-                  </p>
-                )}
-                {e.state === "error" &&
-                  e.tool !== "agente" &&
-                  !recovered.has(id) && (
+          {run?.summary &&
+            !history.some((event) => event.state === "error") && (
+              <p className="agent-failure-reason">
+                <strong>Motivo:</strong> {generatedTextLabel(run.summary)}
+              </p>
+            )}
+          <p>
+            {run?.type === "daily"
+              ? "O plano anterior, se existente, foi preservado."
+              : run?.type === "order"
+                ? "Os encaminhamentos já registrados neste pedido foram preservados."
+                : "As investigações e conclusões anteriores foram preservadas."}
+          </p>
+          <p className="agent-failure-next">
+            <strong>Próximo passo</strong>
+            {calls.length > 0
+              ? "Consulte o motivo nos detalhes técnicos abaixo antes de tentar novamente."
+              : run?.summary
+                ? "Tente novamente após resolver o problema indicado acima."
+                : "Inicie uma nova tentativa de análise."}
+          </p>
+        </div>
+      )}
+      {calls.length > 0 && (
+        <Expandable>
+          <summary>Detalhes técnicos da execução</summary>
+          <>
+            <p>
+              Histórico das chamadas do agente, da mais recente para a mais
+              antiga. Tentativas não concluídas ficam registradas mesmo quando o
+              agente corrige o conteúdo e consegue concluir a etapa depois.
+            </p>
+            {recovered.size > 0 && (
+              <p>
+                O agente corrigiu uma tentativa anterior e concluiu a etapa em
+                seguida. O resultado válido é o registro concluído mais recente.
+              </p>
+            )}
+            {calls
+              .reverse()
+              .sort(([, a], [, b]) => Date.parse(b.at) - Date.parse(a.at))
+              .map(([id, e]) => (
+                <article
+                  className={`agent-event ${e.state === "error" ? "agent-event-error" : ""}`}
+                  key={id}
+                >
+                  <header className="agent-event-header">
+                    <b>
+                      {toolDescriptions[e.tool]?.[0] || "Etapa da análise"} ·{" "}
+                      {e.state === "ok"
+                        ? "Concluída"
+                        : e.state === "error"
+                          ? recovered.has(id)
+                            ? "Tentativa corrigida depois"
+                            : e.tool === "agente" && failed
+                              ? "Análise interrompida"
+                              : "Tentativa não concluída"
+                          : "Em andamento"}
+                    </b>
+                    <time dateTime={e.at}>
+                      {new Date(e.at).toLocaleTimeString("pt-BR")}
+                    </time>
+                  </header>
+                  <p>{generatedTextLabel(eventDescription(e, run?.type))}</p>
+                  {e.state === "error" &&
+                    e.message.includes(
+                      "Escreva apenas orientação qualitativa",
+                    ) && (
+                      <Expandable>
+                        <summary>O que a validação identificou?</summary>
+                        <p>
+                          A justificativa incluiu informações numéricas em um
+                          campo destinado a orientações. Nesta versão,
+                          quantidades, valores e prazos são apresentados em
+                          campos separados, calculados pelo servidor. Esta regra
+                          valida o formato; não significa que os números gerados
+                          estavam incorretos.
+                        </p>
+                      </Expandable>
+                    )}
+                  {recovered.has(id) && (
                     <p>
-                      {busy
-                        ? "A análise continua em andamento. Esta tentativa ainda não teve uma correção concluída."
-                        : failed
-                          ? "A execução terminou sem concluir esta etapa. Para tentar novamente, inicie outra análise."
-                          : "Esta tentativa não foi concluída. Consulte o resultado final da análise para verificar o que foi registrado."}
+                      Depois dessa rejeição, o agente fez uma nova tentativa da
+                      mesma etapa e conseguiu concluí-la.
                     </p>
                   )}
-                {!e.operationId && (
-                  <small>Registro legado: sem identificador de chamada.</small>
-                )}
-              </article>
-            ))}
-        </>
-      </Expandable>
+                  {e.state === "error" &&
+                    e.tool !== "agente" &&
+                    !recovered.has(id) && (
+                      <p>
+                        {busy
+                          ? "A análise continua em andamento. Esta tentativa ainda não teve uma correção concluída."
+                          : failed
+                            ? "A execução terminou sem concluir esta etapa. Para tentar novamente, inicie outra análise."
+                            : "Esta tentativa não foi concluída. Consulte o resultado final da análise para verificar o que foi registrado."}
+                      </p>
+                    )}
+                  {!e.operationId && (
+                    <small>
+                      Registro legado: sem identificador de chamada.
+                    </small>
+                  )}
+                </article>
+              ))}
+          </>
+        </Expandable>
+      )}
     </section>
   );
 }

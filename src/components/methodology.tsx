@@ -523,8 +523,9 @@ export function Methodology({
           <h2>Dados e tecnologia</h2>
           {summary && (
             <p>
-              Base atual: {summary.sourceRows} linhas de origem e
-              {summary.totalCount} pedidos únicos.
+              Base atual: {summary.sourceRows.toLocaleString("pt-BR")} linhas de
+              origem e {summary.totalCount.toLocaleString("pt-BR")} pedidos
+              únicos.
             </p>
           )}
           <Expandable open>
