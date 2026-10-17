@@ -177,6 +177,7 @@ export function TaskResult({
                   maxLength={2000}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
+                  placeholder="Descreva o que você fez e o resultado obtido. Ex.: confirmei o endereço com o cliente e registrei a correção no sistema."
                 />
               </label>
               <label>
@@ -211,7 +212,7 @@ export function TaskResult({
                   maxLength={1500}
                   value={evidence}
                   onChange={(e) => setEvidence(e.target.value)}
-                  placeholder="Indique o comprovante ou registro consultado, sem dados pessoais."
+                  placeholder="Informe onde essa ação pode ser comprovada: número do chamado, protocolo, comprovante ou link do registro. Não inclua nomes, endereços ou outros dados pessoais."
                 />
               </label>
             </>
