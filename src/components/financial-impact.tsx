@@ -52,23 +52,6 @@ export function FinancialImpact({
           Veja quantos pedidos estão resolvidos ou continuam abertos nesta
           sessão.
         </p>
-        <Expandable>
-          <summary>Como interpretar os indicadores?</summary>
-          <p>
-            <strong>Pedidos abertos:</strong> todos os pedidos da base que ainda
-            não foram encerrados, inclusive os que você ainda não investigou.
-          </p>
-          <p>
-            <strong>Aba Pendências:</strong> apenas os pedidos e investigações
-            que já precisam de acompanhamento.
-          </p>
-          <p>
-            <strong>Ao reabrir um pedido:</strong> ele volta a contar como
-            aberto. Reembolsos e custos informados como realizados continuam nos
-            totais financeiros e no histórico. Estimativas aparecem
-            separadamente.
-          </p>
-        </Expandable>
         <dl className="result-metrics">
           <div>
             <dt>Pedidos resolvidos</dt>

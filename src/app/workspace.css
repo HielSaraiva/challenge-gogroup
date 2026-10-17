@@ -1323,7 +1323,7 @@ main > .panel {
 }
 .improvements-workspace > .insight-grid {
   margin-top: 20px;
-  align-items: stretch;
+  align-items: start;
 }
 .signal-card {
   display: flex;
