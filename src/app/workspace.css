@@ -229,8 +229,9 @@ summary:focus-visible,
   gap: 14px;
   padding: 18px;
   background: #f3f6fa;
-  border: 1px solid #e0e7f1;
-  border-radius: 10px;
+  border: 0;
+  border-left: 3px solid #2659a5;
+  border-radius: 0;
   animation: agent-step-enter 240ms ease-out both;
 }
 .agent-step-check {
@@ -649,4 +650,9 @@ main > .panel {
   .new-plan-footer {
     flex-direction: column;
   }
+}
+
+.agent-step-error {
+  border-left-color: #ad3565;
+  background: #fcf4f7;
 }

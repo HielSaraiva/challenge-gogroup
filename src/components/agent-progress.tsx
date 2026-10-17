@@ -67,20 +67,16 @@ export function AgentProgress({
 }) {
   const history = events.length ? events : run?.events || [];
   if (!history.length && !run) return null;
-  const completedSteps = new Map<string, ToolEvent>();
-  for (const event of history) {
-    if (event.state === "ok" && event.tool !== "agente")
-      completedSteps.set(event.tool, event);
-  }
-  const stack = [...completedSteps.values()]
-    .reverse()
-    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
   const current = history.at(-1);
   const success = run?.status === "completed";
   const failed = !busy && run?.status === "failed";
   const grouped = new Map<string, ToolEvent>();
   history.forEach((e, i) => grouped.set(e.operationId || `legacy-${i}`, e));
   const calls = [...grouped.entries()];
+  const stack = calls
+    .filter(([, event]) => event.tool !== "agente" && event.state !== "running")
+    .reverse()
+    .sort(([, a], [, b]) => Date.parse(b.at) - Date.parse(a.at));
   const recovered = new Set(
     calls
       .filter(
@@ -115,7 +111,8 @@ export function AgentProgress({
               : "Atividade do agente"}
       </h2>
       <p>
-        As etapas aparecem ao serem concluídas. A mais recente fica no topo.
+        As tentativas aparecem ao terminar, com sucesso ou erro. A mais recente
+        fica no topo.
       </p>
       {busy && (
         <p className="agent-current" role="status">
@@ -127,24 +124,26 @@ export function AgentProgress({
       )}
       <ol
         className="agent-completion-stack"
-        aria-label="Etapas concluídas, da mais recente para a mais antiga"
+        aria-label="Tentativas finalizadas, da mais recente para a mais antiga"
         aria-live="polite"
         aria-relevant="additions"
       >
-        {stack.map((event) => (
+        {stack.map(([id, event]) => (
           <li
-            key={`${run?.id || "live"}:${event.tool}`}
-            className="agent-completed-step"
+            key={`${run?.id || "live"}:${id}`}
+            className={`agent-completed-step ${event.state === "error" ? "agent-step-error" : ""}`}
           >
-            <span className="agent-step-check" aria-hidden="true">
-              ✓
-            </span>
             <div className="agent-step-body">
               <header>
                 <strong>
                   {toolDescriptions[event.tool]?.[0] ||
                     event.tool.replaceAll("_", " ")}{" "}
-                  · Concluída
+                  ·{" "}
+                  {event.state === "ok"
+                    ? "Concluída"
+                    : recovered.has(id)
+                      ? "Tentativa corrigida depois"
+                      : "Tentativa não concluída"}
                 </strong>
                 <time dateTime={event.at}>
                   {new Date(event.at).toLocaleTimeString("pt-BR")}
@@ -156,7 +155,7 @@ export function AgentProgress({
         ))}
       </ol>
       {!busy && !stack.length && (
-        <p>Nenhuma etapa foi concluída nesta execução.</p>
+        <p>Nenhuma etapa foi finalizada nesta execução.</p>
       )}
       {!busy && <p role={failed ? "alert" : undefined}>{run?.summary}</p>}
       <details>

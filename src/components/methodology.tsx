@@ -109,13 +109,13 @@ export function Methodology({
         <details>
           <summary>Como ler a atividade do agente?</summary>
           <p>
-            As etapas entram na pilha quando são concluídas, com a mais recente
-            no topo e o horário da conclusão. Um indicador separado acompanha o
-            trabalho em andamento. Preparar os encaminhamentos e salvar o plano
-            aparecem como um único registro, pois são concluídos pela mesma
-            ferramenta. As chamadas de ferramentas ficam em detalhes técnicos,
-            agrupadas por identificador de chamada; registros antigos sem esse
-            identificador são marcados como legados.
+            As tentativas entram na pilha ao terminar, com sucesso ou erro e a
+            mais recente no topo e o horário da conclusão. Um indicador separado
+            acompanha o trabalho em andamento. Preparar os encaminhamentos e
+            salvar o plano aparecem como um único registro, pois são concluídos
+            pela mesma ferramenta. As chamadas de ferramentas ficam em detalhes
+            técnicos, agrupadas por identificador de chamada; registros antigos
+            sem esse identificador são marcados como legados.
           </p>
         </details>
       </section>
