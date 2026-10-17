@@ -21,8 +21,11 @@ export function DialogContent({
         className={`dialog-content ${className}`}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
-          contentRef.current?.focus({ preventScroll: true });
-          contentRef.current?.scrollTo({ top: 0 });
+          const content = contentRef.current;
+          const title = content?.querySelector<HTMLElement>("h2");
+          if (title) title.tabIndex = -1;
+          (title || content)?.focus({ preventScroll: true });
+          content?.scrollTo({ top: 0, behavior: "instant" });
         }}
       >
         {children}

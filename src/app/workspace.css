@@ -383,8 +383,8 @@ main > .panel {
   outline: none;
 }
 .dialog-content {
-  top: max(16px, 5dvh);
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
   max-height: calc(90dvh - 16px);
   overscroll-behavior: contain;
 }

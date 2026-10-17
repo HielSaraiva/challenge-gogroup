@@ -1132,11 +1132,7 @@ export function OperationsApp() {
             </div>
           )}
           <div className="new-plan-footer">
-            <Button
-              variant="outline"
-              autoFocus
-              onClick={() => setConfirmNewPlan(false)}
-            >
+            <Button variant="outline" onClick={() => setConfirmNewPlan(false)}>
               {day?.plan ? "Manter plano atual" : "Cancelar"}
             </Button>
             <Button
