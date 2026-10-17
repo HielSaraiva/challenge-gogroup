@@ -576,6 +576,75 @@ main > .panel {
 .case-history {
   margin-top: 20px;
 }
+.order-dialog .order-dialog-header {
+  padding-right: 24px;
+}
+.order-dialog .order-dialog-header h2 {
+  margin: 0 0 8px;
+  font-size: 24px;
+}
+.order-dialog-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.order-dialog-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.order-dialog-facts dt {
+  color: #62636b;
+  font-size: 12px;
+}
+.order-dialog-facts dd {
+  margin: 6px 0 0;
+  color: #2659a5;
+  font-size: 15px;
+  font-weight: 600;
+}
+.order-dialog .case-next-step h3,
+.order-dialog .case-result-panel h3,
+.order-dialog .order-task-section h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  line-height: 1.45;
+}
+.order-dialog .case-next-step {
+  margin-block: 24px;
+  padding: 20px;
+}
+.order-task-section {
+  margin-block: 24px;
+}
+.order-empty-tasks {
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: #f5f7fb;
+}
+.order-dialog .case-result-panel {
+  padding: 24px;
+}
+.case-result-panel > p + p {
+  margin-top: 12px;
+}
+.case-result-panel .guided-form {
+  gap: 20px;
+}
+@media (max-width: 480px) {
+  .order-dialog-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .order-dialog .case-result-panel,
+  .order-dialog .case-next-step {
+    padding: 16px;
+  }
+}
 .order-row {
   cursor: pointer;
 }

@@ -1088,18 +1088,37 @@ export function OperationsApp() {
           if (!open) setSelectedId(undefined);
         }}
       >
-        <DialogContent>
+        <DialogContent className="order-dialog">
           {selected && (
             <>
-              <DialogTitle>
-                {selected.id} · {exceptionLabels[selected.exception]}
-              </DialogTitle>
-              <DialogDescription>
-                {selected.brand} · {selected.product}
-              </DialogDescription>
-              <p>
-                <b>{statusLabel(selected.status)}</b> · {money(selected.value)}
-              </p>
+              <header className="order-dialog-header">
+                <DialogTitle>Pedido {selected.id}</DialogTitle>
+                <DialogDescription>
+                  {selected.brand} · {selected.product}
+                </DialogDescription>
+                <div className="order-dialog-badges">
+                  <span className="badge">
+                    {exceptionLabels[selected.exception]}
+                  </span>
+                  <span className="badge">{statusLabel(selected.status)}</span>
+                </div>
+                <dl className="order-dialog-facts">
+                  <div>
+                    <dt>Valor do pedido</dt>
+                    <dd>{money(selected.value)}</dd>
+                  </div>
+                  <div>
+                    <dt>Tempo de espera</dt>
+                    <dd>{selected.priority.age} dias úteis</dd>
+                  </div>
+                  <div>
+                    <dt>
+                      {selected.deliveredAt ? "Atraso até a entrega" : "Atraso"}
+                    </dt>
+                    <dd>{selected.priority.delay} dias úteis</dd>
+                  </div>
+                </dl>
+              </header>
               <section className="case-next-step">
                 <h3>
                   {selected.resolution
@@ -1121,10 +1140,9 @@ export function OperationsApp() {
                           : "Peça ao agente um encaminhamento"}
                 </h3>
                 <p>
-                  {selected.priority.age} dias úteis desde a abertura ·{" "}
-                  {selected.priority.delay} dias úteis de atraso
-                  {selected.deliveredAt ? " até a entrega" : ""}. Entrega
-                  registrada não encerra automaticamente a exceção.
+                  {selected.resolution
+                    ? "Confira o resultado e o histórico abaixo. Você pode reabrir o pedido com uma justificativa."
+                    : "Confira as evidências, registre a execução da tratativa e só então encerre a exceção. Uma entrega registrada, sozinha, não comprova que a pendência foi resolvida."}
                 </p>
                 {!selected.resolution &&
                   selected.status !== "status_divergente" && (
@@ -1170,27 +1188,32 @@ export function OperationsApp() {
                   <p key={i.code}>{i.detail}</p>
                 ))}
               </details>
-              <h3>Diagnóstico e encaminhamentos do agente</h3>
-              {!related.length && (
-                <p>Nenhuma tarefa registrada para este pedido.</p>
-              )}
-              {related.map((t) => (
-                <div key={t.id}>
-                  {t.kind.startsWith("proposta") && (
-                    <p className="case-next-step">
-                      Custo estimado pelo servidor:{" "}
-                      {money(
-                        t.kind === "proposta_reembolso"
-                          ? selected.value
-                          : selected.priority.resendCost,
-                      )}
-                      . Verifique a viabilidade e os registros externos antes de
-                      executar.
-                    </p>
-                  )}
-                  <TaskResult task={t} orders={orders} onSaved={refresh} />
-                </div>
-              ))}
+              <section className="order-task-section">
+                <h3>Encaminhamentos para este pedido</h3>
+                {!related.length && (
+                  <p className="order-empty-tasks">
+                    Ainda não há tarefas. A investigação individual com IA pode
+                    ser feita sem preparar o plano do dia.
+                  </p>
+                )}
+                {related.map((t) => (
+                  <div key={t.id}>
+                    {t.kind.startsWith("proposta") && (
+                      <p className="case-next-step">
+                        Custo estimado pelo servidor:{" "}
+                        {money(
+                          t.kind === "proposta_reembolso"
+                            ? selected.value
+                            : selected.priority.resendCost,
+                        )}
+                        . Verifique a viabilidade e os registros externos antes
+                        de executar.
+                      </p>
+                    )}
+                    <TaskResult task={t} orders={orders} onSaved={refresh} />
+                  </div>
+                ))}
+              </section>
               <CaseControls
                 key={selected.id + selected.status}
                 order={selected}

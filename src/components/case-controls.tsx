@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Button } from "./ui/button";
 import { allowedOutcomes, outcomeLabels } from "@/domain/cases";
 import type { RankedOrder, Task, ResolutionOutcome } from "@/domain/types";
+import { formatCurrencyInput, parseCurrencyInput } from "@/lib/currency-input";
+import { money, statusLabel } from "@/lib/utils";
 export function CaseControls({
   order,
   tasks,
@@ -67,8 +69,12 @@ export function CaseControls({
                 outcome: {
                   type,
                   evidence,
-                  ...(type === "reembolso_registrado" ? { refund } : {}),
-                  ...(cost !== "" ? { cost: { amount: cost, kind } } : {}),
+                  ...(type === "reembolso_registrado"
+                    ? { refund: parseCurrencyInput(refund) }
+                    : {}),
+                  ...(cost.trim() !== ""
+                    ? { cost: { amount: parseCurrencyInput(cost), kind } }
+                    : {}),
                 },
               }
             : {}),
@@ -84,8 +90,26 @@ export function CaseControls({
       setBusy(false);
     }
   }
+  if (action === "resolve" && !canResolve)
+    return (
+      <section className="panel prose case-result-panel">
+        <h3>Encerramento do pedido</h3>
+        <p>
+          O resultado poderá ser registrado depois que uma tarefa de tratativa
+          for executada e documentada.{" "}
+          {related.length
+            ? "Revise os encaminhamentos acima e conclua as pendências."
+            : "Use “Investigar este pedido com IA” para receber um encaminhamento."}
+        </p>
+        <p className="muted">
+          Preparar o plano do dia é opcional para investigar este pedido.
+          Aprovar uma proposta ou revisar o status, sozinho, não comprova a
+          resolução da exceção.
+        </p>
+      </section>
+    );
   return (
-    <section className="panel prose">
+    <section className="panel prose case-result-panel">
       <h3>
         {order.resolution
           ? "Reabrir pedido"
@@ -107,7 +131,9 @@ export function CaseControls({
             Status confirmado
             <select value={status} onChange={(e) => setStatus(e.target.value)}>
               {order.sourceStatuses.map((s) => (
-                <option key={s}>{s}</option>
+                <option key={s} value={s}>
+                  {statusLabel(s)}
+                </option>
               ))}
             </select>
           </label>
@@ -145,25 +171,27 @@ export function CaseControls({
                 Reembolso registrado (R$)
                 <input
                   required
-                  type="number"
-                  min="0.01"
-                  max={order.value}
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="R$ 0,00"
                   value={refund}
                   onChange={(e) => setRefund(e.target.value)}
+                  onBlur={() => setRefund(formatCurrencyInput(refund))}
                 />
+                <small>
+                  Limitado ao valor do pedido: {money(order.value)}.
+                </small>
               </label>
             )}
             <label>
               Custo desta tratativa (R$), se conhecido
               <input
-                type="number"
-                min="0"
-                max="9999999"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 placeholder="Não informado"
                 value={cost}
                 onChange={(e) => setCost(e.target.value)}
+                onBlur={() => setCost(formatCurrencyInput(cost))}
               />
             </label>
             {cost !== "" && (
@@ -178,8 +206,8 @@ export function CaseControls({
               </label>
             )}
             <p>
-              Corrigir um endereço pode resolver a exceção sem reembolso. Deixe
-              valores desconhecidos em branco; eles não serão registrados como
+              Informe apenas custos relacionados a esta tratativa. Deixe em
+              branco se o valor for desconhecido; isso não será registrado como
               zero.
             </p>
           </>
