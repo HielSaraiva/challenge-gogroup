@@ -658,18 +658,22 @@ export function OperationsApp() {
                         </label>
                       )}
                     </div>
-                    <label className="search-input">
-                      <Search size={16} aria-hidden="true" />
-                      <input
-                        aria-label="Buscar pedidos"
-                        placeholder="Pedido, produto, marca ou tipo de problema"
-                        value={query}
-                        onChange={(e) => {
-                          setQuery(e.target.value);
-                          setPage(1);
-                        }}
-                      />
-                    </label>
+                    <div className="order-search">
+                      <label htmlFor="order-search-input">Buscar pedidos</label>
+                      <div className="search-input">
+                        <Search size={18} aria-hidden="true" />
+                        <input
+                          id="order-search-input"
+                          type="search"
+                          placeholder="Código, produto, marca ou pendência"
+                          value={query}
+                          onChange={(e) => {
+                            setQuery(e.target.value);
+                            setPage(1);
+                          }}
+                        />
+                      </div>
+                    </div>
                     <div className="order-list-controls">
                       <label>
                         Pendência

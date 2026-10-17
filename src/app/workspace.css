@@ -581,6 +581,52 @@ main > .panel {
   gap: 16px;
   padding: 16px 22px 8px;
 }
+.order-search {
+  padding: 0 22px;
+}
+.order-search > label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #44454b;
+}
+.order-search .search-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  gap: 10px;
+  border: 1px solid #bbc8dc;
+  border-radius: 8px;
+  background: #fff;
+}
+.order-search .search-input svg {
+  flex-shrink: 0;
+  color: #626f83;
+}
+.order-search .search-input input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  margin: 0;
+  padding: 10px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  background: transparent;
+  color: #33343c;
+}
+.order-search .search-input input::placeholder {
+  color: #687487;
+}
+.order-search .search-input:focus-within {
+  outline: 2px solid #2659a5;
+  outline-offset: 2px;
+  border-color: #2659a5;
+}
+.order-search .search-input input:focus-visible {
+  outline: none;
+}
 .order-list-controls label {
   display: grid;
   gap: 6px;
@@ -610,6 +656,12 @@ main > .panel {
   color: #62636b;
 }
 @media (max-width: 640px) {
+  .order-search {
+    padding-inline: 16px;
+  }
+  .order-search .search-input input {
+    font-size: 16px;
+  }
   .order-list-controls {
     gap: 12px;
     padding-inline: 16px;
