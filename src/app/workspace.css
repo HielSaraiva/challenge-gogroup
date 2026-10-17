@@ -395,9 +395,9 @@ summary:focus-visible,
     animation: none;
   }
 }
-.expandable-content {
+details > .expandable-content {
   margin: 16px clamp(12px, 2.5vw, 32px) 0;
-  padding-inline: clamp(12px, 2vw, 24px);
+  padding: 12px clamp(20px, 2.5vw, 32px);
   border-inline: 2px solid var(--line);
   min-width: 0;
 }
