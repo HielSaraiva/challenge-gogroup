@@ -180,7 +180,7 @@ export function TaskResult({
                   maxLength={2000}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  placeholder="Descreva o que você fez e o resultado obtido. Ex.: confirmei o endereço com o cliente e registrei a correção no sistema."
+                  placeholder="Descreva o que foi verificado nos pedidos relacionados e o que sustenta a conclusão: hipótese confirmada, descartada ou ainda inconclusiva."
                 />
               </label>
               <label>
@@ -205,6 +205,7 @@ export function TaskResult({
                   maxLength={1500}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
+                  placeholder="Descreva o que você fez e o resultado obtido. Ex.: confirmei o endereço com o cliente e registrei a correção no sistema."
                 />
               </label>
               <label>
