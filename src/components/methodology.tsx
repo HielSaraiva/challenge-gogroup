@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, type MouseEvent } from "react";
 import { STRATEGIES, type Weights } from "@/domain/types";
 import type { dashboard } from "@/domain/analytics";
 export function Methodology({
@@ -8,6 +9,41 @@ export function Methodology({
   summary?: ReturnType<typeof dashboard>;
   weights: Weights;
 }) {
+  function scrollToSection() {
+    const id = window.location.hash.slice(1);
+    if (!id.startsWith("method-")) return;
+    const section = document.getElementById(id);
+    if (!section) return;
+    const title = section.querySelector<HTMLElement>("h2");
+    if (title) {
+      title.tabIndex = -1;
+      title.focus({ preventScroll: true });
+    }
+    section.scrollIntoView({ block: "start", behavior: "instant" });
+  }
+  useEffect(() => {
+    let frame = 0;
+    const restoreSection = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(scrollToSection);
+    };
+    restoreSection();
+    window.addEventListener("hashchange", restoreSection);
+    window.addEventListener("popstate", restoreSection);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("hashchange", restoreSection);
+      window.removeEventListener("popstate", restoreSection);
+    };
+  }, []);
+  function followSection(event: MouseEvent<HTMLAnchorElement>) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+      return;
+    event.preventDefault();
+    const hash = event.currentTarget.hash;
+    if (window.location.hash !== hash) window.history.pushState(null, "", hash);
+    scrollToSection();
+  }
   return (
     <div className="methodology">
       <section className="panel prose">
@@ -45,11 +81,21 @@ export function Methodology({
         </p>
       </section>
       <nav className="method-index" aria-label="Nesta metodologia">
-        <a href="#method-agent">Papel da IA</a>
-        <a href="#method-priority">Priorização</a>
-        <a href="#method-outcomes">Execução e resultados</a>
-        <a href="#method-data">Dados e tecnologia</a>
-        <a href="#method-pilot">Limites e validação</a>
+        <a href="#method-agent" onClick={followSection}>
+          Papel da IA
+        </a>
+        <a href="#method-priority" onClick={followSection}>
+          Priorização
+        </a>
+        <a href="#method-outcomes" onClick={followSection}>
+          Execução e resultados
+        </a>
+        <a href="#method-data" onClick={followSection}>
+          Dados e tecnologia
+        </a>
+        <a href="#method-pilot" onClick={followSection}>
+          Limites e validação
+        </a>
       </nav>
       <section className="panel prose" id="method-agent">
         <h2>Por que o agente é parte do trabalho?</h2>

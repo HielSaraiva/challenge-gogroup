@@ -53,7 +53,10 @@ summary:focus-visible,
   padding-left: 24px;
 }
 .methodology section {
-  scroll-margin-top: 24px;
+  scroll-margin-top: 96px;
+}
+.methodology h2:focus {
+  outline: none;
 }
 .method-index {
   display: flex;
