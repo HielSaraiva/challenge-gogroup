@@ -1557,8 +1557,10 @@ main > .panel {
   display: none;
 }
 
-.recurrence-dialog {
+.dialog-content.recurrence-dialog {
+  --recurrence-dialog-padding: 30px;
   width: min(1040px, calc(100vw - 40px));
+  padding: var(--recurrence-dialog-padding);
 }
 .recurrence-workspace {
   display: grid;
@@ -1691,7 +1693,8 @@ main > .panel {
   margin: 0;
 }
 @media (max-width: 720px) {
-  .recurrence-dialog {
+  .dialog-content.recurrence-dialog {
+    --recurrence-dialog-padding: 23px;
     width: calc(100vw - 24px);
   }
   .recurrence-overview,
@@ -1734,11 +1737,12 @@ main > .panel {
 }
 .recurrence-step-nav {
   position: sticky;
-  top: 0;
+  top: calc(-1 * var(--recurrence-dialog-padding));
   z-index: 2;
   display: flex;
   gap: 8px;
-  padding: 12px 0;
+  margin-inline: calc(-1 * var(--recurrence-dialog-padding));
+  padding: 12px var(--recurrence-dialog-padding);
   background: #fff;
   border-bottom: 1px solid var(--line);
 }
