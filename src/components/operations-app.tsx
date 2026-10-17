@@ -35,6 +35,7 @@ import { money, shortDate, statusLabel } from "@/lib/utils";
 import { paginationItems } from "@/lib/pagination";
 import { orderList, PAGE_SIZES } from "@/lib/order-list";
 import { awaitingResultOrders } from "@/domain/task-resolution";
+import { outcomeLabels } from "@/domain/cases";
 type Tab =
   "overview" | "queue" | "agent" | "impact" | "insights" | "data" | "method";
 const nav = [
@@ -1288,11 +1289,34 @@ export function OperationsApp() {
                     pedido”.
                   </p>
                 )}
-                {selected.caseHistory?.map((e) => (
-                  <p key={e.id}>
-                    {e.action} · {e.note} ·{" "}
-                    {new Date(e.at).toLocaleString("pt-BR")}
-                  </p>
+                {[...(selected.caseHistory || [])].reverse().map((event) => (
+                  <article className="case-history-event" key={event.id}>
+                    <div className="case-history-event-heading">
+                      <strong>
+                        {{
+                          resolve: "Pedido encerrado",
+                          reopen: "Pedido reaberto",
+                          review_status: "Status conferido",
+                        }[event.action] || "Alteração registrada"}
+                      </strong>
+                      <time dateTime={event.at}>
+                        {new Date(event.at).toLocaleString("pt-BR")}
+                      </time>
+                    </div>
+                    {event.outcome && (
+                      <p>
+                        <strong>Resultado:</strong>{" "}
+                        {outcomeLabels[event.outcome.type]}
+                      </p>
+                    )}
+                    {event.status && (
+                      <p>
+                        <strong>Status confirmado:</strong>{" "}
+                        {statusLabel(event.status)}
+                      </p>
+                    )}
+                    <p className="case-history-event-note">{event.note}</p>
+                  </article>
                 ))}
               </Expandable>
               <Dialog
