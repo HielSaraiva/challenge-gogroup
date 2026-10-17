@@ -121,7 +121,11 @@ export function AgentProgress({
         {busy
           ? "O agente está trabalhando"
           : success
-            ? "Análise registrada"
+            ? run?.type === "daily"
+              ? "Preparação do plano concluída"
+              : run?.type === "order"
+                ? `Análise do pedido ${run.target} concluída`
+                : "Análise da recorrência concluída"
             : failed
               ? "A análise não foi concluída"
               : "Atividade do agente"}

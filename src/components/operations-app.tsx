@@ -297,7 +297,21 @@ export function OperationsApp() {
       .toLocaleLowerCase("pt-BR")
       .includes(query.toLocaleLowerCase("pt-BR")),
   );
-  const latest = activeRun || runs[0];
+  function activity(type: Investigation["type"], target?: string) {
+    const matches = (run: Investigation) =>
+      run.type === type && (target === undefined || run.target === target);
+    const run =
+      activeRun && matches(activeRun) ? activeRun : runs.find(matches);
+    if (!run) return null;
+    const isActive = run.id === activeRun?.id;
+    return (
+      <AgentProgress
+        busy={isActive && busy}
+        events={isActive ? events : []}
+        run={run}
+      />
+    );
+  }
   const related = selected
     ? tasks.filter((t) => t.scope !== "process" && t.orderId === selected.id)
     : [];
@@ -531,7 +545,7 @@ export function OperationsApp() {
                       externas e documenta o resultado.
                     </p>
                   </section>
-                  <AgentProgress busy={busy} events={events} run={latest} />
+                  {activity("daily")}
                   {ready && day.plan && (
                     <OperationsSummary
                       plan={day.plan}
@@ -732,7 +746,6 @@ export function OperationsApp() {
               )}
               {tab === "agent" && (
                 <>
-                  <AgentProgress busy={busy} events={events} run={latest} />
                   <section className="panel prose">
                     <h2>O que precisa de acompanhamento?</h2>
                     <label className="check-label">
@@ -905,7 +918,7 @@ export function OperationsApp() {
                       Ver outros sinais
                     </Button>
                   )}
-                  <AgentProgress busy={busy} events={events} run={latest} />
+                  {activity("pattern")}
                 </>
               )}
             </>
@@ -978,11 +991,7 @@ export function OperationsApp() {
                   </p>
                 )}
               </section>
-              {(busy ||
-                (activeRun?.type === "order" &&
-                  activeRun.target === selected.id)) && (
-                <AgentProgress busy={busy} events={events} run={activeRun} />
-              )}
+              {activity("order", selected.id)}
               <details className="panel prose">
                 <summary>Conferir fatos, prazos e histórico do cliente</summary>
                 <p>
