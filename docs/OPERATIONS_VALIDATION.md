@@ -63,4 +63,4 @@ Os documentos de origem, arquivos do case e resultados privados não integram o 
 - TypeScript, formatação e build de produção aprovados.
 - Groq real validado com dados sintéticos: plano, tarefa individual e análise de recorrências com candidatos consultados persistidos.
 - Neon validado com sessão sintética exclusiva: investigação, tarefa, idempotência e execução persistidas. Somente os registros dessa verificação foram removidos.
-- A verificação da versão publicada na Vercel depende do endereço de implantação; os resultados acima não a substituem.
+- Versão publicada validada em 18/10/2026 em https://challenge-gogroup.vercel.app: agente real de pedido, idempotência, encerramento, reabertura, recorrências, cobertura consultada, plano, persistência, isolamento e restauração da base padrão após reinício. Os testes usaram CSVs sintéticos e sessões exclusivas, sem alterar sessões de outros visitantes.
