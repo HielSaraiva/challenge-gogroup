@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ChatCompletionTool } from "groq-sdk/resources/chat/completions";
+import { chooseRecurrenceCandidates } from "@/domain/recurrence-coverage";
 import { insights } from "@/domain/analytics";
 import { latestPatternTask } from "@/domain/pattern-lifecycle";
 import { exceptionLabels, type Task } from "@/domain/types";
@@ -109,9 +110,10 @@ export async function executeRecurrenceTool(
     z.object({}).strict().parse(raw);
     const state = await getSession(context.sessionId);
     if (!state) throw new AppError("Sessão expirada.", 401);
-    const candidates = insights(context.data)
-      .filter((item) => item.scope === "process")
-      .slice(0, 16);
+    const candidates = chooseRecurrenceCandidates(
+      insights(context.data).filter((item) => item.scope === "process"),
+      state.investigations,
+    );
     context.recurrenceCandidates = candidates.map((item) => ({
       insightId: item.id,
       evidenceIds: item.evidenceIds.slice(0, 3),

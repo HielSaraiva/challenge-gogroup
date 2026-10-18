@@ -162,6 +162,15 @@ export function ImprovementsWorkspace({
               : "Nenhuma nova investigação proposta"}
           </h3>
           <p>{generatedTextLabel(reviewed.recurrenceReview.reason)}</p>
+          <p>
+            {reviewed.taskIds.length -
+              reviewed.recurrenceReview.reusedTaskIds.length}{" "}
+            novas · {reviewed.recurrenceReview.reusedTaskIds.length} mantidas
+            {reviewed.consultedInsightIds
+              ? ` · ${reviewed.consultedInsightIds.length} agrupamentos examinados nesta análise`
+              : ""}
+            .
+          </p>
           <p className="list-count">
             Análise de {new Date(reviewed.createdAt).toLocaleString("pt-BR")} ·
             Os registros anteriores foram preservados.
@@ -177,7 +186,7 @@ export function ImprovementsWorkspace({
           </h3>
           <p>
             {reviewed
-              ? "A análise não encontrou novos achados suficientes para abrir uma investigação. Você pode continuar pelas tratativas individuais em Pedidos."
+              ? "Neste recorte, a análise não propôs novas investigações. Você pode continuar pelas tratativas individuais em Pedidos."
               : "Clique em “Analisar recorrências com IA”. Os cards aparecerão quando o agente registrar suas propostas."}
           </p>
         </div>

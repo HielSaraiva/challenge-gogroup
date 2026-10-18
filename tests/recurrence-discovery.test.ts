@@ -326,3 +326,23 @@ describe("descoberta de recorrências pelo agente", () => {
     expect((await getSession(id))!.tasks).toEqual([]);
   });
 });
+
+it("preserva mais de um grupo relevante de uma mesma dimensão", async () => {
+  const { insights } = await import("@/domain/analytics");
+  const sample: Dataset = {
+    ...data,
+    orders: Array.from({ length: 120 }, (_, i) => ({
+      ...base,
+      id: `MULTI-${i}`,
+      shift: i < 20 ? "manhã" : i < 40 ? "noite" : "tarde",
+      exception: i < 40 ? "item_faltante" : "atraso_entrega",
+    })),
+  };
+  const groups = insights(sample).filter(
+    (s) =>
+      s.exception === "item_faltante" &&
+      s.dimension === "shift" &&
+      s.scope === "process",
+  );
+  expect(groups.map((s) => s.group).sort()).toEqual(["manhã", "noite"]);
+});

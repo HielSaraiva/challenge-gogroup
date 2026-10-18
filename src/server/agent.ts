@@ -803,6 +803,10 @@ export async function investigate(
             !run.taskIds.includes((result as Task).id)
           )
             run.taskIds.push((result as Task).id);
+          if (name === "consultar_recorrencias")
+            run.consultedInsightIds = context.recurrenceCandidates?.map(
+              (item) => item.insightId,
+            );
           if (name === "registrar_analise_recorrencias") {
             run.recurrenceReview = context.recurrenceReview;
             run.taskIds = context.recurrenceTaskIds || [];

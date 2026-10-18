@@ -18,7 +18,6 @@ import {
   resolutionPayload,
 } from "./resolution-fields";
 import { Button } from "./ui/button";
-import { exceptionLabels } from "@/domain/types";
 export function TaskResult({
   task,
   orders,
@@ -32,9 +31,6 @@ export function TaskResult({
 }) {
   const [note, setNote] = useState("");
   const [evidence, setEvidence] = useState("");
-  const [outcome, setOutcome] = useState("inconclusiva");
-  const [ids, setIds] = useState<string[]>([]);
-  const [next, setNext] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [resolvedAnswer, setResolvedAnswer] = useState("");
@@ -46,9 +42,6 @@ export function TaskResult({
     {
       note,
       evidence,
-      outcome,
-      ids,
-      next,
       resolvedAnswer,
       resolution,
       stage,
@@ -62,7 +55,7 @@ export function TaskResult({
   const guidance = taskGuidance[task.kind];
   const order = orders.find((order) => order.id === task.orderId);
   const editable =
-    task.scope === "process" || Boolean(order && !order.resolution);
+    task.scope !== "process" && Boolean(order && !order.resolution);
   const canCloseWithExecution = Boolean(
     order &&
     !order.resolution &&
@@ -92,16 +85,7 @@ export function TaskResult({
             ? { rejection: { note: rejectionNote } }
             : {}),
           ...(status === "concluida"
-            ? task.scope === "process"
-              ? {
-                  conclusion: {
-                    outcome,
-                    observations: note,
-                    evidenceIds: ids,
-                    nextStep: next,
-                  },
-                }
-              : { execution: { note, evidence, ...(resend ? { stage } : {}) } }
+            ? { execution: { note, evidence, ...(resend ? { stage } : {}) } }
             : {}),
           ...(status === "concluida" &&
           task.scope !== "process" &&
@@ -131,8 +115,7 @@ export function TaskResult({
     <article className="panel prose task-result">
       {notice && <p role="status">{notice}</p>}
       <span className="badge">
-        {task.scope === "process" ? "Investigação de recorrência" : task.area} ·{" "}
-        {statusLabel(task.status)}
+        {task.area} · {statusLabel(task.status)}
       </span>
       <h3>{generatedTextLabel(task.title)}</h3>
       <p>
@@ -159,11 +142,9 @@ export function TaskResult({
       {task.nextStep && (
         <p>
           <b>
-            {task.scope === "process"
-              ? "Verificação recomendada pelo agente:"
-              : order?.resolution
-                ? "Orientação registrada:"
-                : "Verificação necessária:"}
+            {order?.resolution
+              ? "Orientação registrada:"
+              : "Verificação necessária:"}
           </b>{" "}
           {generatedTextLabel(task.nextStep)}
         </p>
@@ -262,10 +243,7 @@ export function TaskResult({
       {editable &&
         task.kind !== "revisao_status" &&
         (["aberta", "aprovada"].includes(task.status) ||
-          (task.status === "concluida" &&
-            (task.scope === "process"
-              ? !task.conclusion
-              : !task.execution))) && (
+          (task.status === "concluida" && !task.execution)) && (
           <form
             className="guided-form"
             onSubmit={(e) => {
@@ -273,206 +251,106 @@ export function TaskResult({
               void save("concluida");
             }}
           >
-            {task.scope === "process" ? (
-              <>
-                <h4>Confira a amostra e documente a conclusão</h4>
-                <p>
-                  Esta investigação verifica uma hipótese sobre o grupo. Não
-                  encerra os pedidos nem comprova implantação da melhoria.
+            <>
+              <h4>
+                {resend
+                  ? "Registrar reenvio realizado"
+                  : "O que foi executado fora da demonstração?"}
+              </h4>
+              {resend && (
+                <label>
+                  Em que etapa está o reenvio?
+                  <select
+                    required
+                    value={stage}
+                    onChange={(event) => {
+                      setStage(event.target.value as typeof stage);
+                      setResolvedAnswer(
+                        event.target.value === "dispatched" ? "no" : "",
+                      );
+                      setResolution(emptyResolution);
+                    }}
+                  >
+                    <option value="">Selecione a etapa confirmada</option>
+                    <option value="dispatched">
+                      Despachado — aguardando recebimento
+                    </option>
+                    <option value="received">Recebimento confirmado</option>
+                  </select>
+                </label>
+              )}
+              <label>
+                Ação realizada
+                <textarea
+                  required
+                  minLength={15}
+                  maxLength={1500}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder={guidance.action}
+                />
+              </label>
+              <label>
+                Evidência ou referência da execução
+                <textarea
+                  required
+                  minLength={15}
+                  maxLength={1500}
+                  value={evidence}
+                  onChange={(e) => setEvidence(e.target.value)}
+                  placeholder={`${guidance.evidence} Não inclua dados pessoais.`}
+                />
+              </label>
+              <label>
+                A ação realizada resolveu a pendência deste pedido?
+                <select
+                  required
+                  disabled={resend && stage !== "received"}
+                  value={resolvedAnswer}
+                  onChange={(event) => setResolvedAnswer(event.target.value)}
+                >
+                  <option value="">Selecione como o pedido deve ficar</option>
+                  <option value="no">
+                    Ainda não — registrar execução e manter pedido aberto
+                  </option>
+                  <option value="yes" disabled={!canCloseWithExecution}>
+                    Sim — registrar execução e encerrar pedido
+                  </option>
+                </select>
+              </label>
+              {resend && stage === "dispatched" && (
+                <p className="muted">
+                  O despacho será registrado sem encerrar. Quando o recebimento
+                  for confirmado, registre apenas a evidência complementar no
+                  resultado do pedido.
                 </p>
-                <fieldset>
-                  <legend>
-                    Pedidos relacionados conferidos (ao menos dois)
-                  </legend>
-                  {(task.affectedOrderIds || []).slice(0, 20).map((id) => {
-                    const o = orders.find((o) => o.id === id);
-                    return (
-                      <div key={id}>
-                        <label className="check-label">
-                          <input
-                            type="checkbox"
-                            checked={ids.includes(id)}
-                            onChange={(e) =>
-                              setIds((v) =>
-                                e.target.checked
-                                  ? [...v, id]
-                                  : v.filter((x) => x !== id),
-                              )
-                            }
-                          />
-                          {id}
-                        </label>
-                        {o && (
-                          <Expandable>
-                            <summary>Conferir evidências de {id}</summary>
-                            <p>
-                              {exceptionLabels[o.exception]} · {o.product} ·{" "}
-                              {statusLabel(o.status)}
-                            </p>
-                            <p>
-                              Exceção aberta em {shortDate(o.openedAt)};
-                              promessa {shortDate(o.promisedAt)}; entrega{" "}
-                              {o.deliveredAt
-                                ? shortDate(o.deliveredAt)
-                                : "não registrada"}
-                              .
-                            </p>
-                            <p>
-                              Centro de distribuição: {o.dc}; turno {o.shift};
-                              máquina {o.machine || "não informada"}, lote{" "}
-                              {o.lot}.
-                            </p>
-                          </Expandable>
-                        )}
-                      </div>
-                    );
-                  })}
-                </fieldset>
-                <label>
-                  Conclusão sobre a hipótese
-                  <select
-                    value={outcome}
-                    onChange={(e) => setOutcome(e.target.value)}
-                  >
-                    <option value="inconclusiva">Ainda inconclusiva</option>
-                    <option value="confirmada">
-                      Confirmada pelas verificações registradas
-                    </option>
-                    <option value="descartada">
-                      Descartada pelas verificações registradas
-                    </option>
-                  </select>
-                </label>
-                <label>
-                  Observações e referências verificadas
-                  <textarea
-                    required
-                    minLength={20}
-                    maxLength={2000}
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="Descreva o que foi verificado nos pedidos relacionados e o que sustenta a conclusão: hipótese confirmada, descartada ou ainda inconclusiva."
-                  />
-                </label>
-                <label>
-                  Encaminhamento registrado
-                  <textarea
-                    required
-                    minLength={15}
-                    maxLength={1500}
-                    placeholder="Descreva o próximo passo, a área responsável e o que ainda precisa ser validado. Se a hipótese foi descartada, indique a alternativa a investigar."
-                    value={next}
-                    onChange={(e) => setNext(e.target.value)}
-                  />
-                </label>
-              </>
-            ) : (
-              <>
-                <h4>
-                  {resend
-                    ? "Registrar reenvio realizado"
-                    : "O que foi executado fora da demonstração?"}
-                </h4>
-                {resend && (
-                  <label>
-                    Em que etapa está o reenvio?
-                    <select
-                      required
-                      value={stage}
-                      onChange={(event) => {
-                        setStage(event.target.value as typeof stage);
-                        setResolvedAnswer(
-                          event.target.value === "dispatched" ? "no" : "",
-                        );
-                        setResolution(emptyResolution);
-                      }}
-                    >
-                      <option value="">Selecione a etapa confirmada</option>
-                      <option value="dispatched">
-                        Despachado — aguardando recebimento
-                      </option>
-                      <option value="received">Recebimento confirmado</option>
-                    </select>
-                  </label>
-                )}
-                <label>
-                  Ação realizada
-                  <textarea
-                    required
-                    minLength={15}
-                    maxLength={1500}
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder={guidance.action}
-                  />
-                </label>
-                <label>
-                  Evidência ou referência da execução
-                  <textarea
-                    required
-                    minLength={15}
-                    maxLength={1500}
-                    value={evidence}
-                    onChange={(e) => setEvidence(e.target.value)}
-                    placeholder={`${guidance.evidence} Não inclua dados pessoais.`}
-                  />
-                </label>
-                <label>
-                  A ação realizada resolveu a pendência deste pedido?
-                  <select
-                    required
-                    disabled={resend && stage !== "received"}
-                    value={resolvedAnswer}
-                    onChange={(event) => setResolvedAnswer(event.target.value)}
-                  >
-                    <option value="">Selecione como o pedido deve ficar</option>
-                    <option value="no">
-                      Ainda não — registrar execução e manter pedido aberto
-                    </option>
-                    <option value="yes" disabled={!canCloseWithExecution}>
-                      Sim — registrar execução e encerrar pedido
-                    </option>
-                  </select>
-                </label>
-                {resend && stage === "dispatched" && (
-                  <p className="muted">
-                    O despacho será registrado sem encerrar. Quando o
-                    recebimento for confirmado, registre apenas a evidência
-                    complementar no resultado do pedido.
-                  </p>
-                )}
-                {!canCloseWithExecution &&
-                  !(resend && stage !== "received") && (
-                    <p className="muted">
-                      Registre esta execução sem encerrar o pedido. Antes de
-                      confirmar a resolução, é necessário concluir as demais
-                      pendências e validar eventuais conflitos de status.
-                    </p>
-                  )}
-                {resolvedAnswer === "yes" && canCloseWithExecution && order && (
-                  <ResolutionFields
-                    order={order}
-                    value={resolution}
-                    onChange={setResolution}
-                    executionEvidence={evidence}
-                    executionStage={resend ? stage || undefined : undefined}
-                  />
-                )}
-              </>
-            )}
+              )}
+              {!canCloseWithExecution && !(resend && stage !== "received") && (
+                <p className="muted">
+                  Registre esta execução sem encerrar o pedido. Antes de
+                  confirmar a resolução, é necessário concluir as demais
+                  pendências e validar eventuais conflitos de status.
+                </p>
+              )}
+              {resolvedAnswer === "yes" && canCloseWithExecution && order && (
+                <ResolutionFields
+                  order={order}
+                  value={resolution}
+                  onChange={setResolution}
+                  executionEvidence={evidence}
+                  executionStage={resend ? stage || undefined : undefined}
+                />
+              )}
+            </>
             {error && <p role="alert">{generatedTextLabel(error)}</p>}
-            <Button
-              disabled={busy || (task.scope === "process" && ids.length < 2)}
-            >
+            <Button disabled={busy || committed}>
               {busy
                 ? "Salvando…"
-                : task.scope === "process"
-                  ? "Registrar conclusão da investigação"
-                  : resend && stage === "dispatched"
-                    ? "Registrar despacho e aguardar recebimento"
-                    : resolvedAnswer === "yes"
-                      ? "Registrar execução e encerrar pedido"
-                      : "Registrar execução e manter aberto"}
+                : resend && stage === "dispatched"
+                  ? "Registrar despacho e aguardar recebimento"
+                  : resolvedAnswer === "yes"
+                    ? "Registrar execução e encerrar pedido"
+                    : "Registrar execução e manter aberto"}
             </Button>
           </form>
         )}
@@ -496,20 +374,16 @@ export function TaskResult({
                       : "Execução registrada"
                   : "Conclusão legada, sem evidência estruturada"}
             </h4>
-            {(task.execution?.at || task.conclusion?.at) && (
-              <time dateTime={task.execution?.at || task.conclusion?.at}>
-                {new Date(
-                  (task.execution?.at || task.conclusion?.at)!,
-                ).toLocaleString("pt-BR")}
+            {task.execution?.at && (
+              <time dateTime={task.execution?.at}>
+                {new Date((task.execution?.at)!).toLocaleString("pt-BR")}
               </time>
             )}
           </header>
           <p className="task-execution-description">
-            {task.conclusion
-              ? "Conclusão informada pela equipe após conferir as evidências."
-              : task.execution
-                ? "Execução informada pelo operador. A ação foi realizada fora da aplicação."
-                : "Este registro antigo não contém os dados de execução exigidos na versão atual."}
+            {task.execution
+              ? "Execução informada pelo operador. A ação foi realizada fora da aplicação."
+              : "Este registro antigo não contém os dados de execução exigidos na versão atual."}
           </p>
           <dl className="task-execution-fields">
             {task.execution && (
@@ -521,34 +395,6 @@ export function TaskResult({
                 <div>
                   <dt>Evidência ou referência</dt>
                   <dd>{task.execution.evidence}</dd>
-                </div>
-              </>
-            )}
-            {task.conclusion && (
-              <>
-                <div>
-                  <dt>Conclusão registrada pela equipe</dt>
-                  <dd>
-                    {
-                      {
-                        confirmada: "Confirmada",
-                        descartada: "Descartada",
-                        inconclusiva: "Inconclusiva",
-                      }[task.conclusion.outcome]
-                    }
-                  </dd>
-                </div>
-                <div>
-                  <dt>O que foi verificado</dt>
-                  <dd>{task.conclusion.observations}</dd>
-                </div>
-                <div>
-                  <dt>Próximo encaminhamento</dt>
-                  <dd>{task.conclusion.nextStep}</dd>
-                </div>
-                <div>
-                  <dt>Pedidos usados como referência</dt>
-                  <dd>{task.conclusion.evidenceIds.join(", ")}</dd>
                 </div>
               </>
             )}

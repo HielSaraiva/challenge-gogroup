@@ -36,7 +36,7 @@ export const conclusionSchema = z
     outcome: z.enum(["confirmada", "descartada", "inconclusiva"]),
     observations: z.string().trim().min(20).max(2000),
     evidenceIds: z.array(z.string().min(1)).min(2).max(20),
-    nextStep: z.string().trim().min(15).max(1500),
+    nextStep: z.string().trim().max(1500).default(""),
   })
   .strict();
 export function completedTask(

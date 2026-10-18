@@ -134,14 +134,9 @@ export function RecurrenceInvestigation({
       sample.current?.focus();
       return;
     }
-    if (
-      conclude &&
-      (!outcome ||
-        observations.trim().length < 20 ||
-        nextStep.trim().length < 15)
-    ) {
+    if (conclude && (!outcome || observations.trim().length < 20)) {
       setError(
-        "Para concluir, escolha o resultado, descreva o que foi verificado (mínimo de 20 caracteres) e indique a próxima ação (mínimo de 15 caracteres).",
+        "Para concluir, escolha o resultado, descreva o que foi verificado (mínimo de 20 caracteres) e descreva o que foi verificado.",
       );
       form.current?.reportValidity();
       return;
@@ -283,8 +278,8 @@ export function RecurrenceInvestigation({
               <dd>{task.conclusion.observations}</dd>
             </div>
             <div>
-              <dt>Próxima ação e responsável</dt>
-              <dd>{task.conclusion.nextStep}</dd>
+              <dt>Próxima verificação ou recomendação — opcional</dt>
+              <dd>{task.conclusion.nextStep || "Não informada"}</dd>
             </div>
             <div>
               <dt>Pedidos conferidos</dt>
@@ -484,17 +479,15 @@ export function RecurrenceInvestigation({
                   />
                 </label>
                 <label>
-                  Próxima ação e responsável
+                  Próxima verificação ou recomendação — opcional
                   <textarea
-                    required
-                    minLength={15}
                     maxLength={1500}
                     value={nextStep}
                     onChange={(event) => {
                       setNextStep(event.target.value);
                       setNotice("");
                     }}
-                    placeholder="Ex.: equipe do CD deve revisar a conferência do turno e acompanhar os próximos pedidos. Se faltam dados, indique qual registro ou pessoa precisa ser consultado."
+                    placeholder="Se houver algo a verificar depois, registre sua recomendação. Ex.: comparar os romaneios com a conferência do próximo turno."
                   />
                 </label>
                 <label>
@@ -580,14 +573,14 @@ export function RecurrenceInvestigation({
                     {busy ? "Salvando…" : "Salvar progresso"}
                   </Button>
                   <Button type="submit" disabled={busy}>
-                    Concluir investigação
+                    Registrar conclusão
                   </Button>
                 </div>
               </div>
               <p className="muted">
-                Salvar progresso mantém a investigação em Pendências. Concluir
-                exige dois pedidos conferidos e os campos acima preenchidos; não
-                encerra os pedidos relacionados.
+                Salvar progresso mantém a investigação em Pendências. Registrar
+                a conclusão exige dois pedidos conferidos, resultado e
+                observações; não encerra os pedidos relacionados.
               </p>
             </form>
           </section>

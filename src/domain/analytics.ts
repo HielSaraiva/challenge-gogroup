@@ -268,37 +268,38 @@ export function insights(data: Dataset): Insight[] {
         ids.length /
         dimensionalTotal /
         ((baseline.get(group) || 1) / eligible.length);
-      const [group, evidenceIds] = candidates.sort(
+      for (const [group, evidenceIds] of candidates.sort(
         (a, b) =>
           lift(b[0], b[1]) * Math.sqrt(b[1].length) -
           lift(a[0], a[1]) * Math.sqrt(a[1].length),
-      )[0];
-      if (evidenceIds.length < 10) continue;
-      const processSignal =
-        lift(group, evidenceIds) >= 1.5 &&
-        evidenceIds.length / dimensionalTotal >= 0.15;
-      const groupLabel =
-        group === "true"
-          ? "pedidos com brinde"
-          : group === "false"
-            ? "pedidos sem brinde"
-            : group;
-      result.push({
-        id: `${exception}:${dimension}:${group}`,
-        title: `${exceptionLabels[exception]} · ${group === "true" ? "Com brinde" : group === "false" ? "Sem brinde" : group}`,
-        exception,
-        dimension,
-        group,
-        count: evidenceIds.length,
-        total: dimensionalTotal,
-        share: evidenceIds.length / dimensionalTotal,
-        evidenceIds,
-        hypothesis: `${processSignal ? "Sinal para investigar o processo" : "Sinal exploratório para validar em casos individuais"}. Sem a base de todos os pedidos, não é possível estimar taxa de falha ou provar causalidade.`,
-        baselineShare: (baseline.get(group) || 0) / eligible.length,
-        enrichment: lift(group, evidenceIds),
-        scope: processSignal ? "process" : "case",
-        investigationQuestion: `Comparar ${groupLabel} com os demais grupos da mesma dimensão e verificar se há mudança de procedimento, campanha, lote ou capacidade. Validar com todos os pedidos expedidos antes de concluir causa.`,
-      });
+      )) {
+        if (evidenceIds.length < 10) continue;
+        const processSignal =
+          lift(group, evidenceIds) >= 1.5 &&
+          evidenceIds.length / dimensionalTotal >= 0.15;
+        const groupLabel =
+          group === "true"
+            ? "pedidos com brinde"
+            : group === "false"
+              ? "pedidos sem brinde"
+              : group;
+        result.push({
+          id: `${exception}:${dimension}:${group}`,
+          title: `${exceptionLabels[exception]} · ${group === "true" ? "Com brinde" : group === "false" ? "Sem brinde" : group}`,
+          exception,
+          dimension,
+          group,
+          count: evidenceIds.length,
+          total: dimensionalTotal,
+          share: evidenceIds.length / dimensionalTotal,
+          evidenceIds,
+          hypothesis: `${processSignal ? "Sinal para investigar o processo" : "Sinal exploratório para validar em casos individuais"}. Sem a base de todos os pedidos, não é possível estimar taxa de falha ou provar causalidade.`,
+          baselineShare: (baseline.get(group) || 0) / eligible.length,
+          enrichment: lift(group, evidenceIds),
+          scope: processSignal ? "process" : "case",
+          investigationQuestion: `Comparar ${groupLabel} com os demais grupos da mesma dimensão e verificar se há mudança de procedimento, campanha, lote ou capacidade. Validar com todos os pedidos expedidos antes de concluir causa.`,
+        });
+      }
     }
   }
   const mismatches = data.orders.filter((order) =>

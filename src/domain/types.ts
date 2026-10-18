@@ -210,6 +210,7 @@ export type Investigation = {
   createdAt: string;
   updatedAt: string;
   planId?: string;
+  consultedInsightIds?: string[];
   recurrenceReview?: {
     reason: string;
     selectedInsightIds: string[];
