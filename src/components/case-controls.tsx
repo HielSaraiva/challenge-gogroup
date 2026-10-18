@@ -1,4 +1,5 @@
 "use client";
+import { useDraftGuard } from "./hooks/form-safety";
 import { currentCaseTasks, latestReopen } from "@/domain/case-cycle";
 import { generatedTextLabel } from "@/lib/utils";
 import { useState } from "react";
@@ -27,6 +28,12 @@ export function CaseControls({
   const [draft, setDraft] = useState(emptyResolution);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const { committed, markSaved } = useDraftGuard(
+    { note, status, draft },
+    busy,
+    JSON.stringify([order.status, order.resolution, order.caseHistory]),
+  );
   const review = order.status === "status_divergente";
   const action = order.resolution
     ? "reopen"
@@ -61,6 +68,7 @@ export function CaseControls({
     )[0];
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (busy || committed) return;
     setBusy(true);
     setError("");
     try {
@@ -87,8 +95,9 @@ export function CaseControls({
       });
       const b = await r.json();
       if (!r.ok) throw new Error(b.error);
+      markSaved();
+      setNotice("Registro salvo com sucesso.");
       await onSaved();
-      setNote("");
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -141,6 +150,7 @@ export function CaseControls({
           </p>
         </>
       )}
+      {notice && <p role="status">{notice}</p>}
       <form onSubmit={submit} className="guided-form">
         {review && (
           <label>
@@ -204,7 +214,12 @@ export function CaseControls({
           </p>
         )}
         <Button
-          disabled={disabled || busy || (action === "resolve" && !canResolve)}
+          disabled={
+            disabled ||
+            busy ||
+            committed ||
+            (action === "resolve" && !canResolve)
+          }
         >
           {busy
             ? "Salvando…"

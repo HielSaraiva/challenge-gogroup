@@ -16,6 +16,7 @@ export const outcomeSchema = z
     ]),
     evidence: z.string().trim().min(15).max(1500),
     evidenceTaskId: z.string().min(1).max(100).optional(),
+    executionTaskId: z.string().min(1).max(100).optional(),
     receiptConfirmed: z.boolean().optional(),
     refund: amount.optional(),
     cost: z
@@ -156,6 +157,43 @@ export function transitionCase(
         "Existem tarefas ou propostas pendentes para este pedido.",
       );
     const outcome = outcomeSchema.parse(action.outcome);
+    // Older callers omit the link; resolve it once and persist it for new records.
+    const executionId = outcome.executionTaskId || outcome.evidenceTaskId;
+    const source = executionId
+      ? related.find((task) => task.id === executionId)
+      : [...related]
+          .filter(
+            (task) =>
+              task.status === "concluida" &&
+              task.kind !== "revisao_status" &&
+              task.execution,
+          )
+          .sort((a, b) =>
+            (b.execution?.at || "").localeCompare(a.execution?.at || ""),
+          )[0];
+    if (
+      !source?.execution ||
+      source.status !== "concluida" ||
+      source.kind === "revisao_status" ||
+      (lastReopen &&
+        (!source.execution.at || source.execution.at < lastReopen.at))
+    )
+      throw new Error(
+        "Vincule uma execução válida da etapa atual deste pedido.",
+      );
+    if (
+      source.kind === "proposta_reembolso" &&
+      outcome.type !== "reembolso_registrado"
+    )
+      throw new Error(
+        "A execução de um reembolso deve ser encerrada com o resultado de reembolso registrado.",
+      );
+    if (outcome.evidenceTaskId && outcome.evidenceTaskId !== source.id)
+      throw new Error(
+        "A evidência deve pertencer à execução vinculada ao resultado.",
+      );
+    outcome.executionTaskId = source.id;
+
     if (outcome.type === "item_reenviado" && !outcome.receiptConfirmed)
       throw new Error(
         "Confirme o recebimento do item reenviado. O despacho sozinho não encerra a pendência.",

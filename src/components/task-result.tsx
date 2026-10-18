@@ -1,4 +1,5 @@
 "use client";
+import { useDraftGuard } from "./hooks/form-safety";
 import { taskGuidance } from "@/domain/task-guidance";
 import { currentCaseTasks } from "@/domain/case-cycle";
 import { Expandable } from "./ui/expandable";
@@ -41,6 +42,22 @@ export function TaskResult({
   const [stage, setStage] = useState<"" | "dispatched" | "received">("");
   const [rejecting, setRejecting] = useState(false);
   const [rejectionNote, setRejectionNote] = useState("");
+  const { committed, markSaved } = useDraftGuard(
+    {
+      note,
+      evidence,
+      outcome,
+      ids,
+      next,
+      resolvedAnswer,
+      resolution,
+      stage,
+      rejectionNote,
+    },
+    busy,
+    task.updatedAt,
+  );
+  const [notice, setNotice] = useState("");
   const resend = task.kind === "proposta_reenvio";
   const guidance = taskGuidance[task.kind];
   const order = orders.find((order) => order.id === task.orderId);
@@ -61,6 +78,7 @@ export function TaskResult({
     ),
   );
   async function save(status: string) {
+    if (busy || committed) return;
     setBusy(true);
     setError("");
     try {
@@ -100,6 +118,8 @@ export function TaskResult({
       });
       const b = await r.json();
       if (!r.ok) throw new Error(b.error);
+      markSaved();
+      setNotice("Registro salvo com sucesso.");
       await onSaved();
     } catch (e) {
       setError((e as Error).message);
@@ -109,6 +129,7 @@ export function TaskResult({
   }
   return (
     <article className="panel prose task-result">
+      {notice && <p role="status">{notice}</p>}
       <span className="badge">
         {task.scope === "process" ? "Investigação de recorrência" : task.area} ·{" "}
         {statusLabel(task.status)}
@@ -162,14 +183,17 @@ export function TaskResult({
       )}
       {editable && task.status === "pendente_aprovacao" && (
         <div className="task-actions">
-          <Button disabled={busy} onClick={() => void save("aprovada")}>
+          <Button
+            disabled={busy || committed}
+            onClick={() => void save("aprovada")}
+          >
             {resend
               ? "Aprovar proposta de reenvio"
               : "Aprovar proposta de reembolso"}
           </Button>
           <Button
             variant="outline"
-            disabled={busy}
+            disabled={busy || committed}
             onClick={() => setRejecting(true)}
           >
             Rejeitar proposta
@@ -203,11 +227,11 @@ export function TaskResult({
                 orientar a próxima investigação.
               </p>
               <div className="task-actions">
-                <Button disabled={busy}>Confirmar rejeição</Button>
+                <Button disabled={busy || committed}>Confirmar rejeição</Button>
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={busy}
+                  disabled={busy || committed}
                   onClick={() => setRejecting(false)}
                 >
                   Cancelar

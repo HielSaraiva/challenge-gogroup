@@ -171,6 +171,7 @@ export type ResolutionOutcome = {
     | "reembolso_registrado";
   evidence: string;
   evidenceTaskId?: string;
+  executionTaskId?: string;
   receiptConfirmed?: boolean;
   refund?: string;
   cost?: { amount: string; kind: "estimated" | "declared" };

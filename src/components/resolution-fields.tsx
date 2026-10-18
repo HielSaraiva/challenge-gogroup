@@ -44,6 +44,7 @@ export function resolutionPayload(
     );
   return {
     type: draft.type,
+    executionTaskId: execution.taskId,
     evidence,
     ...(draft.type === "item_reenviado" ? { receiptConfirmed: true } : {}),
     ...(draft.reuseEvidence ? { evidenceTaskId: execution.taskId } : {}),

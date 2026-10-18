@@ -1,4 +1,5 @@
 "use client";
+import { FormSafetyBoundary } from "./hooks/form-safety";
 import { RecurrenceInvestigation } from "./recurrence-investigation";
 import { Expandable } from "./ui/expandable";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -108,6 +109,11 @@ export function OperationsApp() {
   const [events, setEvents] = useState<ToolEvent[]>([]);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [orderSafety, setOrderSafety] = useState({ dirty: false, busy: false });
+  const [confirmOrderClose, setConfirmOrderClose] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
+  const resetLock = useRef(false);
+  const [refreshWarning, setRefreshWarning] = useState("");
   const [resetting, setResetting] = useState(false);
   const [sessionRevision, setSessionRevision] = useState(0);
   const [confirmNewPlan, setConfirmNewPlan] = useState(false);
@@ -170,6 +176,25 @@ export function OperationsApp() {
     setRuns(r);
     setFinancial(op.financial);
   }, []);
+  const refreshAfterSave = useCallback(async () => {
+    try {
+      await refresh();
+      setRefreshWarning("");
+    } catch {
+      setRefreshWarning(
+        "Registro salvo. A tela ainda precisa ser atualizada; não repita a operação.",
+      );
+    }
+  }, [refresh]);
+  useEffect(() => {
+    if (!orderSafety.dirty && !processDirty) return;
+    const prevent = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", prevent);
+    return () => window.removeEventListener("beforeunload", prevent);
+  }, [orderSafety.dirty, processDirty]);
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -295,6 +320,9 @@ export function OperationsApp() {
     }
   }
   async function reset() {
+    if (resetLock.current) return;
+    resetLock.current = true;
+    setResetBusy(true);
     setError("");
     try {
       const r = await fetch("/api/session", {
@@ -303,6 +331,21 @@ export function OperationsApp() {
         body: "{}",
       });
       if (!r.ok) throw new Error("Não foi possível reiniciar.");
+      setQuery("");
+      setExceptionFilter("");
+      setStatusFilter("");
+      setPage(1);
+      setPageSize(10);
+      setAll(false);
+      setPlanStrategy("equilibrada");
+      setRefreshWarning("");
+      setOrders([]);
+      setPatterns([]);
+      setTasks([]);
+      setRuns([]);
+      setFinancial(undefined);
+      setSummary(undefined);
+      setDay(undefined);
       setSessionRevision((revision) => revision + 1);
       setResetting(false);
       setEvents([]);
@@ -314,6 +357,9 @@ export function OperationsApp() {
       setNotice("Demonstração reiniciada com a base padrão de 30/09/2026.");
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      resetLock.current = false;
+      setResetBusy(false);
     }
   }
   const selected = orders.find((o) => o.id === selectedId);
@@ -947,6 +993,14 @@ export function OperationsApp() {
               )}
             </>
           )}
+          {refreshWarning && (
+            <div className="alert alert-info" role="status">
+              {refreshWarning}{" "}
+              <Button variant="outline" onClick={() => void refreshAfterSave()}>
+                Atualizar tela
+              </Button>
+            </div>
+          )}
           <footer>
             <span>
               Dados sintéticos · demonstração independente por sessão · nenhuma
@@ -958,314 +1012,342 @@ export function OperationsApp() {
       <Dialog
         open={Boolean(selected)}
         onOpenChange={(open) => {
-          if (!open) setSelectedId(undefined);
+          if (!open && !orderSafety.busy) {
+            if (orderSafety.dirty) setConfirmOrderClose(true);
+            else setSelectedId(undefined);
+          }
         }}
       >
         <DialogContent className="order-dialog">
-          {selected && (
-            <>
-              <header className="order-dialog-header">
-                <DialogTitle>Pedido {selected.id}</DialogTitle>
-                <DialogDescription>
-                  {selected.brand} · {selected.product}
-                </DialogDescription>
-                <div className="order-dialog-badges">
-                  <span className="badge">
-                    {exceptionLabels[selected.exception]}
-                  </span>
-                  <span className="badge">{statusLabel(selected.status)}</span>
-                </div>
-                <dl className="order-dialog-facts">
-                  <div>
-                    <dt>Valor do pedido</dt>
-                    <dd>{money(selected.value)}</dd>
-                  </div>
-                  <div>
-                    <dt>Tempo de espera</dt>
-                    <dd>{selected.priority.age} dias úteis</dd>
-                  </div>
-                  <div>
-                    <dt>
-                      {selected.deliveredAt ? "Atraso até a entrega" : "Atraso"}
-                    </dt>
-                    <dd>{selected.priority.delay} dias úteis</dd>
-                  </div>
-                </dl>
-              </header>
-              <section className="case-next-step">
-                <h3>
-                  {selected.resolution
-                    ? "Resultado registrado"
-                    : selected.status === "status_divergente"
-                      ? "Primeiro valide o status"
-                      : related.some((t) =>
-                            [
-                              "aberta",
-                              "aprovada",
-                              "pendente_aprovacao",
-                            ].includes(t.status),
-                          )
-                        ? "Revise e execute os encaminhamentos"
-                        : related.some(
-                              (t) => t.execution && t.kind !== "revisao_status",
-                            )
-                          ? "Registre o resultado da tratativa"
-                          : selectedReopen
-                            ? "Pedido reaberto — inicie uma nova investigação"
-                            : "Peça ao agente um encaminhamento"}
-                </h3>
-                <p>
-                  {selected.resolution
-                    ? "Confira o resultado e o histórico abaixo. Você pode reabrir o pedido com uma justificativa."
-                    : "Confira as evidências, registre a execução da tratativa e só então encerre a exceção. Uma entrega registrada, sozinha, não comprova que a pendência foi resolvida."}
-                </p>
-                {!selected.resolution &&
-                  selected.status !== "status_divergente" && (
-                    <Button
-                      disabled={busy}
-                      onClick={() => {
-                        const alreadyAnalyzed =
-                          related.length > 0 ||
-                          runs.some(
-                            (run) =>
-                              run.type === "order" &&
-                              run.target === selected.id &&
-                              (!selectedReopen ||
-                                run.createdAt >= selectedReopen.at) &&
-                              run.status === "completed",
-                          ) ||
-                          (activeRun?.type === "order" &&
-                            activeRun.target === selected.id &&
-                            (!selectedReopen ||
-                              activeRun.createdAt >= selectedReopen.at) &&
-                            activeRun.status === "completed");
-                        if (alreadyAnalyzed) setConfirmOrderId(selected.id);
-                        else void investigate(selected.id, "order");
-                      }}
-                    >
-                      {busy
-                        ? "Investigando…"
-                        : selectedReopen && !related.length
-                          ? "Investigar pedido reaberto com IA"
-                          : "Investigar este pedido com IA"}
-                    </Button>
-                  )}
-                {selected.status === "status_divergente" && (
-                  <p>
-                    A origem não informa qual status é o mais recente. Confira a
-                    fonte e registre a revisão abaixo.
-                  </p>
-                )}
-              </section>
-              {selectedReopen && !selected.resolution && (
-                <p className="case-next-step">
-                  Reaberto em{" "}
-                  {new Date(selectedReopen.at).toLocaleString("pt-BR")}. Motivo:{" "}
-                  {selectedReopen.note}
-                  <br />
-                  As execuções anteriores não encerram esta nova etapa.
-                </p>
-              )}
-              {activity("order", selected.id)}
-              <Expandable className="panel prose order-facts-panel">
-                <summary>Conferir fatos, prazos e histórico do cliente</summary>
-                <p>
-                  Pedido: {shortDate(selected.orderedAt)} · Exceção:{" "}
-                  {shortDate(selected.openedAt)}
-                </p>
-                <p>
-                  Promessa original: {shortDate(selected.promisedAt)} ·
-                  Contrato: {shortDate(selected.priority.contractPromise)} ·
-                  Entrega:{" "}
-                  {selected.deliveredAt
-                    ? shortDate(selected.deliveredAt)
-                    : "não registrada"}
-                </p>
-                <p>
-                  {selected.carrier} / {selected.state} · Centro de
-                  distribuição: {selected.dc} · turno {selected.shift} · máquina{" "}
-                  {selected.machine || "não informada"} · lote {selected.lot}
-                </p>
-                <p>
-                  {selected.customer?.orders} pedidos do cliente · valor
-                  acumulado de compras:{" "}
-                  {money(selected.customer?.revenue || "0")}
-                </p>
-                {selected.issues.map((i) => (
-                  <p key={i.code}>{generatedTextLabel(i.detail)}</p>
-                ))}
-              </Expandable>
-              <section className="order-task-section">
-                <h3>Encaminhamentos para este pedido</h3>
-                {!related.length && (
-                  <p className="order-empty-tasks">
-                    {selectedReopen
-                      ? "Ainda não há encaminhamentos nesta nova etapa."
-                      : "Ainda não há tarefas."}{" "}
-                    A investigação individual com IA pode ser feita sem preparar
-                    o plano do dia.
-                  </p>
-                )}
-                {related.map((t) => (
-                  <div key={t.id}>
-                    {t.kind.startsWith("proposta") && (
-                      <p className="case-next-step">
-                        <strong>
-                          {t.kind === "proposta_reenvio"
-                            ? "Estimativa de reenvio"
-                            : "Valor proposto para reembolso"}
-                          :
-                        </strong>{" "}
-                        {money(
-                          t.kind === "proposta_reembolso"
-                            ? selected.value
-                            : selected.priority.resendCost,
-                        )}
-                        .{" "}
-                        {t.kind === "proposta_reenvio" ? (
-                          <>
-                            Cálculo do piloto: 24% do valor total do pedido +
-                            frete da transportadora.{" "}
-                            {selected.exception === "item_faltante" &&
-                              "Para item faltante, essa aproximação pode superestimar o custo: a base não informa o preço individual do item. "}
-                            Não é uma cotação nem um custo efetivamente
-                            realizado.
-                          </>
-                        ) : (
-                          "O valor efetivo deve ser comprovado e informado no resultado; aprovar não movimenta dinheiro."
-                        )}{" "}
-                        Verifique os registros externos antes de executar.
-                      </p>
-                    )}
-                    <TaskResult
-                      task={t}
-                      orders={orders}
-                      tasks={tasks}
-                      onSaved={refresh}
-                    />
-                  </div>
-                ))}
-              </section>
-              <CaseControls
-                key={selected.id + selected.status + (selectedReopen?.id || "")}
-                order={selected}
-                tasks={tasks}
-                disabled={busy}
-                onSaved={refresh}
-              />
-              <Expandable className="panel prose case-history">
-                <summary>Histórico deste caso</summary>
-                {!selected.caseHistory?.length && (
-                  <p className="case-history-empty">
-                    Nenhuma alteração registrada neste pedido. As validações de
-                    status, os encerramentos e as reaberturas aparecerão aqui.
-                    Investigações e tarefas ficam em “Encaminhamentos para este
-                    pedido”.
-                  </p>
-                )}
-                {[...(selected.caseHistory || [])].reverse().map((event) => (
-                  <article className="case-history-event" key={event.id}>
-                    <div className="case-history-event-heading">
-                      <strong>
-                        {{
-                          resolve: "Pedido encerrado",
-                          reopen: "Pedido reaberto",
-                          review_status: "Status conferido",
-                        }[event.action] || "Alteração registrada"}
-                      </strong>
-                      <time dateTime={event.at}>
-                        {new Date(event.at).toLocaleString("pt-BR")}
-                      </time>
-                    </div>
-                    {event.outcome && (
-                      <p>
-                        <strong>Resultado:</strong>{" "}
-                        {outcomeLabels[event.outcome.type]}
-                      </p>
-                    )}
-                    {event.outcome && (
-                      <>
-                        <p>
-                          <strong>Evidência do resultado:</strong>{" "}
-                          {event.outcome.evidence}
-                        </p>
-                        {event.outcome.refund !== undefined && (
-                          <p>
-                            <strong>Reembolso registrado:</strong>{" "}
-                            {money(event.outcome.refund)}
-                          </p>
-                        )}
-                        {event.outcome.cost && (
-                          <p>
-                            <strong>Custo registrado:</strong>{" "}
-                            {money(event.outcome.cost.amount)} (
-                            {event.outcome.cost.kind === "estimated"
-                              ? "estimado"
-                              : "informado pelo operador"}
-                            )
-                          </p>
-                        )}
-                      </>
-                    )}
-                    {event.status && (
-                      <p>
-                        <strong>Status confirmado:</strong>{" "}
-                        {statusLabel(event.status)}
-                      </p>
-                    )}
-                    <p className="case-history-event-note">{event.note}</p>
-                  </article>
-                ))}
-              </Expandable>
-              <Dialog
-                open={confirmOrderId === selected.id}
-                onOpenChange={(open) => {
-                  if (!open) setConfirmOrderId(null);
-                }}
-              >
-                <DialogContent className="new-plan-dialog">
-                  <span className="new-plan-icon" aria-hidden="true">
-                    <Bot size={24} />
-                  </span>
-                  <DialogTitle>Investigar este pedido novamente?</DialogTitle>
+          <FormSafetyBoundary onChange={setOrderSafety}>
+            {refreshWarning && (
+              <div className="alert alert-info" role="status">
+                {refreshWarning}{" "}
+                <Button
+                  variant="outline"
+                  onClick={() => void refreshAfterSave()}
+                >
+                  Atualizar tela
+                </Button>
+              </div>
+            )}
+            {selected && (
+              <>
+                <header className="order-dialog-header">
+                  <DialogTitle>Pedido {selected.id}</DialogTitle>
                   <DialogDescription>
-                    O pedido {selected.id} já tem uma análise ou encaminhamentos
-                    registrados. A IA consultará novamente as evidências para
-                    reavaliar o caso.
+                    {selected.brand} · {selected.product}
                   </DialogDescription>
-                  <div className="new-plan-consequences">
+                  <div className="order-dialog-badges">
+                    <span className="badge">
+                      {exceptionLabels[selected.exception]}
+                    </span>
+                    <span className="badge">
+                      {statusLabel(selected.status)}
+                    </span>
+                  </div>
+                  <dl className="order-dialog-facts">
                     <div>
-                      <strong>Os registros anteriores serão preservados</strong>
-                      <p>
-                        A nova análise não apaga tarefas, execuções ou
-                        histórico. Encaminhamentos existentes podem ser
-                        mantidos, sem criar tarefas duplicadas.
-                      </p>
+                      <dt>Valor do pedido</dt>
+                      <dd>{money(selected.value)}</dd>
                     </div>
-                  </div>
-                  <div className="new-plan-footer">
-                    <Button
-                      variant="outline"
-                      onClick={() => setConfirmOrderId(null)}
-                    >
-                      Manter análise atual
-                    </Button>
-                    <Button
-                      disabled={busy || Boolean(selected.resolution)}
-                      onClick={() => {
-                        const orderId = confirmOrderId;
-                        setConfirmOrderId(null);
-                        if (orderId === selected.id)
-                          void investigate(orderId, "order");
-                      }}
-                    >
-                      Investigar novamente
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </>
-          )}
+                    <div>
+                      <dt>Tempo de espera</dt>
+                      <dd>{selected.priority.age} dias úteis</dd>
+                    </div>
+                    <div>
+                      <dt>
+                        {selected.deliveredAt
+                          ? "Atraso até a entrega"
+                          : "Atraso"}
+                      </dt>
+                      <dd>{selected.priority.delay} dias úteis</dd>
+                    </div>
+                  </dl>
+                </header>
+                <section className="case-next-step">
+                  <h3>
+                    {selected.resolution
+                      ? "Resultado registrado"
+                      : selected.status === "status_divergente"
+                        ? "Primeiro valide o status"
+                        : related.some((t) =>
+                              [
+                                "aberta",
+                                "aprovada",
+                                "pendente_aprovacao",
+                              ].includes(t.status),
+                            )
+                          ? "Revise e execute os encaminhamentos"
+                          : related.some(
+                                (t) =>
+                                  t.execution && t.kind !== "revisao_status",
+                              )
+                            ? "Registre o resultado da tratativa"
+                            : selectedReopen
+                              ? "Pedido reaberto — inicie uma nova investigação"
+                              : "Peça ao agente um encaminhamento"}
+                  </h3>
+                  <p>
+                    {selected.resolution
+                      ? "Confira o resultado e o histórico abaixo. Você pode reabrir o pedido com uma justificativa."
+                      : "Confira as evidências, registre a execução da tratativa e só então encerre a exceção. Uma entrega registrada, sozinha, não comprova que a pendência foi resolvida."}
+                  </p>
+                  {!selected.resolution &&
+                    selected.status !== "status_divergente" && (
+                      <Button
+                        disabled={busy}
+                        onClick={() => {
+                          const alreadyAnalyzed =
+                            related.length > 0 ||
+                            runs.some(
+                              (run) =>
+                                run.type === "order" &&
+                                run.target === selected.id &&
+                                (!selectedReopen ||
+                                  run.createdAt >= selectedReopen.at) &&
+                                run.status === "completed",
+                            ) ||
+                            (activeRun?.type === "order" &&
+                              activeRun.target === selected.id &&
+                              (!selectedReopen ||
+                                activeRun.createdAt >= selectedReopen.at) &&
+                              activeRun.status === "completed");
+                          if (alreadyAnalyzed) setConfirmOrderId(selected.id);
+                          else void investigate(selected.id, "order");
+                        }}
+                      >
+                        {busy
+                          ? "Investigando…"
+                          : selectedReopen && !related.length
+                            ? "Investigar pedido reaberto com IA"
+                            : "Investigar este pedido com IA"}
+                      </Button>
+                    )}
+                  {selected.status === "status_divergente" && (
+                    <p>
+                      A origem não informa qual status é o mais recente. Confira
+                      a fonte e registre a revisão abaixo.
+                    </p>
+                  )}
+                </section>
+                {selectedReopen && !selected.resolution && (
+                  <p className="case-next-step">
+                    Reaberto em{" "}
+                    {new Date(selectedReopen.at).toLocaleString("pt-BR")}.
+                    Motivo: {selectedReopen.note}
+                    <br />
+                    As execuções anteriores não encerram esta nova etapa.
+                  </p>
+                )}
+                {activity("order", selected.id)}
+                <Expandable className="panel prose order-facts-panel">
+                  <summary>
+                    Conferir fatos, prazos e histórico do cliente
+                  </summary>
+                  <p>
+                    Pedido: {shortDate(selected.orderedAt)} · Exceção:{" "}
+                    {shortDate(selected.openedAt)}
+                  </p>
+                  <p>
+                    Promessa original: {shortDate(selected.promisedAt)} ·
+                    Contrato: {shortDate(selected.priority.contractPromise)} ·
+                    Entrega:{" "}
+                    {selected.deliveredAt
+                      ? shortDate(selected.deliveredAt)
+                      : "não registrada"}
+                  </p>
+                  <p>
+                    {selected.carrier} / {selected.state} · Centro de
+                    distribuição: {selected.dc} · turno {selected.shift} ·
+                    máquina {selected.machine || "não informada"} · lote{" "}
+                    {selected.lot}
+                  </p>
+                  <p>
+                    {selected.customer?.orders} pedidos do cliente · valor
+                    acumulado de compras:{" "}
+                    {money(selected.customer?.revenue || "0")}
+                  </p>
+                  {selected.issues.map((i) => (
+                    <p key={i.code}>{generatedTextLabel(i.detail)}</p>
+                  ))}
+                </Expandable>
+                <section className="order-task-section">
+                  <h3>Encaminhamentos para este pedido</h3>
+                  {!related.length && (
+                    <p className="order-empty-tasks">
+                      {selectedReopen
+                        ? "Ainda não há encaminhamentos nesta nova etapa."
+                        : "Ainda não há tarefas."}{" "}
+                      A investigação individual com IA pode ser feita sem
+                      preparar o plano do dia.
+                    </p>
+                  )}
+                  {related.map((t) => (
+                    <div key={t.id}>
+                      {t.kind.startsWith("proposta") && (
+                        <p className="case-next-step">
+                          <strong>
+                            {t.kind === "proposta_reenvio"
+                              ? "Estimativa de reenvio"
+                              : "Valor proposto para reembolso"}
+                            :
+                          </strong>{" "}
+                          {money(
+                            t.kind === "proposta_reembolso"
+                              ? selected.value
+                              : selected.priority.resendCost,
+                          )}
+                          .{" "}
+                          {t.kind === "proposta_reenvio" ? (
+                            <>
+                              Cálculo do piloto: 24% do valor total do pedido +
+                              frete da transportadora.{" "}
+                              {selected.exception === "item_faltante" &&
+                                "Para item faltante, essa aproximação pode superestimar o custo: a base não informa o preço individual do item. "}
+                              Não é uma cotação nem um custo efetivamente
+                              realizado.
+                            </>
+                          ) : (
+                            "O valor efetivo deve ser comprovado e informado no resultado; aprovar não movimenta dinheiro."
+                          )}{" "}
+                          Verifique os registros externos antes de executar.
+                        </p>
+                      )}
+                      <TaskResult
+                        task={t}
+                        orders={orders}
+                        tasks={tasks}
+                        onSaved={refreshAfterSave}
+                      />
+                    </div>
+                  ))}
+                </section>
+                <CaseControls
+                  key={
+                    selected.id + selected.status + (selectedReopen?.id || "")
+                  }
+                  order={selected}
+                  tasks={tasks}
+                  disabled={busy}
+                  onSaved={refreshAfterSave}
+                />
+                <Expandable className="panel prose case-history">
+                  <summary>Histórico deste caso</summary>
+                  {!selected.caseHistory?.length && (
+                    <p className="case-history-empty">
+                      Nenhuma alteração registrada neste pedido. As validações
+                      de status, os encerramentos e as reaberturas aparecerão
+                      aqui. Investigações e tarefas ficam em “Encaminhamentos
+                      para este pedido”.
+                    </p>
+                  )}
+                  {[...(selected.caseHistory || [])].reverse().map((event) => (
+                    <article className="case-history-event" key={event.id}>
+                      <div className="case-history-event-heading">
+                        <strong>
+                          {{
+                            resolve: "Pedido encerrado",
+                            reopen: "Pedido reaberto",
+                            review_status: "Status conferido",
+                          }[event.action] || "Alteração registrada"}
+                        </strong>
+                        <time dateTime={event.at}>
+                          {new Date(event.at).toLocaleString("pt-BR")}
+                        </time>
+                      </div>
+                      {event.outcome && (
+                        <p>
+                          <strong>Resultado:</strong>{" "}
+                          {outcomeLabels[event.outcome.type]}
+                        </p>
+                      )}
+                      {event.outcome && (
+                        <>
+                          <p>
+                            <strong>Evidência do resultado:</strong>{" "}
+                            {event.outcome.evidence}
+                          </p>
+                          {event.outcome.refund !== undefined && (
+                            <p>
+                              <strong>Reembolso registrado:</strong>{" "}
+                              {money(event.outcome.refund)}
+                            </p>
+                          )}
+                          {event.outcome.cost && (
+                            <p>
+                              <strong>Custo registrado:</strong>{" "}
+                              {money(event.outcome.cost.amount)} (
+                              {event.outcome.cost.kind === "estimated"
+                                ? "estimado"
+                                : "informado pelo operador"}
+                              )
+                            </p>
+                          )}
+                        </>
+                      )}
+                      {event.status && (
+                        <p>
+                          <strong>Status confirmado:</strong>{" "}
+                          {statusLabel(event.status)}
+                        </p>
+                      )}
+                      <p className="case-history-event-note">{event.note}</p>
+                    </article>
+                  ))}
+                </Expandable>
+                <Dialog
+                  open={confirmOrderId === selected.id}
+                  onOpenChange={(open) => {
+                    if (!open) setConfirmOrderId(null);
+                  }}
+                >
+                  <DialogContent className="new-plan-dialog">
+                    <span className="new-plan-icon" aria-hidden="true">
+                      <Bot size={24} />
+                    </span>
+                    <DialogTitle>Investigar este pedido novamente?</DialogTitle>
+                    <DialogDescription>
+                      O pedido {selected.id} já tem uma análise ou
+                      encaminhamentos registrados. A IA consultará novamente as
+                      evidências para reavaliar o caso.
+                    </DialogDescription>
+                    <div className="new-plan-consequences">
+                      <div>
+                        <strong>
+                          Os registros anteriores serão preservados
+                        </strong>
+                        <p>
+                          A nova análise não apaga tarefas, execuções ou
+                          histórico. Encaminhamentos existentes podem ser
+                          mantidos, sem criar tarefas duplicadas.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="new-plan-footer">
+                      <Button
+                        variant="outline"
+                        onClick={() => setConfirmOrderId(null)}
+                      >
+                        Manter análise atual
+                      </Button>
+                      <Button
+                        disabled={busy || Boolean(selected.resolution)}
+                        onClick={() => {
+                          const orderId = confirmOrderId;
+                          setConfirmOrderId(null);
+                          if (orderId === selected.id)
+                            void investigate(orderId, "order");
+                        }}
+                      >
+                        Investigar novamente
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
+          </FormSafetyBoundary>
         </DialogContent>
       </Dialog>
       <Dialog
@@ -1275,6 +1357,14 @@ export function OperationsApp() {
         }}
       >
         <DialogContent className="recurrence-dialog">
+          {refreshWarning && (
+            <div className="alert alert-info" role="status">
+              {refreshWarning}{" "}
+              <Button variant="outline" onClick={() => void refreshAfterSave()}>
+                Atualizar tela
+              </Button>
+            </div>
+          )}
           {processTask && (
             <>
               <DialogTitle>{generatedTextLabel(processTask.title)}</DialogTitle>
@@ -1297,7 +1387,7 @@ export function OperationsApp() {
                 pattern={processPattern}
                 onDirtyChange={setProcessDirty}
                 onBusyChange={setProcessSaving}
-                onSaved={refresh}
+                onSaved={refreshAfterSave}
               />
             </>
           )}
@@ -1420,7 +1510,36 @@ export function OperationsApp() {
           </div>
         </DialogContent>
       </Dialog>
-      <Dialog open={resetting} onOpenChange={setResetting}>
+      <Dialog open={confirmOrderClose} onOpenChange={setConfirmOrderClose}>
+        <DialogContent>
+          <DialogTitle>Há alterações não salvas</DialogTitle>
+          <DialogDescription>
+            Sair descarta os campos ainda não registrados neste pedido.
+          </DialogDescription>
+          <div className="task-actions">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmOrderClose(false)}
+            >
+              Continuar editando
+            </Button>
+            <Button
+              onClick={() => {
+                setConfirmOrderClose(false);
+                setSelectedId(undefined);
+              }}
+            >
+              Sair sem salvar alterações
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={resetting}
+        onOpenChange={(open) => {
+          if (!resetBusy) setResetting(open);
+        }}
+      >
         <DialogContent>
           <DialogTitle>Reiniciar esta demonstração?</DialogTitle>
           <DialogDescription>
@@ -1430,10 +1549,16 @@ export function OperationsApp() {
             avaliação.
           </DialogDescription>
           <div className="task-actions">
-            <Button variant="outline" onClick={() => setResetting(false)}>
+            <Button
+              variant="outline"
+              disabled={resetBusy}
+              onClick={() => setResetting(false)}
+            >
               Cancelar
             </Button>
-            <Button onClick={() => void reset()}>Confirmar reinício</Button>
+            <Button disabled={resetBusy} onClick={() => void reset()}>
+              {resetBusy ? "Reiniciando…" : "Confirmar reinício"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

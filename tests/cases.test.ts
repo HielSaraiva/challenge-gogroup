@@ -310,3 +310,48 @@ describe("persistência da decisão e concorrência", () => {
     await releaseAgain();
   });
 });
+
+describe("vínculo da execução no encerramento", () => {
+  const clean = { ...order, status: "aberta", sourceStatuses: ["aberta"] };
+  const refundTask = { ...task, kind: "proposta_reembolso" as const };
+  const action = {
+    action: "resolve" as const,
+    orderId: clean.id,
+    note: "Registro sintético do resultado",
+    outcome: {
+      type: "entrega_confirmada" as const,
+      evidence: "Evidência sintética do resultado",
+      executionTaskId: task.id,
+    },
+  };
+  it("recusa resultado de entrega para execução de reembolso no encerramento separado", () => {
+    expect(() =>
+      transitionCase(clean, undefined, [refundTask], action, randomUUID(), now),
+    ).toThrow("reembolso");
+  });
+  it("recusa vínculo de outra tarefa e persiste o vínculo mesmo sem reutilizar evidência", () => {
+    expect(() =>
+      transitionCase(
+        clean,
+        undefined,
+        [task],
+        {
+          ...action,
+          outcome: { ...action.outcome, executionTaskId: "outro-pedido" },
+        },
+        randomUUID(),
+        now,
+      ),
+    ).toThrow("execução válida");
+    const record = transitionCase(
+      clean,
+      undefined,
+      [task],
+      action,
+      randomUUID(),
+      now,
+    );
+    expect(record.resolution?.outcome?.executionTaskId).toBe(task.id);
+    expect(record.resolution?.outcome?.evidenceTaskId).toBeUndefined();
+  });
+});
