@@ -109,6 +109,28 @@ async function main() {
         investigation.taskIds.includes(task.id) && task.orderId === first,
     ),
   );
+  const recurrenceDataset: Dataset = {
+    ...dataset,
+    orders: Array.from({ length: 30 }, (_, i) => ({
+      ...order,
+      id: `DEMO-REC-${i}`,
+      exception: i < 12 ? "item_faltante" : "atraso_entrega",
+      shift: i < 12 ? "noite" : "manhã",
+    })),
+  };
+  const recurrence = await investigate(
+    { type: "recurrences", target: "base", requestId: randomUUID() },
+    id,
+    recurrenceDataset,
+    () => {},
+  );
+  assert.equal(recurrence.status, "completed", recurrence.summary);
+  assert.ok(recurrence.recurrenceReview);
+  assert.ok(recurrence.consultedInsightIds?.length);
+  assert.ok(recurrence.taskIds.length <= 3);
+  console.log(
+    "Groq real: análise de recorrências e cobertura consultada persistidas: OK",
+  );
   console.log(
     "Groq real com dados fictícios próprios: seleção preservada → escolha evidenciada por área → plano persistido → investigação do caso escolhido → tarefa persistida: OK",
   );

@@ -167,6 +167,9 @@ pnpm test
 pnpm typecheck
 pnpm build
 pnpm format:check
+
+# Regressões de interface em desktop e celular (Chrome instalado)
+pnpm test:browser
 ```
 
 Com a aplicação em execução:
@@ -197,3 +200,5 @@ Veja a [avaliação de utilidade e o roteiro de validação operacional](docs/OP
 ## Recursos visuais
 
 Paleta e tipografia foram inspiradas na referência pública indicada. `public/gogroup-logo.svg` tem origem em [estagiogogroup.com.br](https://estagiogogroup.com.br/assets/gogroup-logo.svg) e é usado para contextualizar este projeto demonstrativo. A fonte Poppins é servida localmente pelo pacote `@fontsource/poppins`.
+
+Os testes de navegador criam uma cópia temporária da aplicação, fazem o build de produção e usam somente fixtures sintéticas. Não carregam `.env.local`, não acessam a base local do desenvolvedor e não chamam o provedor de IA. A rota de preparação dos testes é criada apenas nessa cópia e não faz parte da aplicação publicada. O servidor temporário e seus dados são removidos ao final.

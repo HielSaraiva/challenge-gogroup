@@ -658,17 +658,7 @@ input[type="checkbox"] {
 .prose b {
   color: #31567f;
 }
-.dialog-content {
-  border-color: #e0e9f5;
-  box-shadow: 0 28px 100px #0e326c30;
-}
-.dialog-overlay {
-  background: #0e284f70;
-}
-.dialog-close {
-  color: #56769a;
-  background: #eef4fc;
-}
+
 .detail-heading > p {
   color: #637b98;
 }
@@ -1870,29 +1860,7 @@ td small {
   line-height: 1.9;
   color: #555761;
 }
-.dialog-content {
-  width: min(820px, calc(100vw - 32px));
-  padding: 36px;
-  border-radius: 20px;
-}
-.dialog-content h2 {
-  font-size: 28px;
-  color: var(--brand-blue);
-}
-.dialog-content h3 {
-  font-size: 20px;
-  color: #33343c;
-}
-.dialog-content p {
-  font-size: 13px;
-  line-height: 1.85;
-  color: #555761;
-}
-.dialog-content li {
-  font-size: 13px;
-  line-height: 1.85;
-  color: #555761;
-}
+
 .detail-grid dd {
   font-size: 13px;
   line-height: 1.85;
@@ -2332,14 +2300,7 @@ footer > span:last-child {
   .impact-ledger dd {
     font-size: 18px;
   }
-  .dialog-content {
-    padding: 25px 20px;
-    border-radius: 14px;
-    max-height: 92dvh;
-  }
-  .dialog-content h2 {
-    font-size: 25px;
-  }
+
   .case-controls {
     padding: 18px;
   }

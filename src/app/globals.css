@@ -1445,29 +1445,7 @@ input[type="checkbox"] {
   flex-direction: column;
   gap: 20px;
 }
-.dialog-overlay {
-  position: fixed;
-  inset: 0;
-  background: #12251f60;
-  backdrop-filter: blur(3px);
-  z-index: 40;
-  animation: fade 0.15s ease-out;
-}
-.dialog-content {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(720px, calc(100vw - 32px));
-  max-height: 90vh;
-  overflow-y: auto;
-  background: #fff;
-  border: 1px solid #e8ede9;
-  border-radius: 13px;
-  padding: 30px;
-  z-index: 50;
-  box-shadow: 0 24px 80px #132a3430;
-}
+
 @keyframes fade {
   from {
     opacity: 0;
@@ -1476,32 +1454,7 @@ input[type="checkbox"] {
     opacity: 1;
   }
 }
-.dialog-close {
-  position: absolute;
-  top: 17px;
-  right: 17px;
-  border: 0;
-  color: #9eaaa2;
-  background: #f5f8f6;
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
-  display: grid;
-  place-items: center;
-}
-.dialog-content h2 {
-  font-size: 22px;
-  margin: 10px 0;
-  font-weight: 600;
-}
-.dialog-content h3 {
-  color: #708578;
-  margin: 23px 0 15px;
-  font-size: 12px;
-}
-.dialog-content [id^="radix-"][data-state] {
-  outline: none;
-}
+
 .detail-heading > p {
   color: #8d9b92;
   line-height: 1.8;
@@ -1624,10 +1577,7 @@ input[type="checkbox"] {
   gap: 10px;
   margin-top: 25px;
 }
-.dialog-content > p {
-  color: #8fa297;
-  line-height: 1.8;
-}
+
 .fatal-error {
   padding: 80px;
 }
@@ -2059,9 +2009,7 @@ input[type="checkbox"] {
   .prose {
     padding: 20px;
   }
-  .dialog-content {
-    padding: 23px;
-  }
+
   .detail-stats {
     gap: 10px;
     padding: 15px 12px;

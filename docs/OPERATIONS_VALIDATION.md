@@ -55,3 +55,12 @@ Os documentos de origem, arquivos do case e resultados privados não integram o 
 - Reiniciar só permite uma solicitação por vez e invalida respostas antigas. A carga inicial usa `/api/workspace` para aplicar o mesmo estado nas abas.
 - Preencher custo exige classificar como estimativa ou realizado. Desconhecido não vira zero.
 - Reanálises percorrem agrupamentos menos examinados e preservam mais de um grupo relevante por dimensão; continuam limitadas a até três propostas por análise.
+
+## Verificação desta revisão
+
+- 143 testes de domínio/API aprovados; um teste opcional da base privada permanece ignorado.
+- Oito cenários de navegador aprovados em Chrome, distribuídos entre desktop e celular, sobre build de produção e fixtures sintéticas. Incluem recarga com alterações não salvas, falha após gravação, conclusão sem recomendação, persistência após recarregar e reinício único.
+- TypeScript, formatação e build de produção aprovados.
+- Groq real validado com dados sintéticos: plano, tarefa individual e análise de recorrências com candidatos consultados persistidos.
+- Neon validado com sessão sintética exclusiva: investigação, tarefa, idempotência e execução persistidas. Somente os registros dessa verificação foram removidos.
+- A verificação da versão publicada na Vercel depende do endereço de implantação; os resultados acima não a substituem.

@@ -362,17 +362,15 @@ export function TaskResult({
           <header className="task-execution-header">
             <CircleCheck size={20} aria-hidden="true" />
             <h4>
-              {task.conclusion
-                ? "Conclusão documentada"
-                : task.execution
-                  ? task.execution.stage === "dispatched"
-                    ? order?.resolution
-                      ? "Despacho registrado"
-                      : "Despacho registrado — aguardando recebimento"
-                    : task.execution.stage === "received"
-                      ? "Recebimento confirmado na execução"
-                      : "Execução registrada"
-                  : "Conclusão legada, sem evidência estruturada"}
+              {task.execution
+                ? task.execution.stage === "dispatched"
+                  ? order?.resolution
+                    ? "Despacho registrado"
+                    : "Despacho registrado — aguardando recebimento"
+                  : task.execution.stage === "received"
+                    ? "Recebimento confirmado na execução"
+                    : "Execução registrada"
+                : "Conclusão legada, sem evidência estruturada"}
             </h4>
             {task.execution?.at && (
               <time dateTime={task.execution?.at}>

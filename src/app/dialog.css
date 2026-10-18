@@ -1,0 +1,67 @@
+/* Shared dialog foundation. Per-workflow layouts are scoped in workspace.css. */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: #0e284f70;
+  backdrop-filter: blur(3px);
+  z-index: 40;
+  animation: fade 0.15s ease-out;
+}
+.dialog-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(820px, calc(100vw - 32px));
+  max-height: calc(90dvh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #fff;
+  border: 1px solid #e0e9f5;
+  border-radius: 20px;
+  padding: 36px;
+  z-index: 50;
+  box-shadow: 0 28px 100px #0e326c30;
+}
+.dialog-close {
+  position: absolute;
+  top: 17px;
+  right: 17px;
+  border: 0;
+  color: #56769a;
+  background: #eef4fc;
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+}
+.dialog-content h2 {
+  font-size: 28px;
+  color: var(--brand-blue);
+  margin: 10px 44px 10px 0;
+  font-weight: 600;
+}
+.dialog-content h3 {
+  font-size: 20px;
+  color: #33343c;
+  margin: 23px 0 15px;
+}
+.dialog-content p,
+.dialog-content li {
+  font-size: 13px;
+  line-height: 1.85;
+  color: #555761;
+}
+.dialog-content [id^="radix-"][data-state] {
+  outline: none;
+}
+@media (max-width: 640px) {
+  .dialog-content {
+    padding: 25px 20px;
+    border-radius: 14px;
+  }
+  .dialog-content h2 {
+    font-size: 25px;
+  }
+}

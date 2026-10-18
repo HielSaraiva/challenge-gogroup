@@ -16,7 +16,8 @@
     "db:prepare": "tsx --env-file-if-exists=.env.local scripts/prepare-database.ts",
     "db:migrate": "tsx --env-file-if-exists=.env.local scripts/prepare-database.ts --schema-only",
     "db:generate": "drizzle-kit generate",
-    "import:data": "tsx --env-file-if-exists=.env.local scripts/import-data.ts"
+    "import:data": "tsx --env-file-if-exists=.env.local scripts/import-data.ts",
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "@fontsource/poppins": "^5.3.0",
@@ -36,6 +37,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4.1.16",
     "@types/node": "^22.18.0",
     "@types/react": "^19.2.0",

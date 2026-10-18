@@ -25,7 +25,7 @@ const resultLabels = {
   inconclusiva: "Verificação encerrada sem confirmação",
 };
 export function RecurrenceInvestigation({
-  task,
+  task: sourceTask,
   pattern,
   orders,
   onSaved,
@@ -39,6 +39,11 @@ export function RecurrenceInvestigation({
   onDirtyChange: (dirty: boolean) => void;
   onBusyChange: (busy: boolean) => void;
 }) {
+  const [savedTask, setSavedTask] = useState<Task>();
+  const task =
+    savedTask && savedTask.updatedAt >= sourceTask.updatedAt
+      ? savedTask
+      : sourceTask;
   const initial = task.processProgress;
   const [observations, setObservations] = useState(initial?.observations || "");
   const [nextStep, setNextStep] = useState(initial?.nextStep || "");
@@ -136,7 +141,7 @@ export function RecurrenceInvestigation({
     }
     if (conclude && (!outcome || observations.trim().length < 20)) {
       setError(
-        "Para concluir, escolha o resultado, descreva o que foi verificado (mínimo de 20 caracteres) e descreva o que foi verificado.",
+        "Para concluir, escolha o resultado, descreva o que foi verificado (mínimo de 20 caracteres) para registrar a conclusão.",
       );
       form.current?.reportValidity();
       return;
@@ -167,6 +172,7 @@ export function RecurrenceInvestigation({
         throw new Error(
           result.error || "Não foi possível salvar a investigação.",
         );
+      setSavedTask(result);
       setVersion(result.updatedAt);
       setSavedAt(result.processProgress?.at);
       setSaved(JSON.stringify(draft));
