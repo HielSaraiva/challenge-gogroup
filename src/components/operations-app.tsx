@@ -1,4 +1,6 @@
 "use client";
+import type { WorkspaceSnapshot } from "@/domain/workspace";
+import { LatestRequest } from "@/lib/latest-request";
 import { FormSafetyBoundary } from "./hooks/form-safety";
 import { RecurrenceInvestigation } from "./recurrence-investigation";
 import { Expandable } from "./ui/expandable";
@@ -155,26 +157,22 @@ export function OperationsApp() {
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
   }, [tab]);
+  const requests = useRef(new LatestRequest());
   const refresh = useCallback(async () => {
-    await get("/api/session");
-    const [s, q, o, i, t, r, op] = await Promise.all([
-      get<ReturnType<typeof dashboard>>("/api/dashboard"),
-      get<ReturnType<typeof planQueue>>("/api/queue"),
-      get<{ orders: RankedOrder[] }>("/api/orders?limit=10000"),
-      get<Insight[]>("/api/insights"),
-      get<Task[]>("/api/tasks"),
-      get<Investigation[]>("/api/investigations"),
-      get<{
-        financial: ReturnType<typeof financialReport>;
-      }>("/api/operations"),
-    ]);
-    setSummary(s);
-    setDay(q);
-    setOrders(o.orders);
-    setPatterns(i);
-    setTasks(t);
-    setRuns(r);
-    setFinancial(op.financial);
+    const ticket = requests.current.begin();
+    try {
+      const snapshot = await get<WorkspaceSnapshot>("/api/workspace");
+      if (!requests.current.isCurrent(ticket)) return;
+      setSummary(snapshot.summary);
+      setDay(snapshot.day);
+      setOrders(snapshot.orders);
+      setPatterns(snapshot.patterns);
+      setTasks(snapshot.tasks);
+      setRuns(snapshot.runs);
+      setFinancial(snapshot.financial);
+    } catch (error) {
+      if (requests.current.isCurrent(ticket)) throw error;
+    }
   }, []);
   const refreshAfterSave = useCallback(async () => {
     try {
@@ -203,6 +201,11 @@ export function OperationsApp() {
     } catch (e) {
       setSummary(undefined);
       setDay(undefined);
+      setOrders([]);
+      setTasks([]);
+      setRuns([]);
+      setPatterns([]);
+      setFinancial(undefined);
       const m = (e as Error).message;
       if (!m.startsWith("Base ainda não importada")) setError(m);
     } finally {
@@ -213,10 +216,10 @@ export function OperationsApp() {
     void load();
   }, [load]);
   useEffect(() => {
-    if (busy || !runs.some((r) => r.status === "running")) return;
+    if (busy || resetBusy || !runs.some((r) => r.status === "running")) return;
     const timer = setInterval(() => void refresh().catch(() => {}), 2500);
     return () => clearInterval(timer);
-  }, [busy, runs, refresh]);
+  }, [busy, resetBusy, runs, refresh]);
   async function investigate(
     target: string,
     type: Investigation["type"],
@@ -321,6 +324,7 @@ export function OperationsApp() {
   }
   async function reset() {
     if (resetLock.current) return;
+    requests.current.invalidate();
     resetLock.current = true;
     setResetBusy(true);
     setError("");
@@ -526,6 +530,7 @@ export function OperationsApp() {
               <DataImport
                 key={sessionRevision}
                 onImported={async () => {
+                  requests.current.invalidate();
                   await load();
                   navigate("overview");
                   setNotice(

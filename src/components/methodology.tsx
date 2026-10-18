@@ -473,21 +473,21 @@ export function Methodology({
             <li>
               <b>Verificação da equipe:</b> abra uma investigação, confira ao
               menos dois pedidos e as condições reais da operação. Registre as
-              evidências, a conclusão sobre a hipótese e o próximo
-              encaminhamento. Use a busca e a paginação para localizar pedidos;
-              as referências do agente aparecem primeiro. “Salvar progresso”
-              guarda anotações e pedidos conferidos sem concluir a investigação.
-              Ao retomar, continue do último salvamento. “Concluir investigação”
-              exige ao menos dois pedidos, resultado e próximos passos. Se ainda
+              evidências e a conclusão sobre a hipótese. A recomendação seguinte
+              é opcional. Use a busca e a paginação para localizar pedidos; as
+              referências do agente aparecem primeiro. “Salvar progresso” guarda
+              anotações e pedidos conferidos sem concluir a investigação. Ao
+              retomar, continue do último salvamento. “Registrar conclusão”
+              exige ao menos dois pedidos, resultado e observações. Se ainda
               faltam verificações, salve o progresso em vez de encerrar como
               inconclusiva.
             </li>
             <li>
               <b>Continuidade:</b> a conclusão sai de Pendências e continua
               acessível em Recorrências. Uma nova análise geral considera o que
-              já foi registrado e não recria automaticamente grupos existentes.
-              Para retomar um grupo concluído, use “Investigar este grupo
-              novamente”.
+              já foi registrado, prioriza agrupamentos menos examinados e não
+              recria automaticamente grupos existentes. Para retomar um grupo
+              concluído, use “Investigar este grupo novamente”.
             </li>
           </ol>
           <p>
@@ -551,7 +551,8 @@ export function Methodology({
             <p>
               A importação pela interface vale apenas para sua sessão. Trocar a
               base com tratativas ativas é bloqueado. Reiniciar em Dados cria
-              uma nova sessão sem tratativas e mantém a base escolhida.
+              uma nova sessão sem tratativas e restaura a base padrão de
+              30/09/2026.
             </p>
           </Expandable>
           <Expandable>

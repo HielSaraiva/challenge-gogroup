@@ -12,7 +12,7 @@ export type ResolutionDraft = {
   evidence: string;
   refund: string;
   cost: string;
-  costKind: "estimated" | "declared";
+  costKind: "" | "estimated" | "declared";
   receiptConfirmed: boolean;
 };
 export const emptyResolution: ResolutionDraft = {
@@ -21,7 +21,7 @@ export const emptyResolution: ResolutionDraft = {
   evidence: "",
   refund: "",
   cost: "",
-  costKind: "estimated",
+  costKind: "",
   receiptConfirmed: false,
 };
 
@@ -42,6 +42,8 @@ export function resolutionPayload(
     throw new Error(
       "Informe uma referência que comprove o resultado, ou confirme o uso da evidência da execução.",
     );
+  if (draft.cost.trim() && !draft.costKind)
+    throw new Error("Selecione como o valor do custo foi apurado.");
   return {
     type: draft.type,
     executionTaskId: execution.taskId,
@@ -55,7 +57,7 @@ export function resolutionPayload(
       ? {
           cost: {
             amount: parseCurrencyInput(draft.cost),
-            kind: draft.costKind,
+            kind: draft.costKind as "estimated" | "declared",
           },
         }
       : {}),
@@ -219,6 +221,7 @@ export function ResolutionFields({
         <label>
           Como o custo foi apurado?
           <select
+            required
             value={value.costKind}
             onChange={(event) =>
               change({
@@ -226,6 +229,7 @@ export function ResolutionFields({
               })
             }
           >
+            <option value="">Selecione como o valor foi apurado</option>
             <option value="estimated">Estimativa, ainda não confirmada</option>
             <option value="declared">
               Custo realizado, informado pela equipe
