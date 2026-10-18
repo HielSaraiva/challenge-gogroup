@@ -1283,6 +1283,15 @@ main > .panel {
 .workspace-empty {
   padding: 24px 0;
 }
+.panel.workspace-empty {
+  padding: 24px;
+}
+.panel.workspace-empty > h3 {
+  margin: 0 0 12px;
+}
+.panel.workspace-empty > p {
+  margin: 0;
+}
 .page-size-control {
   display: flex;
   align-items: center;
