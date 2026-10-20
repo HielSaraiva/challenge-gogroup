@@ -1,4 +1,8 @@
-import type { Dataset, Task, Order } from "../../src/domain/types";
+import type { Dataset, Task, Order, DailyPlan } from "../../src/domain/types";
+import { DEFAULT_WEIGHTS, REFERENCE_DATE } from "../../src/domain/types";
+import { queue } from "../../src/domain/analytics";
+import { workstreams } from "../../src/domain/operations";
+import { datasetReference, POLICY_VERSION } from "../../src/domain/planning";
 const base: Order = {
   id: "UI-A",
   customerId: "UI-CUSTOMER",
@@ -82,3 +86,45 @@ export const tasks: Task[] = [
     idempotencyKey: "browser-process",
   },
 ];
+
+export const planData: Dataset = {
+  ...data,
+  sourceRows: 26,
+  orders: [...data.orders, { ...base, id: "UI-NEXT" }],
+};
+const selection = queue(planData);
+export const dailyPlan: DailyPlan = {
+  id: "55555555-5555-4555-8555-555555555555",
+  investigationId: "66666666-6666-4666-8666-666666666666",
+  idempotencyKey: "browser-daily-plan",
+  fingerprint: "browser-daily-plan",
+  createdAt: "2026-10-20T12:00:00.000Z",
+  reference: REFERENCE_DATE,
+  policyVersion: POLICY_VERSION,
+  datasetReference: datasetReference(planData),
+  statusSnapshot: Object.fromEntries(
+    selection.orders.map((o) => [o.id, o.status]),
+  ),
+  strategy: "equilibrada",
+  strategyReason:
+    "Equilibrar espera, exposição e relacionamento com os clientes.",
+  briefing: "Conferir as evidências e encaminhar os casos por área.",
+  selectedOrderIds: selection.orders.map((o) => o.id),
+  capacity: selection.capacity,
+  usedCapacity: 0,
+  weights: DEFAULT_WEIGHTS,
+  priorityAreas: ["Atendimento"],
+  comparison: { prioritized: selection.prioritized, fifo: selection.fifo },
+  workstreams: workstreams(planData).map((stream) => ({
+    area: stream.area,
+    orderIds: stream.orderIds,
+    value: stream.value,
+    risk: stream.risk,
+    nextStep: "Conferir as referências do caso e registrar o encaminhamento.",
+    agentDecision: {
+      firstOrderId: stream.area === "Atendimento" ? "UI-A" : stream.orderIds[0],
+      justification:
+        "O caso representa uma divergência que precisa ser conferida pela equipe.",
+    },
+  })),
+};

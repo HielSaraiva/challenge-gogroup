@@ -21,7 +21,7 @@ A carteira recebida pode ser consultada antes da IA. A fila de trabalho só é p
 
 ## Critérios e limites das regras
 
-A capacidade global fornecida é 150 tratativas diárias, com duração média de 12 minutos. O contador do piloto usa encerramentos como aproximação de esforço; reabrir não devolve a vaga. Produção precisa medir contatos e investigações e considerar capacidade por especialidade. Investigação de recorrência não entra automaticamente na capacidade individual.
+A capacidade global fornecida é 150 tratativas diárias, com duração média de 12 minutos. O contador do piloto usa encerramentos como aproximação de esforço; reabrir não devolve a vaga. Essa referência limita novas seleções, sem bloquear o registro de resultados acima dela. Produção precisa medir contatos e investigações e considerar capacidade por especialidade. Investigação de recorrência não entra automaticamente na capacidade individual.
 
 As estratégias, a reserva de 20% para antigos e os limiares de sinais são heurísticas do projeto. Urgência usa o percentil 95 dos dias de espera/atraso para distinguir os casos sem saturar a pontuação de muitos pedidos. A tabela de probabilidade de cancelamento permanece independente e segue os parâmetros fornecidos.
 
@@ -88,3 +88,15 @@ A validação publicada detectou uma rejeição de formato de ferramenta (`tool_
 Após o ajuste, os testes reais publicados concluíram na primeira resposta: pedido (903 tokens), descoberta de recorrências (1.068), plano diário (1.692), investigação de processo (1.010) e nova etapa vinculada à conclusão anterior (1.075). Também foram conferidos idempotência, encerramento, reabertura, persistência e isolamento. Todos usaram sessões exclusivas com CSVs fictícios, restauradas ao final, sem alteração da sessão do usuário ou de outros visitantes.
 
 Regressão final: 159 testes aprovados, um opcional ignorado; TypeScript, formatação e build aprovados. O comando de implantação aceita `--process-only` para conferir investigação de processo e retomada sem repetir os demais fluxos ou consumir suas chamadas ao modelo.
+
+## FIFO, capacidade e continuidade do plano — 20/10/2026
+
+O enunciado descreve a fila atual por ordem de chegada; os parâmetros definem 150 tratativas por dia e tempo médio de doze minutos. O FIFO da demonstração usa a abertura da exceção, com desempate por código, coerente com a fila de problemas. A data da compra não define essa ordem. Os filtros preservam a ordem do conjunto consultado; a seleção do plano conserva sua prioridade.
+
+A capacidade é uma referência de planejamento, não um teto para documentar resultados já ocorridos. Foram removidos os bloqueios de encerramento em ambos os caminhos, mantendo todas as validações de execução, evidência e compatibilidade. Cada encerramento permanece no consumo; reabrir não devolve vagas. Após criar um plano, Resultados mostra a referência, os encerramentos registrados e as vagas restantes. O modal de preparação apresenta a quantidade que pode entrar no plano e a capacidade antes de confirmar. A data operacional do piloto continua fixa.
+
+Hoje mostra o progresso de cada área e mantém a escolha inicial da IA enquanto ela estiver aberta. Quando encerrada, a sugestão avança pela ordem de prioridade salva, sem chamar a IA, modificar a seleção ou reutilizar a justificativa original como se explicasse outro pedido. Áreas concluídas são identificadas; ao concluir o plano inteiro, há acesso à carteira. Um pedido selecionado que for reaberto volta ao progresso da área, preservando o consumo da tratativa anterior.
+
+A situação da carteira aparece antes da ação de preparar o dia. O modal de reanálise separa preservação dos registros, possíveis novas propostas e consumo de cota. O texto e o botão de nova análise são consistentes quando já há investigação. Metodologia descreve a continuidade automática, a capacidade de planejamento, a preparação de evidências no servidor e o avanço da cobertura das recorrências.
+
+Validação desta alteração: 165 testes de domínio/API aprovados e um opcional ignorado; doze cenários de navegador aprovados em desktop e celular. A preparação de plano é exclusiva da cópia temporária dos testes. O fluxo de encerramento e reabertura foi exercitado pelos formulários reais, com persistência após recarga e nenhuma chamada à IA para avançar a sugestão. Também foram verificados os dois caminhos de registro de resultado após consumir as 150 vagas, a ordenação FIFO, os contadores de Resultados, o modal e a posição da carteira. TypeScript, formatação e build aprovados.

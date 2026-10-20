@@ -24,6 +24,9 @@ test("protects order edits, keyboard focus and discards only after confirmation"
   await page
     .getByRole("textbox", { name: "Ação realizada", exact: true })
     .fill("Endereço conferido nos registros sintéticos.");
+  await page
+    .getByRole("textbox", { name: "Ação realizada", exact: true })
+    .press("Tab");
   const unloading = page.waitForEvent("dialog");
   const reload = page.reload({ timeout: 1500 }).catch(() => {});
   const unsaved = await unloading;
@@ -199,4 +202,203 @@ test("restarts only once and restores the standard base", async ({ page }) => {
   const workspace = await (await page.request.get("/api/workspace")).json();
   expect(workspace.tasks).toEqual([]);
   expect(workspace.summary.totalCount).toBe(25);
+});
+
+test("advances the daily suggestion after closure and restores progress after reopening without AI", async ({
+  page,
+}, info) => {
+  expect(
+    (await page.request.get("/api/browser-fixture?plan=1")).ok(),
+  ).toBeTruthy();
+  let modelRequests = 0;
+  page.on("request", (request) => {
+    if (
+      request.url().includes("/api/investigations") &&
+      request.method() === "POST"
+    )
+      modelRequests++;
+  });
+  await page.goto("/#overview");
+  await expect(page.locator(".portfolio-summary")).toBeVisible();
+  const portfolio = await page.locator(".portfolio-summary").boundingBox();
+  const command = await page.locator(".agent-command").boundingBox();
+  expect(portfolio!.y).toBeLessThan(command!.y);
+  const stream = page.locator(".workstream-card").filter({
+    has: page.getByRole("heading", { name: "Atendimento", exact: true }),
+  });
+  await stream
+    .getByRole("button", {
+      name: "Abrir pedido sugerido UI-A de Atendimento",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Ação realizada", exact: true })
+    .fill("Cadastro sintético conferido e correção registrada pela equipe.");
+  await page
+    .getByRole("textbox", {
+      name: "Evidência ou referência da execução",
+      exact: true,
+    })
+    .fill("Protocolo sintético de confirmação cadastral.");
+  await page
+    .getByRole("combobox", {
+      name: "A ação realizada resolveu a pendência deste pedido?",
+      exact: true,
+    })
+    .selectOption("yes");
+  await page
+    .getByRole("combobox", {
+      name: "Qual resultado foi confirmado?",
+      exact: true,
+    })
+    .selectOption("endereco_corrigido");
+  await page
+    .getByRole("checkbox", {
+      name: "A evidência da execução também comprova este resultado",
+      exact: true,
+    })
+    .check();
+  await page
+    .getByRole("button", {
+      name: "Registrar execução e encerrar pedido",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByText("Registro salvo com sucesso.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: "Registrar execução e encerrar pedido",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Fechar detalhes", exact: true })
+    .click();
+  await expect(stream.locator(".workstream-progress")).toHaveText(
+    "Encerrados: 1 · Em aberto: 1",
+  );
+  await expect(
+    stream.getByRole("button", {
+      name: "Abrir pedido sugerido UI-NEXT de Atendimento",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    stream.getByText("Por que começar por este pedido", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    stream.getByText("Próximo pedido pela prioridade do plano.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: info.outputPath("daily-progress.png"),
+    fullPage: true,
+  });
+  await page.reload();
+  await expect(
+    stream.getByRole("button", {
+      name: "Abrir pedido sugerido UI-NEXT de Atendimento",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.goto("/#impact");
+  const capacity = page.locator(".capacity-summary");
+  await expect(capacity).toContainText("150 tratativas");
+  await expect(capacity.locator("dd")).toHaveText([
+    "150 tratativas",
+    "1",
+    "149",
+  ]);
+  await page.screenshot({
+    path: info.outputPath("results-capacity.png"),
+    fullPage: true,
+  });
+  await page.goto("/#queue");
+  await page
+    .getByRole("checkbox", { name: "Consultar toda a carteira", exact: true })
+    .check();
+  await page.getByLabel("Buscar pedidos", { exact: true }).fill("UI-A");
+  await page
+    .getByRole("button", {
+      name: "Abrir pedido UI-A de Marca sintética",
+      exact: true,
+    })
+    .click();
+  const reason = page.getByRole("textbox", {
+    name: "Motivo da reabertura",
+    exact: true,
+  });
+  await reason.fill(
+    "O cadastro precisa de nova conferência nesta etapa sintética.",
+  );
+  await page
+    .getByRole("button", { name: "Reabrir com justificativa", exact: true })
+    .click();
+  await expect(reason).toHaveCount(0);
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Fechar detalhes", exact: true })
+    .click();
+  await page.goto("/#overview");
+  await expect(stream.locator(".workstream-progress")).toHaveText(
+    "Encerrados: 0 · Em aberto: 2",
+  );
+  await expect(
+    stream.getByRole("button", {
+      name: "Abrir pedido sugerido UI-A de Atendimento",
+      exact: true,
+    }),
+  ).toBeVisible();
+  expect(modelRequests).toBe(0);
+});
+
+test("explains plan capacity and recurrence reanalysis with readable dialogs", async ({
+  page,
+}, info) => {
+  await page.goto("/#overview");
+  await page
+    .getByRole("button", { name: "Preparar meu dia com IA", exact: true })
+    .click();
+  await expect(page.locator(".plan-capacity-note")).toContainText(
+    "150 vagas de referência",
+  );
+  await page.getByRole("button", { name: "Cancelar", exact: true }).click();
+  await page.goto("/#insights");
+  await page
+    .getByRole("button", {
+      name: "Analisar a base novamente com IA",
+      exact: true,
+    })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByRole("heading", {
+      name: "Analisar recorrências novamente?",
+      exact: true,
+    }),
+  ).toBeFocused();
+  await expect(
+    dialog.getByText("O que fica preservado", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    dialog.getByText("O que pode ser gerado", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: "Analisar novamente", exact: true }),
+  ).toBeVisible();
+  expect(
+    await dialog.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth,
+    ),
+  ).toBeTruthy();
+  await page.screenshot({
+    path: info.outputPath("recurrence-confirmation.png"),
+  });
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
 });

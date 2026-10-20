@@ -137,6 +137,7 @@ As execuções têm orçamento de tempo, limite de chamadas e controle de concor
 
 ## Sessões, integridade e privacidade
 
+- Em Hoje, os cards mostram encerrados e abertos por área. Após encerrar a escolha inicial da IA, a sugestão avança pela prioridade salva do mesmo plano, sem nova chamada ao modelo. Reabrir um pedido selecionado o devolve ao progresso da área. A seleção não recebe pedidos externos automaticamente.
 - A base importada permanece imutável. Revisões, encerramentos e reaberturas são sobreposições exclusivas da sessão.
 - Pendências mostra apenas trabalho em aberto, com uma entrada por pedido e investigações de processo ainda não concluídas. A lista é paginada e não mistura históricos de análises ou planos. Resultados mostra a situação atual da base, problemas abertos, tipos de solução e valores registrados, sem lista individual de encerramentos. Os detalhes ficam em Pedidos; custo desconhecido continua distinto de zero.
 - Recorrências começa com “Analisar recorrências com IA”. O agente consulta até 16 agrupamentos calculados, priorizando os menos examinados em reanálises, com amostras de até três pedidos e registros anteriores, compara as evidências e propõe até três investigações por análise. Título, hipótese, justificativa da seleção e verificação recomendada são produzidos pelo agente; números e referências são validados pelo servidor. Uma seleção vazia é aceita com justificativa, sem cards artificiais. Os cards são tarefas persistidas, com paginação, e só surgem após o registro do agente. Investigações antigas permanecem acessíveis.

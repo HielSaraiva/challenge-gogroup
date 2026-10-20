@@ -577,6 +577,29 @@ export function OperationsApp() {
             <>
               {tab === "overview" && (
                 <>
+                  <section className="panel prose portfolio-summary">
+                    <h2>Situação da carteira recebida</h2>
+                    <dl className="result-metrics">
+                      <div>
+                        <dt>Pedidos pendentes</dt>
+                        <dd>{summary.count}</dd>
+                      </div>
+                      <div>
+                        <dt>Valor dos pedidos pendentes</dt>
+                        <dd>{money(summary.value)}</dd>
+                      </div>
+                      <div>
+                        <dt>Conflitos de status para conferir</dt>
+                        <dd>
+                          {
+                            orders.filter(
+                              (o) => o.status === "status_divergente",
+                            ).length
+                          }
+                        </dd>
+                      </div>
+                    </dl>
+                  </section>
                   <section className="panel prose agent-command">
                     <span className="badge">
                       <Bot size={16} aria-hidden="true" /> Agente de operações ·
@@ -588,10 +611,10 @@ export function OperationsApp() {
                         : "Qual é o melhor foco para hoje?"}
                     </h2>
                     <p>
-                      {summary.count} pedidos pendentes recebidos ·{" "}
-                      {day?.availableCapacity ?? CAPACITY} vagas disponíveis no
-                      piloto. Você escolhe o foco; a IA compara as alternativas
-                      e registra os encaminhamentos.
+                      {day?.availableCapacity ?? CAPACITY} de{" "}
+                      {day?.capacity ?? CAPACITY} vagas de planejamento
+                      disponíveis. Você escolhe o foco; a IA prepara a seleção e
+                      as orientações para a equipe.
                     </p>
                     {day?.status === "needs_review" && (
                       <p role="status">
@@ -663,33 +686,6 @@ export function OperationsApp() {
                       }}
                     />
                   )}
-                  <section className="panel prose">
-                    <h2>Situação da carteira recebida</h2>
-                    <dl className="result-metrics">
-                      <div>
-                        <dt>Pedidos pendentes</dt>
-                        <dd>{summary.count}</dd>
-                      </div>
-                      <div>
-                        <dt>Valor dos pedidos pendentes</dt>
-                        <dd>{money(summary.value)}</dd>
-                      </div>
-                      <div>
-                        <dt>Conflitos de status para conferir</dt>
-                        <dd>
-                          {
-                            orders.filter(
-                              (o) => o.status === "status_divergente",
-                            ).length
-                          }
-                        </dd>
-                      </div>
-                    </dl>
-                    <p>
-                      Indicadores dos pedidos ainda abertos. A seleção do plano
-                      é apresentada separadamente, em “Seu plano de trabalho”.
-                    </p>
-                  </section>
                 </>
               )}
               {tab === "queue" && (

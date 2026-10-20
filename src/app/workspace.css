@@ -1126,7 +1126,9 @@ main > .panel {
   color: #2659a5;
 }
 .new-plan-dialog h2 {
-  margin: 0 24px 12px 0;
+  margin: 0 0 12px;
+  padding-right: 40px;
+  text-wrap: balance;
   font-size: 22px;
   line-height: 1.35;
 }
@@ -1836,4 +1838,16 @@ main > .panel {
 }
 .workstream-card .workstream-done {
   margin: auto 0 0;
+}
+
+.portfolio-summary .result-metrics {
+  margin-bottom: 0;
+}
+/* The initial focus announces a static heading; controls keep their focus rings. */
+.new-plan-dialog h2:focus {
+  outline: none;
+}
+.new-plan-dialog > .muted {
+  margin-bottom: 16px;
+  font-size: 13px;
 }

@@ -113,9 +113,9 @@ export function ImprovementsWorkspace({
       <div className="panel prose">
         <h2>Quais problemas merecem uma investigação?</h2>
         <p>
-          O agente compara os agrupamentos de maior relevância na base e propõe
-          até três investigações por análise, com evidências, hipótese e próximo
-          passo. A equipe verifica e registra a conclusão.
+          O agente compara agrupamentos e investigações anteriores e propõe até
+          três achados para verificação. A equipe confere as evidências e
+          registra a conclusão.
         </p>
         <div className="task-actions">
           <Button
@@ -127,7 +127,7 @@ export function ImprovementsWorkspace({
           >
             {analyzing
               ? "Analisando recorrências…"
-              : reviewed
+              : reviewed || investigations.length > 0
                 ? "Analisar a base novamente com IA"
                 : "Analisar recorrências com IA"}
           </Button>
@@ -278,22 +278,33 @@ export function ImprovementsWorkspace({
             if (starting.current) event.preventDefault();
           }}
         >
-          <DialogTitle>Analisar a base novamente?</DialogTitle>
+          <DialogTitle>Analisar recorrências novamente?</DialogTitle>
           <DialogDescription>
-            O agente compara os agrupamentos e considera as investigações e
-            conclusões existentes. A análise usa a cota da IA e pode não
-            encontrar novos achados.
+            A IA buscará novos achados considerando as investigações e
+            conclusões já registradas.
           </DialogDescription>
-          <p>
-            As investigações anteriores serão preservadas. Grupos já registrados
-            não serão recriados automaticamente.
-          </p>
+          <div className="new-plan-consequences">
+            <div>
+              <strong>O que fica preservado</strong>
+              <p>
+                Suas investigações, anotações e conclusões. Grupos já
+                registrados não serão duplicados.
+              </p>
+            </div>
+            <div>
+              <strong>O que pode ser gerado</strong>
+              <p>
+                Até três propostas. Pode não haver novos achados neste recorte.
+              </p>
+            </div>
+          </div>
+          <p className="muted">Essa ação usa a cota da IA.</p>
           <div className="new-plan-footer">
             <Button variant="outline" onClick={() => setConfirmAnalysis(false)}>
               Cancelar
             </Button>
             <Button disabled={locked} onClick={startAnalysis}>
-              Confirmar nova análise
+              Analisar novamente
             </Button>
           </div>
         </DialogContent>

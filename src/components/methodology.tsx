@@ -114,8 +114,9 @@ export function Methodology({
             </li>
             <li>
               <b>Hoje:</b> escolha o foco e prepare um plano com IA para a
-              capacidade disponível. Esta etapa é opcional: você pode investigar
-              um pedido diretamente em Pedidos.
+              capacidade disponível. Após cada encerramento, a sugestão da área
+              avança para outro pedido aberto do mesmo plano. Esta etapa é
+              opcional: você pode investigar um pedido diretamente em Pedidos.
             </li>
             <li>
               <b>Pedidos:</b> consulte toda a carteira ou a seleção do plano.
@@ -178,10 +179,11 @@ export function Methodology({
             </ul>
           </Expandable>
           <p>
-            Para preparar o dia, o servidor reúne os indicadores e as amostras
-            antes da chamada ao modelo. A IA compara as alternativas e registra
-            as orientações em uma resposta. Os cálculos e a seleção continuam
-            validados pelo servidor.
+            Nas análises de plano, pedido e recorrências, o servidor prepara as
+            consultas e os cálculos previsíveis antes da chamada ao modelo. A IA
+            compara as evidências e registra sua decisão. As validações
+            continuam no servidor; a continuidade das sugestões em Hoje não
+            precisa de novas chamadas à IA.
           </p>
           <Expandable>
             <summary>Repetir uma análise usa a IA novamente?</summary>
@@ -405,6 +407,14 @@ export function Methodology({
                 resolvido é a quantidade resolvida dividida pelo total da base.
               </li>
               <li>
+                <b>Capacidade do piloto:</b> aparece após criar um plano e
+                compara a referência de 150 tratativas com os encerramentos
+                registrados e as vagas restantes para planejar. Cada
+                encerramento conta uma vez, inclusive após reabertura; não é o
+                total de pedidos únicos resolvidos nem uma medição de tempo
+                real. A referência não bloqueia o registro de resultados.
+              </li>
+              <li>
                 <b>Valores registrados:</b> reembolsos e custos informados
                 acumulados, inclusive após reabertura. Estimativas são previsões
                 registradas nos encerramentos atuais e ficam separadas.
@@ -517,10 +527,11 @@ export function Methodology({
             </p>
             <p>
               Para limitar o uso da cota, cada análise compara até dezesseis
-              agrupamentos de maior relevância, com amostras de até três pedidos
-              e os registros anteriores relacionados. O agente pode propor até
-              três investigações ou justificar que não há novos achados. O
-              servidor valida as referências e evita grupos quase idênticos.
+              agrupamentos, priorizando os menos examinados e usando a
+              relevância como desempate, com amostras de até três pedidos e os
+              registros anteriores relacionados. O agente pode propor até três
+              investigações ou justificar que não há novos achados. O servidor
+              valida as referências e evita grupos quase idênticos.
             </p>
             <p>
               São critérios exploratórios, sem teste de significância. A

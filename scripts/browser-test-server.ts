@@ -3,7 +3,7 @@ import { mkdtemp, cp, symlink, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
-import { data, tasks } from "../tests/browser/fixtures";
+import { data, tasks, planData, dailyPlan } from "../tests/browser/fixtures";
 async function main() {
   const root = process.cwd();
   const copy = await mkdtemp(path.join(tmpdir(), "gogroup-browser-"));
@@ -28,7 +28,18 @@ async function main() {
   });
   await writeFile(
     path.join(copy, "src/app/api/browser-fixture/route.ts"),
-    `import { session, json } from "@/server/http"; import { upsertTask } from "@/server/store"; export async function GET() { const {id} = await session(); for (const task of ${JSON.stringify(tasks)}) await upsertTask(id, task as any); return json({ok:true}); }`,
+    `import { session, json } from "@/server/http";
+    import { upsertTask, saveSessionDataset, upsertDailyPlan, createSession } from "@/server/store";
+    export async function GET(request: Request) {
+      const {id} = await session();
+      if (new URL(request.url).searchParams.get("plan")) {
+        await createSession(id);
+        await saveSessionDataset(id, ${JSON.stringify(planData)} as any);
+        await upsertDailyPlan(id, ${JSON.stringify(dailyPlan)} as any);
+      }
+      for (const task of ${JSON.stringify(tasks)}) await upsertTask(id, task as any);
+      return json({ok:true});
+    }`,
   );
   const env: NodeJS.ProcessEnv = {
     ...process.env,
