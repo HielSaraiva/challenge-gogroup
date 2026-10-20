@@ -163,7 +163,11 @@ it("stops after a rejected correction without saving a task or consuming further
 });
 
 it("preserves consulted coverage on provider failure without manufacturing recurrence proposals", async () => {
-  create.mockRejectedValue({ status: 429 });
+  create.mockRejectedValue({
+    status: 429,
+    name: "APIError",
+    error: { code: "rate_limit_exceeded", message: "private-provider-payload" },
+  });
   const id = await session();
   const run = await investigate(
     { type: "recurrences", target: "base", requestId: randomUUID() },
@@ -175,6 +179,12 @@ it("preserves consulted coverage on provider failure without manufacturing recur
   expect(create).toHaveBeenCalledTimes(1);
   expect(run.consultedInsightIds!.length).toBeGreaterThan(0);
   expect(run.recurrenceReview).toBeUndefined();
+  expect(run.failure).toEqual({
+    status: 429,
+    code: "rate_limit_exceeded",
+    type: "APIError",
+  });
+  expect(JSON.stringify(run)).not.toContain("private-provider-payload");
   expect((await getSession(id))!.tasks).toHaveLength(0);
 });
 

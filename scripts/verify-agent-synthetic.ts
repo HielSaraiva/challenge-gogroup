@@ -5,6 +5,7 @@ import { rm } from "node:fs/promises";
 import type { Dataset, Order } from "../src/domain/types";
 import { investigate } from "../src/server/agent";
 import { createSession, getSession } from "../src/server/store";
+import { data as addressFixture } from "../tests/browser/fixtures";
 import { recurrenceWorkload } from "../tests/fixtures/recurrences";
 import { insights, queue } from "../src/domain/analytics";
 
@@ -101,6 +102,16 @@ async function main() {
   const id = randomUUID();
   await createSession(id);
   if (process.argv.includes("--large-only")) return verifyLarge(id);
+  if (process.argv.includes("--address-only")) {
+    const result = await investigate(
+      { type: "order", target: "UI-A", requestId: randomUUID() },
+      id,
+      addressFixture,
+      () => {},
+    );
+    measured("Endereço sintético", result);
+    return;
+  }
   const run = await investigate(
     { type: "daily", target: "day", requestId: randomUUID() },
     id,

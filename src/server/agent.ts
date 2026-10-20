@@ -987,7 +987,20 @@ export async function investigate(
             : "Análise concluída. Confira as tarefas em “Encaminhamentos para este pedido”.",
     );
   } catch (error) {
-    const provider = error as { status?: number; name?: string };
+    const provider = error as {
+      status?: number;
+      name?: string;
+      error?: { code?: unknown; error?: { code?: unknown } };
+    };
+    const safeTag = (value: unknown) =>
+      typeof value === "string" && /^[a-zA-Z_][a-zA-Z_0-9]{0,63}$/.test(value)
+        ? value
+        : undefined;
+    run.failure = {
+      status: Number.isInteger(provider.status) ? provider.status : undefined,
+      code: safeTag(provider.error?.code ?? provider.error?.error?.code),
+      type: safeTag(provider.name),
+    };
     console.warn("agent_run_interrupted", {
       status: provider.status,
       type: provider.name,

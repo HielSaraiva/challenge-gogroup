@@ -217,6 +217,7 @@ export type Investigation = {
     output: number;
     total: number;
   };
+  failure?: { status?: number; code?: string; type?: string };
   recurrenceReview?: {
     reason: string;
     selectedInsightIds: string[];

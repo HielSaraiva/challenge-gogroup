@@ -105,6 +105,18 @@ class Demo {
     const run = lines.findLast((item) => item.investigation)?.investigation as
       Investigation | undefined;
     assert.ok(run, `Sem resultado para ${type}`);
+    console.log(`Publicado: diagnóstico ${type}`, {
+      status: run.status,
+      prepared: run.events.some((event) =>
+        event.operationId?.includes(":prepared:"),
+      ),
+      usage: run.tokenUsage,
+      failure: run.failure,
+      stages: run.events.map((event) => `${event.tool}:${event.state}`),
+      errors: run.events
+        .filter((event) => event.state === "error")
+        .map((event) => ({ tool: event.tool, message: event.message })),
+    });
     assert.equal(run.status, "completed", run.summary);
     assert.equal(
       run.tokenUsage?.requests,
