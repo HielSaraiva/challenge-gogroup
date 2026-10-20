@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { data } from "../tests/browser/fixtures";
+import { insights } from "../src/domain/analytics";
 import type { Investigation, Task } from "../src/domain/types";
 import type { WorkspaceSnapshot } from "../src/domain/workspace";
 
@@ -90,8 +91,17 @@ class Demo {
     assert.equal(response.status, 200, `HTTP ${route}: ${response.status}`);
     return response.json() as Promise<T>;
   }
-  async run(type: Investigation["type"], target: string) {
-    const input = { type, target, requestId: randomUUID() };
+  async run(
+    type: Investigation["type"],
+    target: string,
+    renewFromTaskId?: string,
+  ) {
+    const input = {
+      type,
+      target,
+      requestId: randomUUID(),
+      ...(renewFromTaskId ? { renewFromTaskId } : {}),
+    };
     const response = await this.fetch("/api/investigations", input);
     assert.equal(
       response.status,
@@ -148,6 +158,47 @@ async function main() {
     let snapshot = await own.json<WorkspaceSnapshot>("/api/workspace");
     assert.equal(snapshot.summary.totalCount, data.orders.length);
     assert.equal(snapshot.tasks.length, 0);
+    if (process.argv.includes("--process-only")) {
+      const pattern = insights(data).find((item) => item.scope === "process")!;
+      const run = await own.run("pattern", pattern.id);
+      snapshot = await own.json<WorkspaceSnapshot>("/api/workspace");
+      const processTask = snapshot.tasks.find((task) =>
+        run.taskIds.includes(task.id),
+      )!;
+      assert.equal(processTask.scope, "process");
+      await own.json(
+        "/api/tasks",
+        {
+          id: processTask.id,
+          status: "concluida",
+          expectedUpdatedAt: processTask.updatedAt,
+          conclusion: {
+            outcome: "inconclusiva",
+            observations:
+              "Referências sintéticas conferidas para validar a retomada da investigação.",
+            evidenceIds: processTask.evidenceIds.slice(0, 2),
+          },
+        },
+        "PATCH",
+      );
+      const renewed = await own.run("pattern", pattern.id, processTask.id);
+      const state = await own.json<WorkspaceSnapshot>("/api/workspace");
+      assert.equal(
+        state.tasks.find((task) => renewed.taskIds.includes(task.id))!
+          .previousTaskId,
+        processTask.id,
+      );
+      assert.equal(state.financial.resolvedCount, 0);
+      assert.equal(
+        (await other.json<WorkspaceSnapshot>("/api/workspace")).tasks.length,
+        0,
+      );
+      console.log(
+        "Publicado: investigação de processo, conclusão anterior preservada e nova etapa vinculada: OK",
+      );
+      return;
+    }
+
     const orderRun = await own.run("order", "UI-A");
     snapshot = await own.json<WorkspaceSnapshot>("/api/workspace");
     const task = snapshot.tasks.find((t) => orderRun.taskIds.includes(t.id))!;
@@ -212,17 +263,17 @@ async function main() {
     assert.ok(recurrence.recurrenceReview);
     assert.ok(recurrence.consultedInsightIds?.length);
     snapshot = await own.json<WorkspaceSnapshot>("/api/workspace");
-    const process = snapshot.tasks.find(
+    const processTask = snapshot.tasks.find(
       (t) => recurrence.taskIds.includes(t.id) && t.scope === "process",
     );
-    if (process) {
-      const evidenceIds = process.affectedOrderIds!.slice(0, 2);
+    if (processTask) {
+      const evidenceIds = processTask.affectedOrderIds!.slice(0, 2);
       const progress = await own.json<Task>(
         "/api/tasks",
         {
-          id: process.id,
+          id: processTask.id,
           action: "save_process_progress",
-          expectedUpdatedAt: process.updatedAt,
+          expectedUpdatedAt: processTask.updatedAt,
           progress: {
             observations:
               "Conferência sintética de referências para validar persistência.",
@@ -235,7 +286,7 @@ async function main() {
       await own.json(
         "/api/tasks",
         {
-          id: process.id,
+          id: processTask.id,
           status: "concluida",
           expectedUpdatedAt: progress.updatedAt,
           conclusion: {

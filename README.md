@@ -207,6 +207,8 @@ Para repetir a verificação completa no ambiente publicado, usando uma importa�
 
 ```sh
 SMOKE_URL=https://challenge-gogroup.vercel.app pnpm test:deployment
+# Apenas investigação de processo e retomada após conclusão
+SMOKE_URL=https://challenge-gogroup.vercel.app pnpm test:deployment --process-only
 ```
 
 Esse teste usa a cota real da IA. Cria sessões próprias, verifica persistência e isolamento e reinicia a sessão de trabalho ao terminar, restaurando a base padrão. Não utiliza cookies nem altera dados de outros visitantes.
