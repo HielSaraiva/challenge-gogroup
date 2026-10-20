@@ -723,12 +723,12 @@ export function OperationsApp() {
                         </label>
                       )}
                     </div>
-                    <p className="queue-order-note">
-                      {all || !ready
-                        ? "Ordem de abertura da exceção: mais antiga primeiro; em empate, código do pedido. Não é a data da compra."
-                        : "Ordem de prioridade do plano. Os filtros mantêm essa ordem."}
-                    </p>
                     <div className="order-search">
+                      <p className="queue-order-note">
+                        {all || !ready
+                          ? "Ordem de abertura da exceção: mais antiga primeiro; em empate, código do pedido. Não é a data da compra."
+                          : "Ordem de prioridade do plano. Os filtros mantêm essa ordem."}
+                      </p>
                       <label htmlFor="order-search-input">Buscar pedidos</label>
                       <div className="search-input">
                         <Search size={18} aria-hidden="true" />

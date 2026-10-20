@@ -330,6 +330,14 @@ test("advances the daily suggestion after closure and restores progress after re
     fullPage: true,
   });
   await page.goto("/#queue");
+  const orderNote = page.locator(".queue-order-note");
+  await expect(orderNote).toBeVisible();
+  const noteBounds = await orderNote.boundingBox();
+  const labelBounds = await page.locator(".order-search > label").boundingBox();
+  const panelBounds = await page.locator(".queue-panel").boundingBox();
+  expect(noteBounds!.x - panelBounds!.x).toBeGreaterThan(8);
+  expect(Math.abs(noteBounds!.x - labelBounds!.x)).toBeLessThan(1);
+  await page.screenshot({ path: info.outputPath("queue-spacing.png") });
   await page
     .getByRole("checkbox", { name: "Consultar toda a carteira", exact: true })
     .check();
