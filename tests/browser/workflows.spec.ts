@@ -295,6 +295,17 @@ test("advances the daily suggestion after closure and restores progress after re
       exact: true,
     }),
   ).toBeVisible();
+  const suggestedContext = stream.getByRole("region", {
+    name: "Resumo do pedido UI-NEXT",
+    exact: true,
+  });
+  await expect(suggestedContext).toContainText("Endereço divergente");
+  await expect(suggestedContext).toContainText(
+    "Marca sintética · Produto de teste",
+  );
+  await expect(suggestedContext).toContainText("Aberta");
+  await expect(suggestedContext).toContainText("dias úteis desde a abertura");
+  await expect(suggestedContext).toContainText("Prazo prometido: 08/09/2026");
   await page.screenshot({
     path: info.outputPath("daily-progress.png"),
     fullPage: true,
@@ -354,6 +365,12 @@ test("advances the daily suggestion after closure and restores progress after re
       exact: true,
     }),
   ).toBeVisible();
+  await expect(
+    stream.getByRole("region", {
+      name: "Resumo do pedido UI-NEXT",
+      exact: true,
+    }),
+  ).toHaveCount(0);
   expect(modelRequests).toBe(0);
 });
 

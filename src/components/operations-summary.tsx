@@ -1,23 +1,24 @@
 "use client";
-import { generatedTextLabel } from "@/lib/utils";
-import type { DailyPlan } from "@/domain/types";
-import { STRATEGIES } from "@/domain/types";
+import { generatedTextLabel, statusLabel, shortDate } from "@/lib/utils";
+import type { DailyPlan, RankedOrder } from "@/domain/types";
+import { STRATEGIES, exceptionLabels } from "@/domain/types";
 import { workstreamProgress } from "@/domain/workstream-progress";
 import { Button } from "./ui/button";
 export function OperationsSummary({
   plan,
   completed,
   onOrder,
-  pendingIds,
+  pendingOrders,
   onBrowse,
 }: {
   plan: DailyPlan;
   completed: number;
   onOrder: (id: string) => void;
-  pendingIds: string[];
+  pendingOrders: RankedOrder[];
   onBrowse: () => void;
 }) {
-  const pending = new Set(pendingIds);
+  const orders = new Map(pendingOrders.map((order) => [order.id, order]));
+  const pending = new Set(orders.keys());
   return (
     <section className="panel prose">
       <span className="badge">
@@ -54,6 +55,9 @@ export function OperationsSummary({
       <div className="agent-workstreams">
         {plan.workstreams.map((s) => {
           const progress = workstreamProgress(s, pending);
+          const suggested = progress.suggestedId
+            ? orders.get(progress.suggestedId)
+            : undefined;
           return (
             <article className="workstream-card" key={s.area}>
               <header className="workstream-heading">
@@ -78,6 +82,35 @@ export function OperationsSummary({
                   <h4>Por que começar por este pedido</h4>
                   <p>{generatedTextLabel(s.agentDecision.justification)}</p>
                 </div>
+              )}
+              {!progress.agentSuggestion && suggested && (
+                <section
+                  className="workstream-guidance workstream-order-context"
+                  aria-label={`Resumo do pedido ${suggested.id}`}
+                >
+                  <h4>Sobre o pedido sugerido</h4>
+                  <p>
+                    <strong>
+                      {exceptionLabels[suggested.exception] ||
+                        "Exceção em análise"}
+                    </strong>
+                  </p>
+                  <p>
+                    {suggested.brand} · {suggested.product}
+                  </p>
+                  <p>
+                    {statusLabel(suggested.status)} · {suggested.priority.age}{" "}
+                    {suggested.priority.age === 1 ? "dia útil" : "dias úteis"}{" "}
+                    desde a abertura.
+                  </p>
+                  <p>
+                    {suggested.deliveredAt
+                      ? `Entrega registrada em ${shortDate(suggested.deliveredAt)}; a exceção continua em aberto.`
+                      : suggested.promisedAt
+                        ? `Prazo prometido: ${shortDate(suggested.promisedAt)}.`
+                        : "Prazo prometido não informado."}
+                  </p>
+                </section>
               )}
               {progress.suggestedId && (
                 <footer className="workstream-action">

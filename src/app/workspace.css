@@ -1851,3 +1851,19 @@ main > .panel {
   margin-bottom: 16px;
   font-size: 13px;
 }
+
+.workstream-order-context {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f5f7fb;
+}
+.workstream-card .workstream-order-context h4 {
+  margin-bottom: 0;
+}
+.workstream-card .workstream-order-context p {
+  font-size: 13px;
+  line-height: 1.6;
+}

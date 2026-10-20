@@ -678,7 +678,7 @@ export function OperationsApp() {
                     <OperationsSummary
                       plan={day.plan}
                       completed={day.completed}
-                      pendingIds={day.orders.map((o) => o.id)}
+                      pendingOrders={day.orders}
                       onOrder={openOrder}
                       onBrowse={() => {
                         setAll(true);
