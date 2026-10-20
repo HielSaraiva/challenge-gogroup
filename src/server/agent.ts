@@ -1,6 +1,11 @@
 import { executeRecurrenceTool, recurrenceTools } from "./recurrence-discovery";
 import Groq from "groq-sdk";
 import { compactDailyRequest } from "./daily-request";
+import {
+  compactAgentRequest,
+  compactConsultation,
+  type ConsultedFacts,
+} from "./compact-agent-request";
 import { currentCaseTasks, latestReopen } from "@/domain/case-cycle";
 import { statusLabel, insightGroupLabel } from "@/lib/utils";
 import { withShortRateLimitRetry } from "./provider-retry";
@@ -597,32 +602,27 @@ export async function investigate(
         maxRetries: 0,
         timeout: 12000,
       });
+  const consultedFacts: ConsultedFacts = {};
   const call: AgentCompletion =
     completion ||
     (async (messages, signal) => {
       if (input.type === "recurrences") {
-        const tools = recurrenceTools.filter(
-          (tool) =>
-            tool.function?.name ===
-            (!context.recurrenceCandidates
-              ? "consultar_recorrencias"
-              : "registrar_analise_recorrencias"),
-        );
         return client!.chat.completions.create(
           {
             model,
-            messages,
-            tools,
-            tool_choice: {
-              type: "function",
-              function: { name: tools[0].function!.name },
-            },
+            ...compactAgentRequest(
+              context,
+              consultedFacts,
+              recurrenceTools.filter(
+                (tool) =>
+                  tool.function?.name === "registrar_analise_recorrencias",
+              ),
+              messages,
+            ),
             temperature: 0.1,
             ...(model.startsWith("openai/gpt-oss-")
               ? { reasoning_effort: "low" as const }
               : {}),
-            max_completion_tokens: 3500,
-            parallel_tool_calls: false,
           },
           { signal },
         );
@@ -646,31 +646,14 @@ export async function investigate(
             (tool) => tool.function?.name === "criar_acao_processo",
           ),
         );
-        const parameters = tools[0].function!.parameters as {
-          properties: Record<string, unknown>;
-        };
-        parameters.properties.insightId = {
-          type: "string",
-          enum: [pattern.id],
-        };
-        parameters.properties.evidenceIds = {
-          type: "array",
-          items: { type: "string", enum: [...context.evidence] },
-          minItems: 2,
-          maxItems: 20,
-        };
         return client!.chat.completions.create(
           {
             model,
-            messages,
-            tools,
-            tool_choice: "auto",
+            ...compactAgentRequest(context, consultedFacts, tools, messages),
             temperature: 0.1,
             ...(model.startsWith("openai/gpt-oss-")
               ? { reasoning_effort: "low" as const }
               : {}),
-            max_completion_tokens: 2400,
-            parallel_tool_calls: false,
           },
           { signal },
         );
@@ -705,24 +688,31 @@ export async function investigate(
         description:
           "IDs exatos de pedidos consultados. Inclua o orderId da tarefa. Não use nomes de campo ou códigos de problema.",
       };
+      const orderReady = input.type === "order";
       const visibleTools =
         pattern && !context.patternConsulted
           ? tools.filter((t) => t.function?.name === "consultar_padroes")
           : !context.consulted.size
             ? tools.filter((t) => t.function?.name === "consultar_pedido")
-            : tools;
+            : tools.filter((t) =>
+                (orderReady
+                  ? ["criar_tarefa"]
+                  : ["criar_tarefa", "simular_tratativa"]
+                ).includes(t.function!.name),
+              );
       return client!.chat.completions.create(
         {
           model,
-          messages,
-          tools: visibleTools,
-          tool_choice: "auto",
+          ...compactAgentRequest(
+            context,
+            consultedFacts,
+            visibleTools,
+            messages,
+          ),
           temperature: 0.15,
           ...(model.startsWith("openai/gpt-oss-")
             ? { reasoning_effort: "low" as const }
             : {}),
-          max_completion_tokens: 3500,
-          parallel_tool_calls: false,
         },
         { signal },
       );
@@ -757,9 +747,81 @@ export async function investigate(
         );
       }
     }
+    if (!completion && input.type !== "daily") {
+      const prepare = async (name: string, args: unknown, key = name) => {
+        const operationId = `${run.id}:prepared:${key}`;
+        await event(
+          name,
+          "running",
+          "Consultando evidências para a análise.",
+          operationId,
+        );
+        const result = await executeTool(name, args, context);
+        consultedFacts[key] = compactConsultation(name, result);
+        if (name === "consultar_recorrencias")
+          run.consultedInsightIds = context.recurrenceCandidates?.map(
+            (item) => item.insightId,
+          );
+        await event(
+          name,
+          "ok",
+          "Evidências consultadas e preparadas para a IA.",
+          operationId,
+        );
+        return result as Record<string, any>;
+      };
+      if (input.type === "recurrences")
+        await prepare("consultar_recorrencias", {});
+      else if (pattern) {
+        const result = await prepare("consultar_padroes", {
+          insightId: pattern.id,
+        });
+        // Include real sample facts, never a deterministic hypothesis as agent analysis.
+        const sampleIds = result.evidenceIds.slice(
+          0,
+          pattern.scope === "process" ? 3 : 20,
+        );
+        consultedFacts.consultar_padroes = {
+          ...(consultedFacts.consultar_padroes as object),
+          evidenceIds: sampleIds,
+          sample: data.orders
+            .filter((o) => sampleIds.includes(o.id))
+            .map((o) => ({
+              id: o.id,
+              exception: o.exception,
+              status: o.status,
+              promisedAt: o.promisedAt,
+              deliveredAt: o.deliveredAt,
+              carrier: o.carrier,
+              state: o.state,
+              machine: o.machine,
+              shift: o.shift,
+              dc: o.dc,
+              lot: o.lot,
+              gift: o.gift,
+              resolved: Boolean(o.resolution),
+            })),
+        };
+      } else {
+        const facts = await prepare("consultar_pedido", {
+          orderId: input.target,
+        });
+        for (const action of ["reenvio", "reembolso"]) {
+          if (facts.acoesAdmitidas.includes(`proposta_${action}`))
+            await prepare(
+              "simular_tratativa",
+              { orderId: input.target, action },
+              `simulacao_${action}`,
+            );
+        }
+      }
+    }
     for (
       let round = 0;
-      round < (input.type === "daily" && !completion ? 2 : 6);
+      round <
+      (!completion && (input.type !== "pattern" || pattern?.scope === "process")
+        ? 2
+        : 6);
       round++
     ) {
       if (abort.signal.aborted) throw new Error("Timeout");
@@ -827,6 +889,15 @@ export async function investigate(
             JSON.parse(toolCall.function.arguments),
             context,
           );
+          if (
+            !completion &&
+            [
+              "consultar_pedido",
+              "simular_tratativa",
+              "consultar_padroes",
+            ].includes(name)
+          )
+            consultedFacts[name] = compactConsultation(name, result);
           if (
             ["criar_tarefa", "criar_acao_processo"].includes(name) &&
             !run.taskIds.includes((result as Task).id)

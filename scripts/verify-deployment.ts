@@ -106,6 +106,12 @@ class Demo {
       Investigation | undefined;
     assert.ok(run, `Sem resultado para ${type}`);
     assert.equal(run.status, "completed", run.summary);
+    assert.equal(
+      run.tokenUsage?.requests,
+      1,
+      `${type}: esperado registro na primeira resposta`,
+    );
+    console.log(`Publicado: consumo ${type}`, run.tokenUsage);
     const replay = await this.json<{ investigation: Investigation }>(
       "/api/investigations",
       input,

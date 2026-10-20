@@ -5,7 +5,8 @@ import { rm } from "node:fs/promises";
 import type { Dataset, Order } from "../src/domain/types";
 import { investigate } from "../src/server/agent";
 import { createSession, getSession } from "../src/server/store";
-import { queue } from "../src/domain/analytics";
+import { recurrenceWorkload } from "../tests/fixtures/recurrences";
+import { insights, queue } from "../src/domain/analytics";
 
 // This integration check never reads the imported challenge dataset.
 const parent = path.resolve(process.cwd(), ".local", "test-runs");
@@ -64,6 +65,34 @@ const dataset: Dataset = {
   sourceRows: 2,
   importedAt: "2026-09-30T12:00:00Z",
 };
+function measured(
+  label: string,
+  run: import("../src/domain/types").Investigation,
+) {
+  assert.equal(run.status, "completed", run.summary);
+  assert.equal(
+    run.tokenUsage?.requests,
+    1,
+    `${label}: deve concluir na primeira resposta`,
+  );
+  console.log(label, run.tokenUsage);
+}
+async function verifyLarge(id: string) {
+  const large = await investigate(
+    { type: "recurrences", target: "base", requestId: randomUUID() },
+    id,
+    recurrenceWorkload,
+    () => {},
+  );
+  measured("Recorrências: dezesseis candidatos em base sintética maior", large);
+  assert.equal(large.consultedInsightIds?.length, 16);
+  console.log(
+    "Seleção da base sintética maior:",
+    large.recurrenceReview?.reason,
+    "Investigações:",
+    large.taskIds.length,
+  );
+}
 async function main() {
   assert.ok(
     process.env.GROQ_API_KEY,
@@ -71,13 +100,14 @@ async function main() {
   );
   const id = randomUUID();
   await createSession(id);
+  if (process.argv.includes("--large-only")) return verifyLarge(id);
   const run = await investigate(
     { type: "daily", target: "day", requestId: randomUUID() },
     id,
     dataset,
     () => {},
   );
-  assert.equal(run.status, "completed", run.summary);
+  measured("Plano diário", run);
   const state = (await getSession(id))!;
   const plan = state.plans!.find((item) => item.id === run.planId)!;
   assert.ok(plan);
@@ -101,7 +131,7 @@ async function main() {
     dataset,
     () => {},
   );
-  assert.equal(investigation.status, "completed", investigation.summary);
+  measured("Pedido individual", investigation);
   const persisted = (await getSession(id))!;
   assert.ok(
     persisted.tasks.some(
@@ -124,10 +154,35 @@ async function main() {
     recurrenceDataset,
     () => {},
   );
-  assert.equal(recurrence.status, "completed", recurrence.summary);
+  measured("Descoberta de recorrências", recurrence);
   assert.ok(recurrence.recurrenceReview);
   assert.ok(recurrence.consultedInsightIds?.length);
   assert.ok(recurrence.taskIds.length <= 3);
+  const processPattern = insights(recurrenceDataset).find(
+    (item) => item.scope === "process",
+  )!;
+  const processRun = await investigate(
+    { type: "pattern", target: processPattern.id, requestId: randomUUID() },
+    id,
+    recurrenceDataset,
+    () => {},
+  );
+  measured("Investigação de processo", processRun);
+  const repeated = await investigate(
+    { type: "recurrences", target: "base", requestId: randomUUID() },
+    id,
+    recurrenceDataset,
+    () => {},
+  );
+  measured("Reanálise com registros anteriores", repeated);
+  assert.deepEqual(
+    repeated.taskIds.filter(
+      (taskId) =>
+        ![...recurrence.taskIds, ...processRun.taskIds].includes(taskId),
+    ),
+    [],
+  );
+  await verifyLarge(id);
   console.log(
     "Groq real: análise de recorrências e cobertura consultada persistidas: OK",
   );
