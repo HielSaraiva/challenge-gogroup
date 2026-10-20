@@ -1,9 +1,7 @@
 import { currentCaseTasks } from "./case-cycle";
 import { completedTask } from "./task-results";
 import { sessionDataset, transitionCase } from "./cases";
-import { usedDailyCapacity } from "./operations";
 import {
-  CAPACITY,
   type Dataset,
   type SessionState,
   type TaskExecution,
@@ -43,8 +41,6 @@ export function prepareTaskResolution(
     throw new Error(
       "Esta tarefa pertence a uma etapa anterior. Investigue o pedido reaberto novamente.",
     );
-  if (usedDailyCapacity(sessionDataset(data, state)) >= CAPACITY)
-    throw new Error("A capacidade operacional do dia foi consumida.");
   const task = {
     ...previous,
     ...completedTask(previous, execution),

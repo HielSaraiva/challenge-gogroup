@@ -24,6 +24,7 @@ import { CaseControls } from "./case-controls";
 import { TaskResult } from "./task-result";
 import { AgentProgress } from "./agent-progress";
 import {
+  CAPACITY,
   exceptionLabels,
   DEFAULT_WEIGHTS,
   STRATEGIES,
@@ -588,7 +589,7 @@ export function OperationsApp() {
                     </h2>
                     <p>
                       {summary.count} pedidos pendentes recebidos ·{" "}
-                      {day?.availableCapacity ?? 150} vagas disponíveis no
+                      {day?.availableCapacity ?? CAPACITY} vagas disponíveis no
                       piloto. Você escolhe o foco; a IA compara as alternativas
                       e registra os encaminhamentos.
                     </p>
@@ -722,6 +723,11 @@ export function OperationsApp() {
                         </label>
                       )}
                     </div>
+                    <p className="queue-order-note">
+                      {all || !ready
+                        ? "Ordem de abertura da exceção: mais antiga primeiro; em empate, código do pedido. Não é a data da compra."
+                        : "Ordem de prioridade do plano. Os filtros mantêm essa ordem."}
+                    </p>
                     <div className="order-search">
                       <label htmlFor="order-search-input">Buscar pedidos</label>
                       <div className="search-input">
@@ -969,7 +975,10 @@ export function OperationsApp() {
                 />
               )}
               {tab === "impact" && financial && (
-                <FinancialImpact report={financial} />
+                <FinancialImpact
+                  report={financial}
+                  capacity={day?.plan ? day : undefined}
+                />
               )}
               {tab === "insights" && (
                 <ImprovementsWorkspace
@@ -1446,6 +1455,17 @@ export function OperationsApp() {
             Escolha o foco da equipe. A IA comparará as alternativas, aplicará
             sua escolha e preparará os encaminhamentos.
           </DialogDescription>
+          <div className="plan-capacity-note">
+            <strong>
+              Até {Math.min(summary?.count || 0, day?.availableCapacity || 0)}{" "}
+              pedidos neste plano
+            </strong>
+            <p>
+              {day?.availableCapacity || 0} de {day?.capacity || CAPACITY} vagas
+              de referência disponíveis. Cada encerramento registrado conta como
+              uma tratativa no piloto.
+            </p>
+          </div>
           <fieldset className="plan-strategies">
             <legend>Qual é o foco para este plano?</legend>
             {(

@@ -15,8 +15,6 @@ import {
 } from "@/domain/cases";
 import { parseWeights } from "@/server/weights";
 import { randomUUID } from "node:crypto";
-import { usedDailyCapacity } from "@/domain/operations";
-import { CAPACITY } from "@/domain/types";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
@@ -70,14 +68,6 @@ export async function PATCH(request: Request) {
     const state = await getSession(id);
     if (!state) throw new AppError("Sessão expirada.", 401);
     const data = await getDataset(state);
-    if (
-      input.action === "resolve" &&
-      usedDailyCapacity(sessionDataset(data, state)) >= CAPACITY
-    )
-      throw new AppError(
-        "A capacidade operacional do dia foi consumida. Reabrir casos não devolve o esforço já realizado.",
-        409,
-      );
     const order = data.orders.find((o) => o.id === input.orderId);
     if (!order) throw new AppError("Pedido não encontrado.", 404);
     let record;

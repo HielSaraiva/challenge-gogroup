@@ -933,6 +933,70 @@ describe("fluxo persistido pelos endpoints", () => {
       awaitingResultOrders(sessionDataset(data, closed).orders, closed.tasks),
     ).toEqual([]);
   });
+  it.each(["junto", "depois"])(
+    "permite registrar resultado %s após consumir a referência de planejamento",
+    async (path) => {
+      const history = [
+        {
+          id: randomUUID(),
+          action: "resolve" as const,
+          note: "Encerramento sintético já documentado",
+          at: "2026-09-30T10:00:00Z",
+        },
+      ];
+      const source = {
+        ...data,
+        orders: [
+          ...data.orders,
+          ...Array.from({ length: 150 }, (_, i) => ({
+            ...data.orders[1],
+            id: `CAP-${i}`,
+            caseHistory: history,
+            resolution: { note: history[0].note, resolvedAt: history[0].at },
+          })),
+        ],
+      };
+      await saveSessionDataset(sessionId, source);
+      const task = newTask(
+        path === "depois" ? { status: "concluida", execution } : {},
+      );
+      await upsertTask(sessionId, task);
+      const outcome = {
+        type: "endereco_corrigido",
+        evidence: execution.evidence,
+        executionTaskId: task.id,
+      };
+      const response =
+        path === "junto"
+          ? await taskPATCH(
+              request("tasks", {
+                id: task.id,
+                status: "concluida",
+                execution,
+                resolution: outcome,
+              }),
+            )
+          : await orderPATCH(
+              request("orders", {
+                action: "resolve",
+                orderId: task.orderId,
+                note: execution.note,
+                outcome,
+              }),
+            );
+      expect(response.status).toBe(200);
+      const state = (await getSession(sessionId))!;
+      const effective = sessionDataset(source, state);
+      expect(usedDailyCapacity(effective)).toBe(151);
+      expect(
+        state.cases![task.orderId].resolution?.outcome?.executionTaskId,
+      ).toBe(task.id);
+      const capacity = await (
+        await operationsGET(new Request("http://localhost:3000/api/operations"))
+      ).json();
+      expect(capacity.availableCapacity).toBe(0);
+    },
+  );
   it("salva execução e resultado juntos, vinculando a evidência sem duplicar formulário", async () => {
     const task = newTask();
     await upsertTask(sessionId, task);

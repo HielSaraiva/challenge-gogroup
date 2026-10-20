@@ -1782,3 +1782,34 @@ main > .panel {
 .recurrence-form-fields textarea {
   min-height: 128px;
 }
+
+/* Planning capacity and queue order share the same vocabulary across views. */
+.queue-order-note {
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.plan-capacity-note {
+  margin-block: 20px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f5f7fb;
+}
+.plan-capacity-note p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.capacity-summary {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.capacity-summary h3 {
+  margin-top: 0;
+}
+.capacity-summary dd {
+  font-size: 20px;
+}

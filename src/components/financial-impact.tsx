@@ -1,6 +1,7 @@
 import type { financialReport } from "@/domain/operations";
 import { outcomeLabels } from "@/domain/cases";
 import { exceptionLabels } from "@/domain/types";
+import type { planQueue } from "@/domain/planning";
 import { money } from "@/lib/utils";
 
 function Distribution({
@@ -31,8 +32,13 @@ function Distribution({
 
 export function FinancialImpact({
   report,
+  capacity,
 }: {
   report: ReturnType<typeof financialReport>;
+  capacity?: Pick<
+    ReturnType<typeof planQueue>,
+    "capacity" | "usedCapacity" | "availableCapacity"
+  >;
 }) {
   const total = report.resolvedCount + report.pendingCount;
   const rate = total ? (report.resolvedCount / total) * 100 : 0;
@@ -75,6 +81,35 @@ export function FinancialImpact({
         >
           <span style={{ width: `${rate}%` }} />
         </div>
+        {capacity && (
+          <div className="capacity-summary">
+            <h3>Capacidade do piloto</h3>
+            <dl className="result-metrics">
+              <div>
+                <dt>Referência diária</dt>
+                <dd>{capacity.capacity} tratativas</dd>
+              </div>
+              <div>
+                <dt>Encerramentos registrados</dt>
+                <dd>{capacity.usedCapacity}</dd>
+              </div>
+              <div>
+                <dt>Vagas para novo plano</dt>
+                <dd>{capacity.availableCapacity}</dd>
+              </div>
+            </dl>
+            <p className="muted">
+              Reabrir não devolve vagas. A referência limita o planejamento, sem
+              impedir o registro de resultados.
+            </p>
+            {capacity.usedCapacity >= capacity.capacity && (
+              <p role="status">
+                Referência de planejamento atingida. Você pode continuar
+                registrando os resultados da equipe.
+              </p>
+            )}
+          </div>
+        )}
       </section>
       <section className="panel prose">
         <h2>Valores registrados pela equipe</h2>

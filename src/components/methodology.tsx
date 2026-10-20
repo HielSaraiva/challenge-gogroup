@@ -305,10 +305,12 @@ export function Methodology({
               reduz o adiamento de pedidos de menor valor.
             </p>
             <p>
-              Na demonstração, cada encerramento consome uma vaga. Reabrir não
-              devolve a vaga, pois houve trabalho realizado. O contador não mede
-              contatos, investigações ou tempo real; investigações de
-              recorrência precisam de dimensionamento separado.
+              Na demonstração, cada encerramento consome uma vaga de
+              planejamento. Reabrir não devolve a vaga, pois houve trabalho
+              realizado. Ao atingir a referência de 150, novos planos ficam
+              indisponíveis, mas você pode continuar registrando resultados. O
+              contador não mede contatos, investigações ou tempo real;
+              investigações de recorrência precisam de dimensionamento separado.
             </p>
             <p>
               O plano é comparado com FIFO, isto é, atender pela ordem de

@@ -5,6 +5,7 @@ import { orderList, PAGE_SIZES } from "@/lib/order-list";
 const source = [
   {
     id: "B",
+    orderedAt: "2026-08-01",
     openedAt: "2026-09-20",
     exception: "atraso_entrega",
     status: "aberta",
@@ -13,6 +14,7 @@ const source = [
   },
   {
     id: "C",
+    orderedAt: "2026-09-01",
     openedAt: "2026-09-01",
     exception: "endereco_divergente",
     status: "status_divergente",
@@ -21,6 +23,7 @@ const source = [
   },
   {
     id: "A",
+    orderedAt: "2026-09-02",
     openedAt: "2026-09-01",
     exception: "atraso_entrega",
     status: "aberta",
@@ -30,7 +33,7 @@ const source = [
 ] as RankedOrder[];
 const empty = { query: "", exception: "", status: "" };
 describe("consulta de pedidos", () => {
-  it("ordena a carteira por abertura da exceção e desempata pelo código", () => {
+  it("ordena pela abertura da exceção, não pela compra, e desempata pelo código", () => {
     expect(orderList(source, empty, false).map((order) => order.id)).toEqual([
       "A",
       "C",
