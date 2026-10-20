@@ -85,15 +85,13 @@ export function OperationsSummary({
               )}
               {!progress.agentSuggestion && suggested && (
                 <section
-                  className="workstream-guidance workstream-order-context"
+                  className="workstream-guidance"
                   aria-label={`Resumo do pedido ${suggested.id}`}
                 >
                   <h4>Sobre o pedido sugerido</h4>
                   <p>
-                    <strong>
-                      {exceptionLabels[suggested.exception] ||
-                        "Exceção em análise"}
-                    </strong>
+                    {exceptionLabels[suggested.exception] ||
+                      "Exceção em análise"}
                   </p>
                   <p>
                     {suggested.brand} · {suggested.product}
