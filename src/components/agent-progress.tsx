@@ -4,6 +4,10 @@ import { Expandable } from "./ui/expandable";
 import type { Investigation, ToolEvent } from "@/domain/types";
 
 const toolDescriptions: Record<string, [string, string]> = {
+  consultar_fila: [
+    "Seleção e amostras do dia",
+    "Consultou a seleção calculada e as amostras por área no servidor.",
+  ],
   consultar_recorrencias: [
     "Comparação de recorrências",
     "Comparou os agrupamentos, as amostras e as investigações anteriores.",
@@ -48,6 +52,8 @@ const toolDescriptions: Record<string, [string, string]> = {
 };
 
 const stageResults: Record<string, string> = {
+  consultar_fila:
+    "Seleção e amostras prontas para o agente analisar e orientar a equipe.",
   consultar_recorrencias:
     "Agrupamentos e registros anteriores consultados para comparação.",
   registrar_analise_recorrencias:
@@ -266,6 +272,13 @@ export function AgentProgress({
               antiga. Tentativas não concluídas ficam registradas mesmo quando o
               agente corrige o conteúdo e consegue concluir a etapa depois.
             </p>
+            {run?.tokenUsage && (
+              <p>
+                Uso informado pelo Groq: {run.tokenUsage.requests} chamada(s),{" "}
+                {run.tokenUsage.input} tokens de entrada e{" "}
+                {run.tokenUsage.output} de saída.
+              </p>
+            )}
             {recovered.size > 0 && (
               <p>
                 O agente corrigiu uma tentativa anterior e concluiu a etapa em

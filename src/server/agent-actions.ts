@@ -22,7 +22,7 @@ const qualitative = {
   description:
     "Orientação qualitativa em português. NÃO inclua dígitos, valores, porcentagens, quantidades, datas ou pesos. Exemplo: Priorizar a espera prolongada e conferir as evidências antes do encaminhamento. Os números são anexados pelo servidor.",
 };
-const dailyGuidance: Record<string, string> = {
+export const dailyGuidance: Record<string, string> = {
   Logística:
     "Conferir rastreio, ocorrências e comprovantes dos pedidos; registrar investigação ou proposta sujeita a aprovação.",
   Financeiro:
@@ -255,6 +255,36 @@ export async function executeStrategicTool(
     };
   }
   if (name === "registrar_plano_dia") {
+    if (raw && typeof raw === "object" && "strategyReason" in raw) {
+      const { strategyReason, ...plan } = planArgs
+        .extend({ strategyReason: z.string().trim().min(20).max(500) })
+        .parse(raw);
+      for (const [field, value] of [
+        ["strategyReason", strategyReason],
+        ["briefing", plan.briefing],
+        ...plan.instructions.flatMap((i) => [
+          [`${i.area}:justification`, i.justification],
+          [`${i.area}:nextStep`, i.nextStep],
+        ]),
+      ]) {
+        try {
+          requireQualitative(value, context.data);
+        } catch {
+          throw new AppError(
+            `Corrija o campo ${field}: escreva somente uma orientação, sem números ou valores. Os indicadores já são apresentados separadamente.`,
+          );
+        }
+      }
+      await executeStrategicTool(
+        "comparar_estrategias",
+        {
+          strategy: context.requestedStrategy || "equilibrada",
+          reason: strategyReason,
+        },
+        context,
+      );
+      return executeStrategicTool("registrar_plano_dia", plan, context);
+    }
     if (
       context.mode !== "daily" ||
       !context.queueConsulted ||

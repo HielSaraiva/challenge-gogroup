@@ -52,6 +52,8 @@ export function workstreams(data: Dataset, weights: Weights = DEFAULT_WEIGHTS) {
       exception: order.exception,
       status: order.status,
       delivered: Boolean(order.deliveredAt),
+      age: order.priority.age,
+      delay: order.priority.delay,
       issues: order.issues.map((issue) => issue.code),
       reasons: order.priority.reasons,
     })),

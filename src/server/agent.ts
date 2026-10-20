@@ -1,5 +1,6 @@
 import { executeRecurrenceTool, recurrenceTools } from "./recurrence-discovery";
 import Groq from "groq-sdk";
+import { compactDailyRequest } from "./daily-request";
 import { currentCaseTasks, latestReopen } from "@/domain/case-cycle";
 import { statusLabel, insightGroupLabel } from "@/lib/utils";
 import { withShortRateLimitRetry } from "./provider-retry";
@@ -13,6 +14,7 @@ import { insights, rankOrders } from "@/domain/analytics";
 import { addBusinessDays } from "@/domain/calendar";
 import {
   REFERENCE_DATE,
+  STRATEGIES,
   TASK_KINDS,
   exceptionLabels,
   type Dataset,
@@ -445,6 +447,11 @@ export type AgentCompletion = (
       }[];
     };
   }[];
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
 }>;
 export async function investigate(
   input: z.infer<typeof investigationInput>,
@@ -621,30 +628,14 @@ export async function investigate(
         );
       }
       if (input.type === "daily") {
-        const tools = strategicTools.filter(
-          (tool) =>
-            tool.function?.name ===
-            (!context.diagnosed
-              ? "consultar_diagnostico"
-              : !context.compared
-                ? "comparar_estrategias"
-                : "registrar_plano_dia"),
-        );
         return client!.chat.completions.create(
           {
             model,
-            messages,
-            tools,
-            tool_choice: {
-              type: "function",
-              function: { name: tools[0].function!.name },
-            },
+            ...compactDailyRequest(context, messages),
             temperature: 0.1,
             ...(model.startsWith("openai/gpt-oss-")
               ? { reasoning_effort: "low" as const }
               : {}),
-            max_completion_tokens: 3500,
-            parallel_tool_calls: false,
           },
           { signal },
         );
@@ -746,7 +737,31 @@ export async function investigate(
       "running",
       "Investigação iniciada. Consultando evidências da base.",
     );
-    for (let round = 0; round < 6; round++) {
+    if (input.type === "daily" && !completion) {
+      context.requestedStrategy = input.strategy || "equilibrada";
+      context.weights = STRATEGIES[context.requestedStrategy].weights;
+      for (const tool of ["consultar_diagnostico", "consultar_fila"]) {
+        const operationId = `${run.id}:${tool}`;
+        await event(
+          tool,
+          "running",
+          "Consultando os indicadores calculados no servidor.",
+          operationId,
+        );
+        await executeTool(tool, {}, context);
+        await event(
+          tool,
+          "ok",
+          "Indicadores e amostras preparados para a análise da IA.",
+          operationId,
+        );
+      }
+    }
+    for (
+      let round = 0;
+      round < (input.type === "daily" && !completion ? 2 : 6);
+      round++
+    ) {
       if (abort.signal.aborted) throw new Error("Timeout");
       const response = completion
         ? await call(messages, abort.signal)
@@ -754,6 +769,20 @@ export async function investigate(
             () => call(messages, abort.signal),
             abort.signal,
           );
+      if (response.usage) {
+        const previous = run.tokenUsage || {
+          requests: 0,
+          input: 0,
+          output: 0,
+          total: 0,
+        };
+        run.tokenUsage = {
+          requests: previous.requests + 1,
+          input: previous.input + (response.usage.prompt_tokens || 0),
+          output: previous.output + (response.usage.completion_tokens || 0),
+          total: previous.total + (response.usage.total_tokens || 0),
+        };
+      }
       const message = response.choices[0]?.message;
       if (!message) throw new Error("EmptyResponse");
       messages.push({

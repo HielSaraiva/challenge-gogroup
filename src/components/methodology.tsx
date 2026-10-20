@@ -177,6 +177,12 @@ export function Methodology({
               </li>
             </ul>
           </Expandable>
+          <p>
+            Para preparar o dia, o servidor reúne os indicadores e as amostras
+            antes da chamada ao modelo. A IA compara as alternativas e registra
+            as orientações em uma resposta. Os cálculos e a seleção continuam
+            validados pelo servidor.
+          </p>
           <Expandable>
             <summary>Repetir uma análise usa a IA novamente?</summary>
             <p>

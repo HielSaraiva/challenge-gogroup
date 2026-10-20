@@ -211,6 +211,12 @@ export type Investigation = {
   updatedAt: string;
   planId?: string;
   consultedInsightIds?: string[];
+  tokenUsage?: {
+    requests: number;
+    input: number;
+    output: number;
+    total: number;
+  };
   recurrenceReview?: {
     reason: string;
     selectedInsightIds: string[];

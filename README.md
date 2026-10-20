@@ -131,7 +131,7 @@ Consultar o pedido é obrigatório antes de criar uma tarefa. Propostas financei
 
 O usuário escolhe o foco do plano. O agente consulta o diagnóstico, compara três estratégias e aplica exatamente a estratégia solicitada. Os cálculos são feitos no servidor; a seleção priorizada do plano só aparece depois de ele ser salvo; a carteira completa pode ser consultada e investigada antes disso. O plano registra a estratégia, justificativa, referência da base, comparação FIFO e orientações para todas as áreas. O agente escolhe um primeiro pedido da amostra por área e indica o próximo passo. Encerramentos atualizam o progresso sem repor pedidos; outro plano exige solicitação explícita. Gerar esse plano não cria tarefas em lote. A investigação explícita do pedido escolhido cria um encaminhamento individual. Ações de processo exigem um padrão consultado e evidências distintas. Elas não encerram o conjunto de pedidos. Uma resposta textual sem plano ou tarefa persistida não conclui uma investigação.
 
-O modelo padrão é `openai/gpt-oss-20b`, com esforço de raciocínio baixo. O planejamento restringe cada chamada à ferramenta da etapa atual. Uma resposta 429 com espera explícita de até 12 segundos permite uma única nova tentativa por chamada, respeitando o orçamento total e cancelamento. Esperas maiores ou sem indicação não geram repetição automática.
+O modelo padrão é `openai/gpt-oss-20b`, com esforço de raciocínio baixo. O plano diário usa uma única chamada ao modelo: o servidor consulta diagnóstico e seleção antes da chamada e envia indicadores compactos, amostras por área e uma ferramenta de registro. A IA compara as alternativas, justifica a estratégia escolhida e registra o primeiro pedido e orientação de cada área. O limite de saída é de 1.800 tokens, com uma única correção adicional se a resposta não passar na validação. Os modos de pedido e recorrência mantêm suas ferramentas por etapa. Uma resposta 429 com espera explícita de até 12 segundos permite uma única nova tentativa por chamada, respeitando o orçamento total e cancelamento. Esperas maiores ou sem indicação não geram repetição automática.
 
 As execuções têm orçamento de tempo, limite de chamadas e controle de concorrência. Falhas do provedor preservam o histórico e efeitos já registrados. A idempotência evita duplicar uma mesma ação na sessão.
 
@@ -210,3 +210,11 @@ SMOKE_URL=https://challenge-gogroup.vercel.app pnpm test:deployment
 ```
 
 Esse teste usa a cota real da IA. Cria sessões próprias, verifica persistência e isolamento e reinicia a sessão de trabalho ao terminar, restaurando a base padrão. Não utiliza cookies nem altera dados de outros visitantes.
+
+Para medir o plano completo com o Groq real sem acessar a base privada:
+
+```sh
+pnpm test:agent:daily
+```
+
+O cenário usa pedidos sintéticos nas oito áreas e exige que o plano seja persistido na primeira resposta do modelo. O resultado informa chamadas, tokens de entrada/saída e duração. O consumo fornecido pelo Groq também fica disponível nos detalhes técnicos da análise.

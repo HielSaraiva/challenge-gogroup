@@ -64,3 +64,9 @@ Os documentos de origem, arquivos do case e resultados privados não integram o 
 - Groq real validado com dados sintéticos: plano, tarefa individual e análise de recorrências com candidatos consultados persistidos.
 - Neon validado com sessão sintética exclusiva: investigação, tarefa, idempotência e execução persistidas. Somente os registros dessa verificação foram removidos.
 - Versão publicada validada em 18/10/2026 em https://challenge-gogroup.vercel.app: agente real de pedido, idempotência, encerramento, reabertura, recorrências, cobertura consultada, plano, persistência, isolamento e restauração da base padrão após reinício. Os testes usaram CSVs sintéticos e sessões exclusivas, sem alterar sessões de outros visitantes.
+
+## Otimização do plano diário — 20/10/2026
+
+O caminho real prepara diagnóstico e amostras no servidor e faz uma chamada ao modelo para comparar os indicadores e registrar as orientações. Não há chamadas ao modelo apenas para solicitar cálculos determinísticos nem reenvio do histórico completo. A resposta tem orçamento de 1.800 tokens; uma resposta inválida admite uma correção curta, preservando todas as validações de seleção, áreas e evidências.
+
+O cenário sintético com 150 pedidos e oito áreas foi persistido na primeira chamada real do Groq: 2.357 tokens de entrada, 592 de saída e aproximadamente 1,3 segundo no teste local. São medições desse cenário, não uma garantia de latência ou disponibilidade do provedor. A cota por minuto pode ser atingida dentro de uma execução, mesmo após dias sem uso. Os contadores de consumo ficam nos detalhes técnicos.
