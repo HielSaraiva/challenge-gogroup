@@ -657,6 +657,10 @@ export function OperationsApp() {
                       completed={day.completed}
                       pendingIds={day.orders.map((o) => o.id)}
                       onOrder={openOrder}
+                      onBrowse={() => {
+                        setAll(true);
+                        navigate("queue");
+                      }}
                     />
                   )}
                   <section className="panel prose">

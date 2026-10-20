@@ -315,9 +315,12 @@ export function Methodology({
             <p>
               O plano é comparado com FIFO, isto é, atender pela ordem de
               abertura, usando a mesma base e capacidade. Encerrar um caso
-              atualiza o progresso sem repor pedidos automaticamente. Outra
-              seleção exige um novo plano. Revisões de status ou mudanças na
-              base podem exigir sua atualização.
+              atualiza o progresso e sugere o próximo pedido aberto da mesma
+              área, seguindo a prioridade salva. A primeira sugestão é escolhida
+              pela IA; a continuidade não usa a IA. Pedidos de fora da seleção
+              não entram automaticamente. Outra seleção exige um novo plano.
+              Revisões de status ou mudanças na base podem exigir sua
+              atualização.
             </p>
             <p>
               Sem plano, Pedidos mostra a carteira por abertura mais antiga, com

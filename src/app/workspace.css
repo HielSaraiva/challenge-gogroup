@@ -1813,3 +1813,27 @@ main > .panel {
 .capacity-summary dd {
   font-size: 20px;
 }
+
+.workstream-card .workstream-progress {
+  margin: -8px 0 0;
+  font-size: 13px;
+  color: #555761;
+}
+.workstream-card .workstream-continuation {
+  margin: 0;
+  color: #62636b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.workstream-done,
+.plan-complete {
+  padding: 16px;
+  border-radius: 8px;
+  background: #f0f5f1;
+  color: #31563d;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.workstream-card .workstream-done {
+  margin: auto 0 0;
+}
