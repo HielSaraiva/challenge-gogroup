@@ -1,4 +1,5 @@
 "use client";
+import { FormField, ValidatedForm } from "./ui/form";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   Insight,
@@ -59,7 +60,6 @@ export function RecurrenceInvestigation({
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
-  const form = useRef<HTMLFormElement>(null);
   const sample = useRef<HTMLElement>(null);
   const overview = useRef<HTMLElement>(null);
   const recordSection = useRef<HTMLElement>(null);
@@ -143,7 +143,6 @@ export function RecurrenceInvestigation({
       setError(
         "Para concluir, escolha o resultado, descreva o que foi verificado (mínimo de 20 caracteres) para registrar a conclusão.",
       );
-      form.current?.reportValidity();
       return;
     }
     setBusy(true);
@@ -321,7 +320,7 @@ export function RecurrenceInvestigation({
               Comece pelas referências do agente. Consulte os dados abaixo e
               confira os registros da operação antes de marcar um pedido.
             </p>
-            <label className="recurrence-search">
+            <FormField className="recurrence-search">
               Buscar nos {related.length} pedidos relacionados
               <input
                 type="search"
@@ -333,7 +332,7 @@ export function RecurrenceInvestigation({
                 placeholder="Código, marca ou produto"
                 disabled={busy}
               />
-            </label>
+            </FormField>
             <div className="recurrence-order-list">
               {view.items.map((order) => (
                 <article
@@ -402,7 +401,7 @@ export function RecurrenceInvestigation({
                       <p key={issue.code}>{generatedTextLabel(issue.detail)}</p>
                     ))}
                   </Expandable>
-                  <label className="check-label">
+                  <FormField className="check-label">
                     <input
                       type="checkbox"
                       disabled={
@@ -419,7 +418,7 @@ export function RecurrenceInvestigation({
                       }}
                     />
                     Conferi os dados e as referências do pedido {order.id}
-                  </label>
+                  </FormField>
                 </article>
               ))}
               {!view.total && (
@@ -461,16 +460,15 @@ export function RecurrenceInvestigation({
               Salve as verificações parciais para continuar depois. Conclua
               apenas quando tiver um resultado para esta rodada.
             </p>
-            <form
+            <ValidatedForm
               className="guided-form"
-              ref={form}
               onSubmit={(event) => {
                 event.preventDefault();
                 void save(true);
               }}
             >
               <fieldset disabled={busy} className="recurrence-form-fields">
-                <label>
+                <FormField>
                   O que você verificou?
                   <textarea
                     required
@@ -483,8 +481,8 @@ export function RecurrenceInvestigation({
                     }}
                     placeholder="Ex.: conferi os romaneios dos pedidos marcados e encontrei divergência na conferência dos itens. Referência: registro de separação ou protocolo interno, sem dados pessoais."
                   />
-                </label>
-                <label>
+                </FormField>
+                <FormField>
                   Próxima verificação ou recomendação — opcional
                   <textarea
                     maxLength={1500}
@@ -495,8 +493,8 @@ export function RecurrenceInvestigation({
                     }}
                     placeholder="Se houver algo a verificar depois, registre sua recomendação. Ex.: comparar os romaneios com a conferência do próximo turno."
                   />
-                </label>
-                <label>
+                </FormField>
+                <FormField>
                   Resultado desta verificação
                   <select
                     required
@@ -511,7 +509,7 @@ export function RecurrenceInvestigation({
                     <option value="descartada">Hipótese descartada</option>
                     <option value="inconclusiva">Sem confirmação</option>
                   </select>
-                </label>
+                </FormField>
                 {outcome === "confirmada" && (
                   <p className="muted">
                     Registre nas observações quais evidências sustentam a
@@ -588,7 +586,7 @@ export function RecurrenceInvestigation({
                 a conclusão exige dois pedidos conferidos, resultado e
                 observações; não encerra os pedidos relacionados.
               </p>
-            </form>
+            </ValidatedForm>
           </section>
         </>
       )}

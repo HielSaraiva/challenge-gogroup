@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Database, Loader2 } from "lucide-react";
+import { FormField } from "./ui/form";
 import { Button } from "./ui/button";
 type Files = { orders: string; customers: string; carriers: string };
 type Preview = {
@@ -32,6 +33,9 @@ export function DataImport({
   const [preview, setPreview] = useState<Preview>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [fileErrors, setFileErrors] = useState<
+    Partial<Record<keyof Files, string>>
+  >({});
   const [refreshPending, setRefreshPending] = useState(false);
   async function loadImported() {
     setBusy(true);
@@ -61,20 +65,29 @@ export function DataImport({
   async function select(key: keyof Files, file?: File) {
     setPreview(undefined);
     setError("");
+    setFileErrors((previous) => ({ ...previous, [key]: undefined }));
     setFiles((previous) => ({ ...previous, [key]: undefined }));
     if (!file) return;
     if (
       !file.name.toLowerCase().endsWith(".csv") ||
       file.size > (key === "carriers" ? 100_000 : 1_500_000)
     ) {
-      setError("Selecione um CSV de até 1,5 MB (transportadoras: até 100 KB).");
+      setFileErrors((previous) => ({
+        ...previous,
+        [key]: !file.name.toLowerCase().endsWith(".csv")
+          ? "Selecione um arquivo no formato CSV (.csv)."
+          : `O arquivo deve ter até ${key === "carriers" ? "100 KB" : "1,5 MB"}.`,
+      }));
       return;
     }
     try {
       const text = await file.text();
       setFiles((previous) => ({ ...previous, [key]: text }));
     } catch {
-      setError("Não foi possível ler o arquivo. Selecione-o novamente.");
+      setFileErrors((previous) => ({
+        ...previous,
+        [key]: "Não foi possível ler este arquivo. Selecione-o novamente.",
+      }));
     }
   }
   async function submit(mode: "preview" | "commit") {
@@ -101,7 +114,11 @@ export function DataImport({
         await loadImported();
       }
     } catch (e) {
-      setError((e as Error).message);
+      const message = (e as Error).message;
+      setError(message);
+      const field = fields.find(([, filename]) => message.startsWith(filename));
+      if (field)
+        setFileErrors((previous) => ({ ...previous, [field[0]]: message }));
     } finally {
       setBusy(false);
     }
@@ -176,14 +193,14 @@ export function DataImport({
             <fieldset disabled={busy || !status} className="import-fields">
               <legend>1. Selecione os arquivos CSV em UTF-8</legend>
               {fields.map(([key, label]) => (
-                <label key={key}>
+                <FormField key={key} error={fileErrors[key]}>
                   {label}
                   <input
                     type="file"
                     accept=".csv,text/csv"
                     onChange={(e) => void select(key, e.target.files?.[0])}
                   />
-                </label>
+                </FormField>
               ))}
             </fieldset>
             <p className="muted">

@@ -1920,3 +1920,52 @@ main > .panel {
     max-width: 100%;
   }
 }
+
+/* Errors share one presentation across operational forms and file selection. */
+.guided-form [aria-invalid="true"],
+.import-fields [aria-invalid="true"] {
+  border-color: #b42318;
+  box-shadow: 0 0 0 1px #b42318;
+}
+.guided-form .field-error,
+.import-fields .field-error {
+  display: block;
+  margin-top: 6px;
+  color: #a51d16;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.form-error-summary {
+  padding: 14px 16px;
+  border: 1px solid #b42318;
+  border-radius: 8px;
+  background: #fff4f2;
+  color: #8f1d16;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.form-error-summary ul {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+.form-error-summary a {
+  display: block;
+  min-height: 44px;
+  padding: 8px 0;
+  color: inherit;
+  text-decoration: underline;
+}
+.form-error-summary:focus {
+  outline: 2px solid #b42318;
+  outline-offset: 3px;
+}
+.guided-form .check-label:has(.field-error) {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+}
+.guided-form .check-label .field-error {
+  grid-column: 1 / -1;
+}

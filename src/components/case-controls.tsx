@@ -1,4 +1,5 @@
 "use client";
+import { FormField, ValidatedForm } from "./ui/form";
 import { useDraftGuard } from "./hooks/form-safety";
 import { currentCaseTasks, latestReopen } from "@/domain/case-cycle";
 import { generatedTextLabel } from "@/lib/utils";
@@ -151,9 +152,9 @@ export function CaseControls({
         </>
       )}
       {notice && <p role="status">{notice}</p>}
-      <form onSubmit={submit} className="guided-form">
+      <ValidatedForm onSubmit={submit} className="guided-form">
         {review && (
-          <label>
+          <FormField>
             Status confirmado
             <select value={status} onChange={(e) => setStatus(e.target.value)}>
               {order.sourceStatuses.map((s) => (
@@ -162,7 +163,7 @@ export function CaseControls({
                 </option>
               ))}
             </select>
-          </label>
+          </FormField>
         )}
         {action === "resolve" && lastExecutionTask && (
           <>
@@ -180,6 +181,11 @@ export function CaseControls({
             </p>
             <ResolutionFields
               order={order}
+              requiredOutcome={
+                lastExecutionTask.kind === "proposta_reembolso"
+                  ? "reembolso_registrado"
+                  : undefined
+              }
               value={draft}
               onChange={setDraft}
               executionEvidence={lastExecutionTask.execution!.evidence}
@@ -188,7 +194,7 @@ export function CaseControls({
           </>
         )}
         {action !== "resolve" && (
-          <label>
+          <FormField>
             {review ? "Como o status foi validado?" : "Motivo da reabertura"}
             <textarea
               required
@@ -204,7 +210,7 @@ export function CaseControls({
                     : "Resuma como o problema foi resolvido. Ex.: endereço validado, correção registrada no sistema e pedido liberado para seguir o atendimento."
               }
             />
-          </label>
+          </FormField>
         )}
         {error && <p role="alert">{generatedTextLabel(error)}</p>}
         {action === "resolve" && !canResolve && (
@@ -229,7 +235,7 @@ export function CaseControls({
                 ? "Reabrir com justificativa"
                 : "Confirmar resultado e encerrar"}
         </Button>
-      </form>
+      </ValidatedForm>
     </section>
   );
 }

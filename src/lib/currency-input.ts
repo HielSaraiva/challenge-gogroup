@@ -22,3 +22,21 @@ export function formatCurrencyInput(input: string): string {
     return input;
   }
 }
+
+/** Explain invalid monetary drafts without turning unknown costs into zero. */
+export function currencyValidationMessage(
+  input: string,
+  options: { positive?: boolean; max?: string } = {},
+): string | undefined {
+  if (!input.trim()) return;
+  try {
+    const amount = parseCurrencyInput(input);
+    if (!amount) return "Informe um valor válido em reais, como 125,50.";
+    if (options.positive && Number(amount) <= 0)
+      return "Informe um reembolso maior que zero.";
+    if (options.max !== undefined && Number(amount) > Number(options.max))
+      return `O reembolso não pode ultrapassar ${money(options.max)}, o valor disponível neste pedido.`;
+  } catch (error) {
+    return (error as Error).message;
+  }
+}

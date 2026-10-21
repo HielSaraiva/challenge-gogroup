@@ -1,4 +1,5 @@
 "use client";
+import { FormField, ValidatedForm } from "./ui/form";
 import { useDraftGuard } from "./hooks/form-safety";
 import { taskGuidance } from "@/domain/task-guidance";
 import { currentCaseTasks } from "@/domain/case-cycle";
@@ -185,14 +186,14 @@ export function TaskResult({
             realizada fora da demonstração.
           </p>
           {rejecting && (
-            <form
+            <ValidatedForm
               className="guided-form"
               onSubmit={(event) => {
                 event.preventDefault();
                 void save("rejeitada");
               }}
             >
-              <label>
+              <FormField>
                 Por que esta proposta foi rejeitada?
                 <textarea
                   required
@@ -202,7 +203,7 @@ export function TaskResult({
                   onChange={(event) => setRejectionNote(event.target.value)}
                   placeholder="Ex.: item indisponível para reenvio; avaliar outra solução com o responsável."
                 />
-              </label>
+              </FormField>
               <p>
                 O pedido permanece aberto. O motivo ficará registrado para
                 orientar a próxima investigação.
@@ -218,7 +219,7 @@ export function TaskResult({
                   Cancelar
                 </Button>
               </div>
-            </form>
+            </ValidatedForm>
           )}
         </div>
       )}
@@ -244,7 +245,7 @@ export function TaskResult({
         task.kind !== "revisao_status" &&
         (["aberta", "aprovada"].includes(task.status) ||
           (task.status === "concluida" && !task.execution)) && (
-          <form
+          <ValidatedForm
             className="guided-form"
             onSubmit={(e) => {
               e.preventDefault();
@@ -258,7 +259,7 @@ export function TaskResult({
                   : "O que foi executado fora da demonstração?"}
               </h4>
               {resend && (
-                <label>
+                <FormField>
                   Em que etapa está o reenvio?
                   <select
                     required
@@ -277,9 +278,9 @@ export function TaskResult({
                     </option>
                     <option value="received">Recebimento confirmado</option>
                   </select>
-                </label>
+                </FormField>
               )}
-              <label>
+              <FormField>
                 Ação realizada
                 <textarea
                   required
@@ -289,8 +290,8 @@ export function TaskResult({
                   onChange={(e) => setNote(e.target.value)}
                   placeholder={guidance.action}
                 />
-              </label>
-              <label>
+              </FormField>
+              <FormField>
                 Evidência ou referência da execução
                 <textarea
                   required
@@ -300,8 +301,8 @@ export function TaskResult({
                   onChange={(e) => setEvidence(e.target.value)}
                   placeholder={`${guidance.evidence} Não inclua dados pessoais.`}
                 />
-              </label>
-              <label>
+              </FormField>
+              <FormField>
                 A ação realizada resolveu a pendência deste pedido?
                 <select
                   required
@@ -317,7 +318,7 @@ export function TaskResult({
                     Sim, foi resolvida
                   </option>
                 </select>
-              </label>
+              </FormField>
               {resend && stage === "dispatched" && (
                 <p className="muted">
                   O despacho será registrado sem encerrar. Quando o recebimento
@@ -335,6 +336,11 @@ export function TaskResult({
               {resolvedAnswer === "yes" && canCloseWithExecution && order && (
                 <ResolutionFields
                   order={order}
+                  requiredOutcome={
+                    task.kind === "proposta_reembolso"
+                      ? "reembolso_registrado"
+                      : undefined
+                  }
                   value={resolution}
                   onChange={setResolution}
                   executionEvidence={evidence}
@@ -352,7 +358,7 @@ export function TaskResult({
                     ? "Registrar execução e encerrar pedido"
                     : "Registrar execução e manter aberto"}
             </Button>
-          </form>
+          </ValidatedForm>
         )}
       {task.status === "concluida" && (
         <section

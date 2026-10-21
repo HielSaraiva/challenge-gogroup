@@ -1,7 +1,12 @@
 "use client";
+import { FormField } from "./ui/form";
 import { allowedOutcomes, outcomeLabels } from "@/domain/cases";
 import type { RankedOrder, ResolutionOutcome } from "@/domain/types";
-import { formatCurrencyInput, parseCurrencyInput } from "@/lib/currency-input";
+import {
+  formatCurrencyInput,
+  parseCurrencyInput,
+  currencyValidationMessage,
+} from "@/lib/currency-input";
 import { closureRecords } from "@/domain/financial-records";
 import Decimal from "decimal.js";
 import { money } from "@/lib/utils";
@@ -70,12 +75,14 @@ export function ResolutionFields({
   onChange,
   executionEvidence,
   executionStage,
+  requiredOutcome,
 }: {
   order: RankedOrder;
   value: ResolutionDraft;
   onChange: (value: ResolutionDraft) => void;
   executionEvidence: string;
   executionStage?: "dispatched" | "received";
+  requiredOutcome?: ResolutionOutcome["type"];
 }) {
   const change = (patch: Partial<ResolutionDraft>) =>
     onChange({ ...value, ...patch });
@@ -99,7 +106,13 @@ export function ResolutionFields({
           anteriores.
         </p>
       )}
-      <label>
+      <FormField
+        validate={(type) =>
+          requiredOutcome && type && type !== requiredOutcome
+            ? "Para esta proposta de reembolso, selecione Reembolso registrado e informe o valor efetivo."
+            : undefined
+        }
+      >
         Qual resultado foi confirmado?
         <select
           required
@@ -130,9 +143,9 @@ export function ResolutionFields({
             </option>
           ))}
         </select>
-      </label>
+      </FormField>
       {value.type === "item_reenviado" && (
-        <label className="check-label">
+        <FormField className="check-label">
           <input
             type="checkbox"
             required
@@ -143,10 +156,10 @@ export function ResolutionFields({
           />
           Confirmei o recebimento do item reenviado e que a pendência foi
           resolvida.
-        </label>
+        </FormField>
       )}
       {canReuse && (
-        <label className="check-label">
+        <FormField className="check-label">
           <input
             type="checkbox"
             checked={value.reuseEvidence}
@@ -155,7 +168,7 @@ export function ResolutionFields({
             }
           />
           A evidência da execução também comprova este resultado
-        </label>
+        </FormField>
       )}
       {!canReuse && (
         <p>
@@ -173,7 +186,7 @@ export function ResolutionFields({
           </p>
         </div>
       ) : (
-        <label>
+        <FormField>
           Evidência complementar do resultado
           <textarea
             required
@@ -187,10 +200,17 @@ export function ResolutionFields({
                 : "Informe o registro que confirma a resolução. Se a evidência da execução já comprova o resultado, marque a opção acima para reutilizá-la."
             }
           />
-        </label>
+        </FormField>
       )}
       {value.type === "reembolso_registrado" && (
-        <label>
+        <FormField
+          validate={(input) =>
+            currencyValidationMessage(input, {
+              positive: true,
+              max: remainingRefund,
+            })
+          }
+        >
           Reembolso registrado (R$)
           <input
             required
@@ -205,9 +225,9 @@ export function ResolutionFields({
             {refunded.gt(0) &&
               ` Já registrado neste pedido: ${money(refunded.toFixed(2))}.`}
           </small>
-        </label>
+        </FormField>
       )}
-      <label>
+      <FormField validate={currencyValidationMessage}>
         Custo adicional para resolver o problema (R$) — opcional
         <input
           inputMode="decimal"
@@ -216,9 +236,9 @@ export function ResolutionFields({
           onBlur={() => change({ cost: formatCurrencyInput(value.cost) })}
           placeholder="Ex.: R$ 15,00 de novo frete"
         />
-      </label>
+      </FormField>
       {value.cost.trim() && (
-        <label>
+        <FormField>
           Como o custo foi apurado?
           <select
             required
@@ -235,7 +255,7 @@ export function ResolutionFields({
               Custo realizado, informado pela equipe
             </option>
           </select>
-        </label>
+        </FormField>
       )}
       <p className="muted">
         Custo adicional é uma despesa como novo frete ou reprodução do item. Não

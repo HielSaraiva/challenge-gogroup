@@ -19,7 +19,7 @@ Os rótulos operacionais ficam em `domain/labels.ts`. Formatação monetária, d
 
 ## Interface
 
-Botões, diálogos, expansíveis e paginação são compartilhados em `src/components/ui`. As análises usam `AgentProgress`. Os estilos são carregados por `src/app/layout.tsx`: base em `globals.css`, composição em `operations.css`, identidade em `brand.css`, modais em `dialog.css` e ajustes dos fluxos em `workspace.css`. A ordem de carregamento faz parte da cascata de estilos.
+Botões, diálogos, expansíveis e paginação são compartilhados em `src/components/ui`. As análises usam `AgentProgress`. Formulários usam `ValidatedForm` e `FormField` para mensagens junto aos campos, resumo de erros e navegação acessível até o problema. Os estilos são carregados por `src/app/layout.tsx`: base em `globals.css`, composição em `operations.css`, identidade em `brand.css`, modais em `dialog.css` e ajustes dos fluxos em `workspace.css`. A ordem de carregamento faz parte da cascata de estilos.
 
 ## Estado e gravações
 
