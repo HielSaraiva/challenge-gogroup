@@ -259,7 +259,7 @@ test("audits narrow and tablet pages and keyboard navigation in methodology", as
   }
 });
 
-test("keeps the mobile menu aligned with an adjacent count and its own scrolling", async ({
+test("centers mobile menu labels independently of the adjacent count and preserves scrolling", async ({
   page,
 }, info) => {
   expect(
@@ -284,13 +284,18 @@ test("keeps the mobile menu aligned with an adjacent count and its own scrolling
       );
       const labels = items.map((button) => {
         const range = document.createRange();
-        range.selectNode(button.firstChild!);
+        range.selectNode(button.querySelector(".nav-item-label")!.firstChild!);
         return range.getBoundingClientRect();
       });
       const count = el.querySelector(".nav-count")!.getBoundingClientRect();
       const pending = labels[2];
       return {
-        lefts: labels.map((r) => r.left),
+        centerOffsets: labels.map((r, index) => {
+          const button = items[index].getBoundingClientRect();
+          return Math.abs(
+            (r.left + r.right) / 2 - (button.left + button.right) / 2,
+          );
+        }),
         countGap: count.left - pending.right,
         heights: items.map((button) => button.getBoundingClientRect().height),
         bottom: el.getBoundingClientRect().bottom,
@@ -298,9 +303,7 @@ test("keeps the mobile menu aligned with an adjacent count and its own scrolling
         scrollable: el.scrollHeight > el.clientHeight,
       };
     });
-    expect(
-      Math.max(...geometry.lefts) - Math.min(...geometry.lefts),
-    ).toBeLessThanOrEqual(1);
+    expect(Math.max(...geometry.centerOffsets)).toBeLessThanOrEqual(1);
     expect(geometry.countGap).toBeGreaterThanOrEqual(6);
     expect(geometry.countGap).toBeLessThanOrEqual(12);
     expect(Math.min(...geometry.heights)).toBeGreaterThanOrEqual(44);

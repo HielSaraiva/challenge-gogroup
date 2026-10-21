@@ -476,10 +476,12 @@ export function OperationsApp() {
               key={id}
               onClick={() => navigate(id)}
             >
-              {label}
-              {id === "agent" && pendingCount > 0 && (
-                <span className="nav-count">{pendingCount}</span>
-              )}
+              <span className="nav-item-label">
+                {label}
+                {id === "agent" && pendingCount > 0 && (
+                  <span className="nav-count">{pendingCount}</span>
+                )}
+              </span>
             </button>
           ))}
         </nav>

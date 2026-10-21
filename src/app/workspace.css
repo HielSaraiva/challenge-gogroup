@@ -1069,6 +1069,11 @@ main > .panel {
 .sidebar .nav-item.active::after {
   bottom: -13px;
 }
+.sidebar .nav-item-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 @media (max-width: 1100px) {
   .sidebar {
     min-height: 64px;
@@ -1107,12 +1112,18 @@ main > .panel {
   }
   .sidebar .nav-item {
     width: 100%;
-    justify-content: flex-start;
-    gap: 10px;
-    text-align: left;
+    justify-content: center;
+    text-align: center;
     border-radius: 7px;
   }
+  .sidebar .nav-item-label {
+    position: relative;
+  }
   .sidebar .nav-item .nav-count {
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
     display: inline-flex;
     align-items: center;
     justify-content: center;
