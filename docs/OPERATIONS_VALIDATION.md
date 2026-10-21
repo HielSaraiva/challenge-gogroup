@@ -100,3 +100,13 @@ Hoje mostra o progresso de cada área e mantém a escolha inicial da IA enquanto
 A situação da carteira aparece antes da ação de preparar o dia. O modal de reanálise separa preservação dos registros, possíveis novas propostas e consumo de cota. O texto e o botão de nova análise são consistentes quando já há investigação. Metodologia descreve a continuidade automática, a capacidade de planejamento, a preparação de evidências no servidor e o avanço da cobertura das recorrências.
 
 Validação desta alteração: 165 testes de domínio/API aprovados e um opcional ignorado; doze cenários de navegador aprovados em desktop e celular. A preparação de plano é exclusiva da cópia temporária dos testes. O fluxo de encerramento e reabertura foi exercitado pelos formulários reais, com persistência após recarga e nenhuma chamada à IA para avançar a sugestão. Também foram verificados os dois caminhos de registro de resultado após consumir as 150 vagas, a ordenação FIFO, os contadores de Resultados, o modal e a posição da carteira. TypeScript, formatação e build aprovados.
+
+## Revisão de entrega — 21/10/2026
+
+As sete abas, os principais modais, os estados vazios e os avisos de recuperação foram revistos com as skills `ui-ux-pro-max` e `frontend-design`, preservando a identidade existente. A conferência cobre desktop, tablet, celular e navegação por teclado no índice da Metodologia. Os testes adicionais verificam que o cabeçalho não cobre o índice em telas estreitas e que os botões de recuperação preservam seu estilo e espaço de interação.
+
+A Metodologia foi confrontada com as regras de priorização, capacidade, encerramento, reabertura, valores, recorrências, importação e sessão. O texto agora explicita que análises de recorrência podem terminar sem novos cards, que histórico concluído também exige reinício antes de trocar a base e que recuperar a atualização não repete a IA ou a importação.
+
+Esta rodada usa uma cópia temporária com dados sintéticos e não consome Groq nem altera dados publicados. Disponibilidade e cota do provedor continuam dependências externas; esta revisão não substitui uma execução real imediatamente antes da apresentação.
+
+Validação final desta rodada: 165 testes aprovados e um opcional ignorado; 28 cenários de navegador aprovados; TypeScript, formatação e build de produção aprovados.

@@ -38,7 +38,7 @@ async function previewImport(page: Page) {
 
 test("keeps a saved AI analysis successful and retries only the workspace read", async ({
   page,
-}) => {
+}, info) => {
   let blocked = false;
   let analyses = 0;
   await page.route("**/api/workspace", async (route) => {
@@ -88,6 +88,25 @@ test("keeps a saved AI analysis successful and retries only the workspace read",
     }),
   ).toBeVisible();
   await expect(page.locator(".alert-error")).toHaveCount(0);
+  const recoveryButton = page.getByRole("button", {
+    name: "Atualizar tela",
+    exact: true,
+  });
+  expect(
+    await recoveryButton.evaluate((el) =>
+      parseFloat(getComputedStyle(el).borderTopWidth),
+    ),
+  ).toBeGreaterThan(0);
+  if (page.viewportSize()!.width < 640) {
+    const action = await recoveryButton.boundingBox();
+    const alert = await recoveryButton.locator("..").boundingBox();
+    expect(action!.width).toBeGreaterThan(alert!.width * 0.8);
+  }
+  await page.screenshot({
+    path: info.outputPath("saved-analysis-refresh-pending.png"),
+    fullPage: true,
+    animations: "disabled",
+  });
   await page
     .getByRole("button", { name: "Atualizar tela", exact: true })
     .click();
@@ -157,7 +176,7 @@ for (const transportError of [false, true]) {
 
 test("keeps an imported base saved and retries loading without importing again", async ({
   page,
-}) => {
+}, info) => {
   let blocked = false;
   let commits = 0;
   await page.route("**/api/workspace", async (route) => {
@@ -194,6 +213,11 @@ test("keeps an imported base saved and retries loading without importing again",
     ),
   ).toBeVisible();
   await expect(page).toHaveURL(/#data$/);
+  await page.screenshot({
+    path: info.outputPath("imported-base-refresh-pending.png"),
+    fullPage: true,
+    animations: "disabled",
+  });
   await expect(page.locator(".alert-error")).toHaveCount(0);
   await expect(page.locator(".data-status")).toContainText(
     "1 pedidos na base atual",

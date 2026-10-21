@@ -49,8 +49,10 @@ As regras compartilhadas dos modais ficam em `src/app/dialog.css`; variações p
 
 ## Verificação de consistência
 
-Revisão com a skill `ui-ux-pro-max`: as sete abas foram conferidas em desktop (1440 px) e celular (390 px), antes e depois de um plano ativo, incluindo estados vazios. Os modais de pedido, resultado, recorrência e confirmação foram inspecionados por capturas de tela e medidas do navegador em uma cópia isolada com dados sintéticos.
+Revisão com as skills `ui-ux-pro-max` e `frontend-design`: as sete abas foram conferidas em desktop (1440 px), tablet (768 px) e celular (320 e 390 px), antes e depois de um plano ativo, incluindo estados vazios. Os modais de pedido, resultado, recorrência e confirmação foram inspecionados por capturas de tela e medidas do navegador em uma cópia isolada com dados sintéticos.
 
 As confirmações compartilham largura, tipografia, espaçamento e ações em `dialog.css`; no celular, os botões ficam em coluna. Os modais de trabalho preservam a largura necessária para seus formulários. Etiquetas usam 12 px, e os seletores de CSV respeitam a largura interna do card. A tabela de pedidos mantém rolagem horizontal própria.
 
 A suíte de navegador verifica ausência de transbordamento nas páginas e nos modais, contenção dos campos de arquivo, foco e proteção contra descarte, além dos fluxos de execução, conclusão, reabertura e reinício. As capturas desativam animações para registrar o estado final da interface. Esta revisão não substitui um teste de usabilidade com a equipe.
+
+No celular estreito, o cabeçalho preserva o logotipo e o menu na mesma linha, ocultando apenas o subtítulo da marca para não cobrir o índice da Metodologia. Avisos com ações usam os botões compartilhados, com borda e largura completa no celular; o estilo dos botões de dispensar não interfere nessas ações. A navegação do índice por teclado preserva o foco no título e o mantém abaixo dos elementos fixos.

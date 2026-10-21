@@ -850,8 +850,10 @@ footer > span:first-child {
   line-height: 1.7;
   border: 1px solid;
 }
-.alert > button {
+.alert > button:not(.button) {
   margin-left: auto;
+  min-width: 44px;
+  min-height: 44px;
   background: transparent;
   border: 0;
   color: inherit;

@@ -202,3 +202,59 @@ test("audits order forms, recurrence steps and confirmation dialogs", async ({
   await capture(page, info, "modal-reset", true);
   await page.keyboard.press("Escape");
 });
+
+test("audits narrow and tablet pages and keyboard navigation in methodology", async ({
+  page,
+}, info) => {
+  for (const width of [320, 768]) {
+    await page.setViewportSize({ width, height: 1000 });
+    for (const [hash, title] of tabs) {
+      await visit(page, hash, title);
+      await capture(page, info, `width-${width}-${hash}`);
+    }
+    const index = page.getByRole("navigation", {
+      name: "Nesta metodologia",
+      exact: true,
+    });
+    const toggle = page.getByRole("button", {
+      name: "Nesta metodologia",
+      exact: true,
+    });
+    await toggle.click();
+    const link = index.getByRole("link", {
+      name: "Execução e resultados",
+      exact: true,
+    });
+    await link.focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/#method-outcomes$/);
+    const title = page.getByRole("heading", {
+      name: "Da execução ao encerramento",
+      exact: true,
+    });
+    await expect(title).toBeFocused();
+    const titleBox = await title.boundingBox();
+    const stickyBox = await page.locator(".method-sidebar").boundingBox();
+    const headerBox = await page.locator("header.sidebar").boundingBox();
+    expect(stickyBox!.y).toBeGreaterThanOrEqual(
+      headerBox!.y + headerBox!.height,
+    );
+    expect(titleBox!.y).toBeGreaterThanOrEqual(
+      stickyBox!.y + stickyBox!.height,
+    );
+    await page
+      .locator("#method-outcomes summary")
+      .filter({ hasText: "O que acontece ao reabrir?" })
+      .click();
+    await expect(
+      page.getByText("O pedido sai de resolvidos, volta aos abertos", {
+        exact: false,
+      }),
+    ).toBeVisible();
+    await capture(page, info, `width-${width}-method-expanded`);
+    await page.screenshot({
+      path: info.outputPath(`width-${width}-method-anchor.png`),
+      animations: "disabled",
+    });
+  }
+});

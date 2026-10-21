@@ -1118,6 +1118,28 @@ main > .panel {
   }
 }
 
+/* Keep the mobile header on one line so it cannot cover the section index. */
+@media (max-width: 360px) {
+  .sidebar .brand-product {
+    display: none;
+  }
+}
+.alert > .button {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+@media (max-width: 640px) {
+  .alert:has(> .button) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .alert > .button {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
 .new-plan-icon {
   display: grid;
   place-items: center;

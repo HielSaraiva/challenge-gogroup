@@ -221,9 +221,10 @@ export function Methodology({
             <summary>Validação, falhas e limites de uso</summary>
             <p>
               Um texto de sucesso não basta: o servidor exige consultas e um
-              plano ou tarefa salvo, além de validar áreas, referências e
-              compatibilidade com o pedido. Repetir a mesma ação não deve criar
-              tarefas duplicadas.
+              registro válido: plano, tarefa ou seleção de recorrências. Essa
+              seleção pode não trazer novos achados. Áreas, referências e
+              compatibilidade são validadas antes da gravação. Repetir a mesma
+              ação não deve criar tarefas duplicadas.
             </p>
             <p>
               Há limites de tempo, chamadas e uso diário. Uma falha preserva o
@@ -232,6 +233,10 @@ export function Methodology({
               selecionadas; a credencial fica apenas no servidor. Os detalhes
               técnicos mostram chamadas e resultados, não raciocínio interno do
               modelo.
+            </p>
+            <p>
+              Se a análise foi salva, mas a tela não atualizou, use “Atualizar
+              tela”. O botão carrega os registros sem chamar a IA novamente.
             </p>
           </Expandable>
         </section>
@@ -571,10 +576,16 @@ export function Methodology({
               sinalizadas, sem substituir a data original.
             </p>
             <p>
-              A importação pela interface vale apenas para sua sessão. Trocar a
-              base com tratativas ativas é bloqueado. Reiniciar em Dados cria
-              uma nova sessão sem tratativas e restaura a base padrão de
-              30/09/2026.
+              A importação pela interface vale apenas para sua sessão. Após
+              iniciar análises ou registrar tratativas, é preciso reiniciar a
+              demonstração para trocar a base, mesmo que o trabalho já tenha
+              sido concluído. Reiniciar em Dados cria uma nova sessão e restaura
+              a base padrão de 30/09/2026.
+            </p>
+            <p>
+              Se a base foi importada, mas os novos dados não carregaram, use
+              “Tentar carregar novamente” em Dados. O botão não repete a
+              importação; a navegação para Hoje ocorre após o carregamento.
             </p>
           </Expandable>
           <Expandable>
