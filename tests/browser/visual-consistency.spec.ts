@@ -212,8 +212,7 @@ test("audits narrow and tablet pages and keyboard navigation in methodology", as
       exact: true,
     });
     const toggle = page.getByRole("button", {
-      name: "Nesta metodologia",
-      exact: true,
+      name: /^Navegar na metodologia/,
     });
     await toggle.click();
     const link = index.getByRole("link", {

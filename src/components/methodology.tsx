@@ -1,6 +1,6 @@
 "use client";
 import { Expandable } from "./ui/expandable";
-import { useEffect, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { ChevronDown, List } from "lucide-react";
 import { STRATEGIES, type Weights } from "@/domain/types";
 import type { dashboard } from "@/domain/analytics";
@@ -22,9 +22,24 @@ export function Methodology({
 }) {
   const [indexOpen, setIndexOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("method-flow");
-  function scrollToSection(animate = false) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const indexRef = useRef<HTMLElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const activeLabel = sections.find(([id]) => id === activeSection)![1];
+  function readingOffset() {
+    const headerHeight =
+      document.querySelector("header.sidebar")?.getBoundingClientRect()
+        .height || 0;
+    return (
+      headerHeight +
+      (window.matchMedia("(max-width: 900px)").matches
+        ? (indexRef.current?.getBoundingClientRect().height || 0) + 16
+        : 24)
+    );
+  }
+  function scrollToSection() {
     const id = window.location.hash.slice(1);
-    if (!id.startsWith("method-")) return;
+    if (!sections.some(([sectionId]) => sectionId === id)) return;
     const section = document.getElementById(id);
     if (!section) return;
     setActiveSection(id);
@@ -33,15 +48,94 @@ export function Methodology({
       title.tabIndex = -1;
       title.focus({ preventScroll: true });
     }
-    section.scrollIntoView({
-      block: "start",
-      behavior:
-        animate &&
-        !window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "smooth"
-          : "instant",
+    window.scrollTo({
+      top: Math.max(
+        0,
+        window.scrollY + section.getBoundingClientRect().top - readingOffset(),
+      ),
+      behavior: "instant",
     });
   }
+  useEffect(() => {
+    let frame = 0;
+    const updatePosition = () => {
+      const root = rootRef.current;
+      const index = indexRef.current;
+      if (!root || !index) return;
+      const header = document.querySelector("header.sidebar");
+      const headerHeight = header?.getBoundingClientRect().height || 0;
+      const indexHeight = index.getBoundingClientRect().height;
+      for (const [name, value] of [
+        ["--method-header-height", `${headerHeight}px`],
+        ["--method-index-height", `${indexHeight}px`],
+      ]) {
+        if (root.style.getPropertyValue(name) !== value)
+          root.style.setProperty(name, value);
+      }
+      const readingLine =
+        headerHeight +
+        (window.matchMedia("(max-width: 900px)").matches
+          ? indexHeight + 16
+          : 24) +
+        1;
+      let current: string = sections[0][0];
+      for (const [id] of sections) {
+        if (
+          document.getElementById(id)!.getBoundingClientRect().top <=
+          readingLine
+        )
+          current = id;
+        else break;
+      }
+      if (
+        window.scrollY > 0 &&
+        window.scrollY + window.innerHeight >=
+          document.documentElement.scrollHeight - 2
+      )
+        current = sections[sections.length - 1][0];
+      setActiveSection((previous) =>
+        previous === current ? previous : current,
+      );
+    };
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(updatePosition);
+    };
+    const observer = new ResizeObserver(schedule);
+    const header = document.querySelector("header.sidebar");
+    if (header) observer.observe(header);
+    if (indexRef.current) observer.observe(indexRef.current);
+    const content = rootRef.current?.querySelector(".method-content");
+    if (content) observer.observe(content);
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    schedule();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
+  }, []);
+  useEffect(() => {
+    if (!indexOpen) return;
+    const dismiss = (event: PointerEvent) => {
+      if (!indexRef.current?.contains(event.target as Node))
+        setIndexOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIndexOpen(false);
+        toggleRef.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [indexOpen]);
   useEffect(() => {
     let frame = 0;
     const restoreSection = () => {
@@ -64,20 +158,23 @@ export function Methodology({
     setIndexOpen(false);
     const hash = event.currentTarget.hash;
     if (window.location.hash !== hash) window.history.pushState(null, "", hash);
-    scrollToSection(true);
+    scrollToSection();
   }
   return (
-    <div className="methodology">
-      <aside className="method-sidebar">
+    <div className="methodology" ref={rootRef}>
+      <aside className="method-sidebar" ref={indexRef}>
         <p className="method-index-title">Nesta metodologia</p>
         <button
           className="method-index-toggle"
+          ref={toggleRef}
           type="button"
+          aria-label={`Navegar na metodologia. Seção atual: ${activeLabel}`}
           aria-expanded={indexOpen}
           aria-controls="method-section-links"
           onClick={() => setIndexOpen(!indexOpen)}
         >
-          <List size={18} aria-hidden="true" /> Nesta metodologia{" "}
+          <List size={18} aria-hidden="true" />
+          <span className="method-index-current">{activeLabel}</span>
           <ChevronDown size={18} aria-hidden="true" />
         </button>
         <nav
