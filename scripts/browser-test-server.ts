@@ -3,7 +3,14 @@ import { mkdtemp, cp, symlink, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
-import { data, tasks, planData, dailyPlan } from "../tests/browser/fixtures";
+import {
+  data,
+  tasks,
+  planData,
+  dailyPlan,
+  selectData,
+  selectTasks,
+} from "../tests/browser/fixtures";
 async function main() {
   const root = process.cwd();
   const copy = await mkdtemp(path.join(tmpdir(), "gogroup-browser-"));
@@ -32,6 +39,12 @@ async function main() {
     import { upsertTask, saveSessionDataset, upsertDailyPlan, createSession } from "@/server/store";
     export async function GET(request: Request) {
       const {id} = await session();
+      if (new URL(request.url).searchParams.has("selects")) {
+        await createSession(id);
+        await saveSessionDataset(id, ${JSON.stringify(selectData)} as any);
+        for (const task of ${JSON.stringify(selectTasks)}) await upsertTask(id, task as any);
+        return json({ok:true});
+      }
       if (new URL(request.url).searchParams.get("plan")) {
         await createSession(id);
         await saveSessionDataset(id, ${JSON.stringify(planData)} as any);

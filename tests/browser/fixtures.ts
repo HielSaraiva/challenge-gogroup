@@ -128,3 +128,40 @@ export const dailyPlan: DailyPlan = {
     },
   })),
 };
+
+// Additional native-select states, used only by the disposable browser app.
+export const selectData: Dataset = {
+  ...data,
+  sourceRows: data.sourceRows + 2,
+  orders: [
+    ...data.orders,
+    {
+      ...base,
+      id: "UI-CONFLICT",
+      status: "status_divergente",
+      sourceStatuses: ["aberta", "em_analise"],
+    },
+    { ...base, id: "UI-RESEND", exception: "item_faltante" },
+  ],
+};
+export const selectTasks: Task[] = [
+  ...tasks,
+  {
+    ...task,
+    id: "77777777-7777-4777-8777-777777777777",
+    orderId: "UI-CONFLICT",
+    kind: "revisao_status",
+    evidenceIds: ["UI-CONFLICT"],
+    idempotencyKey: "browser-conflict",
+  },
+  {
+    ...task,
+    id: "88888888-8888-4888-8888-888888888888",
+    orderId: "UI-RESEND",
+    kind: "proposta_reenvio",
+    status: "aprovada",
+    approval: { at: task.createdAt },
+    evidenceIds: ["UI-RESEND"],
+    idempotencyKey: "browser-resend",
+  },
+];

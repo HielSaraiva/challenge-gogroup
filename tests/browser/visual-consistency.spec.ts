@@ -160,7 +160,12 @@ test("audits order forms, recurrence steps and confirmation dialogs", async ({
     })
     .click();
   await capture(page, info, "modal-order", true);
-  await page.getByRole("radio", { name: /^Sim/ }).check();
+  await page
+    .getByRole("combobox", {
+      name: "A ação realizada resolveu a pendência deste pedido?",
+      exact: true,
+    })
+    .selectOption("yes");
   await page
     .getByRole("combobox", {
       name: "Qual resultado foi confirmado?",
@@ -335,7 +340,7 @@ test("centers mobile menu labels independently of the adjacent count and preserv
   }
 });
 
-test("shows readable footer text and inline execution choices on small screens", async ({
+test("shows readable footer text and a native execution select on small screens", async ({
   page,
 }, info) => {
   expect(
@@ -369,41 +374,32 @@ test("shows readable footer text and inline execution choices on small screens",
         exact: true,
       })
       .click();
-    const choices = page.getByRole("group", {
+    const choices = page.getByRole("combobox", {
       name: "A ação realizada resolveu a pendência deste pedido?",
       exact: true,
     });
     await choices.scrollIntoViewIfNeeded();
-    await expect(choices.getByRole("radio")).toHaveCount(2);
-    const no = choices.getByRole("radio", { name: /^Ainda não/ });
-    const yes = choices.getByRole("radio", { name: /^Sim/ });
-    await no.focus();
-    await page.keyboard.press("Space");
-    await expect(no).toBeChecked();
-    await page.keyboard.press("ArrowDown");
-    await expect(yes).toBeChecked();
+    await expect(choices.locator("option")).toHaveCount(3);
+    await choices.selectOption("yes");
     await expect(
       page.getByRole("combobox", {
         name: "Qual resultado foi confirmado?",
         exact: true,
       }),
     ).toBeVisible();
-    await page.keyboard.press("ArrowUp");
-    await expect(no).toBeChecked();
+    await choices.selectOption("no");
     await expect(
       page.getByRole("combobox", {
         name: "Qual resultado foi confirmado?",
         exact: true,
       }),
     ).toHaveCount(0);
-    for (const label of await choices.locator("label").all()) {
-      expect(
-        await label.evaluate((el) => el.scrollWidth <= el.clientWidth),
-      ).toBeTruthy();
-      expect((await label.boundingBox())!.height).toBeGreaterThanOrEqual(48);
-    }
+    expect(
+      await choices.evaluate((el) => el.scrollWidth <= el.clientWidth),
+    ).toBeTruthy();
+    expect((await choices.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await choices.screenshot({
-      path: info.outputPath(`execution-choices-${width}.png`),
+      path: info.outputPath(`execution-select-${width}.png`),
     });
     await page.keyboard.press("Escape");
     await page

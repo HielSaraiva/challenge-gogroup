@@ -301,43 +301,23 @@ export function TaskResult({
                   placeholder={`${guidance.evidence} Não inclua dados pessoais.`}
                 />
               </label>
-              <fieldset
-                className="execution-outcome"
-                disabled={busy || committed || (resend && stage !== "received")}
-              >
-                <legend>
-                  A ação realizada resolveu a pendência deste pedido?
-                </legend>
-                <label>
-                  <input
-                    type="radio"
-                    name={`execution-outcome-${task.id}`}
-                    value="no"
-                    required
-                    checked={resolvedAnswer === "no"}
-                    onChange={() => setResolvedAnswer("no")}
-                  />
-                  <span>
-                    <strong>Ainda não</strong>
-                    <span>Registrar execução e manter o pedido aberto.</span>
-                  </span>
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name={`execution-outcome-${task.id}`}
-                    value="yes"
-                    required
-                    disabled={!canCloseWithExecution}
-                    checked={resolvedAnswer === "yes"}
-                    onChange={() => setResolvedAnswer("yes")}
-                  />
-                  <span>
-                    <strong>Sim</strong>
-                    <span>Registrar execução e encerrar o pedido.</span>
-                  </span>
-                </label>
-              </fieldset>
+              <label>
+                A ação realizada resolveu a pendência deste pedido?
+                <select
+                  required
+                  disabled={
+                    busy || committed || (resend && stage !== "received")
+                  }
+                  value={resolvedAnswer}
+                  onChange={(event) => setResolvedAnswer(event.target.value)}
+                >
+                  <option value="">Selecione a resposta</option>
+                  <option value="no">Ainda não</option>
+                  <option value="yes" disabled={!canCloseWithExecution}>
+                    Sim, foi resolvida
+                  </option>
+                </select>
+              </label>
               {resend && stage === "dispatched" && (
                 <p className="muted">
                   O despacho será registrado sem encerrar. Quando o recebimento
