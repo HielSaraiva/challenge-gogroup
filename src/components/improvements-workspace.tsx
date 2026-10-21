@@ -273,7 +273,7 @@ export function ImprovementsWorkspace({
       />
       <Dialog open={confirmAnalysis} onOpenChange={setConfirmAnalysis}>
         <DialogContent
-          className="new-plan-dialog"
+          className="confirmation-dialog"
           onCloseAutoFocus={(event) => {
             if (starting.current) event.preventDefault();
           }}
@@ -299,7 +299,7 @@ export function ImprovementsWorkspace({
             </div>
           </div>
           <p className="muted">Essa ação usa a cota da IA.</p>
-          <div className="new-plan-footer">
+          <div className="confirmation-footer">
             <Button variant="outline" onClick={() => setConfirmAnalysis(false)}>
               Cancelar
             </Button>
@@ -316,7 +316,7 @@ export function ImprovementsWorkspace({
         }}
       >
         <DialogContent
-          className="new-plan-dialog"
+          className="confirmation-dialog"
           onCloseAutoFocus={(event) => {
             if (starting.current) event.preventDefault();
           }}
@@ -327,7 +327,7 @@ export function ImprovementsWorkspace({
             mesmo grupo, considera a conclusão e cria outra etapa para
             verificação. Essa chamada usa a cota da IA.
           </DialogDescription>
-          <div className="new-plan-footer">
+          <div className="confirmation-footer">
             <Button variant="outline" onClick={() => setConfirmTask(undefined)}>
               Cancelar
             </Button>

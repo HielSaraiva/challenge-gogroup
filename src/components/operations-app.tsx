@@ -1316,7 +1316,7 @@ export function OperationsApp() {
                     if (!open) setConfirmOrderId(null);
                   }}
                 >
-                  <DialogContent className="new-plan-dialog">
+                  <DialogContent className="confirmation-dialog">
                     <span className="new-plan-icon" aria-hidden="true">
                       <Bot size={24} />
                     </span>
@@ -1338,7 +1338,7 @@ export function OperationsApp() {
                         </p>
                       </div>
                     </div>
-                    <div className="new-plan-footer">
+                    <div className="confirmation-footer">
                       <Button
                         variant="outline"
                         onClick={() => setConfirmOrderId(null)}
@@ -1413,13 +1413,13 @@ export function OperationsApp() {
           if (!open) setProcessDestination(undefined);
         }}
       >
-        <DialogContent className="new-plan-dialog">
+        <DialogContent className="confirmation-dialog">
           <DialogTitle>Há alterações não salvas</DialogTitle>
           <DialogDescription>
             Para retomar estas anotações depois, volte e use “Salvar progresso”.
             Sair agora descarta apenas as alterações desde o último salvamento.
           </DialogDescription>
-          <div className="new-plan-footer">
+          <div className="confirmation-footer">
             <Button
               variant="outline"
               onClick={() => setProcessDestination(undefined)}
@@ -1440,7 +1440,7 @@ export function OperationsApp() {
       </Dialog>
       <Dialog open={confirmNewPlan} onOpenChange={setConfirmNewPlan}>
         <DialogContent
-          className="new-plan-dialog"
+          className="confirmation-dialog"
           onCloseAutoFocus={(event) => {
             if (scrollToDailyActivity.current || busy) event.preventDefault();
           }}
@@ -1513,7 +1513,7 @@ export function OperationsApp() {
               </div>
             </div>
           )}
-          <div className="new-plan-footer">
+          <div className="confirmation-footer">
             <Button variant="outline" onClick={() => setConfirmNewPlan(false)}>
               {day?.plan ? "Manter plano atual" : "Cancelar"}
             </Button>
@@ -1536,12 +1536,12 @@ export function OperationsApp() {
         </DialogContent>
       </Dialog>
       <Dialog open={confirmOrderClose} onOpenChange={setConfirmOrderClose}>
-        <DialogContent>
+        <DialogContent className="confirmation-dialog">
           <DialogTitle>Há alterações não salvas</DialogTitle>
           <DialogDescription>
             Sair descarta os campos ainda não registrados neste pedido.
           </DialogDescription>
-          <div className="task-actions">
+          <div className="confirmation-footer">
             <Button
               variant="outline"
               onClick={() => setConfirmOrderClose(false)}
@@ -1565,7 +1565,7 @@ export function OperationsApp() {
           if (!resetBusy) setResetting(open);
         }}
       >
-        <DialogContent>
+        <DialogContent className="confirmation-dialog">
           <DialogTitle>Reiniciar esta demonstração?</DialogTitle>
           <DialogDescription>
             A nova sessão não terá planos, tarefas, investigações ou resultados.
@@ -1573,7 +1573,7 @@ export function OperationsApp() {
             sessão e os registros anteriores não serão copiados para a nova
             avaliação.
           </DialogDescription>
-          <div className="task-actions">
+          <div className="confirmation-footer">
             <Button
               variant="outline"
               disabled={resetBusy}

@@ -46,3 +46,11 @@ Detalhes de cálculo e limites ficam na Metodologia, com índice por assunto e s
 A revisão aplica linguagem da operação, reconhecimento em vez de memorização, visibilidade de andamento, prevenção de erros e divulgação progressiva. A avaliação é heurística; a facilidade para operadores novos ainda depende de observação no piloto. Referências: [heurísticas de Nielsen](https://www.nngroup.com/articles/ten-usability-heuristics/) e [ordem de foco WCAG](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html).
 
 As regras compartilhadas dos modais ficam em `src/app/dialog.css`; variações por fluxo ficam em `workspace.css`. Os botões de fechar têm alvo de toque de 44 px. A investigação de recorrência mantém atalhos opacos durante a rolagem e permite registrar conclusão sem recomendação obrigatória. Formulários de pedido avisam antes de descartar edições; o salvamento bem-sucedido permanece confirmado mesmo quando a atualização da tela falha.
+
+## Verificação de consistência
+
+Revisão com a skill `ui-ux-pro-max`: as sete abas foram conferidas em desktop (1440 px) e celular (390 px), antes e depois de um plano ativo, incluindo estados vazios. Os modais de pedido, resultado, recorrência e confirmação foram inspecionados por capturas de tela e medidas do navegador em uma cópia isolada com dados sintéticos.
+
+As confirmações compartilham largura, tipografia, espaçamento e ações em `dialog.css`; no celular, os botões ficam em coluna. Os modais de trabalho preservam a largura necessária para seus formulários. Etiquetas usam 12 px, e os seletores de CSV respeitam a largura interna do card. A tabela de pedidos mantém rolagem horizontal própria.
+
+A suíte de navegador verifica ausência de transbordamento nas páginas e nos modais, contenção dos campos de arquivo, foco e proteção contra descarte, além dos fluxos de execução, conclusão, reabertura e reinício. As capturas desativam animações para registrar o estado final da interface. Esta revisão não substitui um teste de usabilidade com a equipe.

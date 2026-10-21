@@ -65,3 +65,52 @@
     font-size: 25px;
   }
 }
+
+/* All confirmation flows share the same compact layout. */
+.dialog-content.confirmation-dialog {
+  width: min(520px, calc(100vw - 32px));
+  padding: 28px;
+  border-radius: 16px;
+}
+.confirmation-dialog h2 {
+  margin: 0 0 12px;
+  padding-right: 56px;
+  text-wrap: balance;
+  font-size: 22px;
+  line-height: 1.35;
+}
+.confirmation-dialog > p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.confirmation-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.confirmation-footer .button {
+  min-height: 44px;
+  min-width: 0;
+  padding: 12px 16px;
+  font-size: 13px;
+  white-space: normal;
+}
+.confirmation-dialog h2:focus {
+  outline: none;
+}
+.confirmation-dialog > .muted {
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+@media (max-width: 480px) {
+  .dialog-content.confirmation-dialog {
+    padding: 24px 20px;
+  }
+  .confirmation-footer {
+    flex-direction: column;
+  }
+}

@@ -179,17 +179,22 @@ summary:focus-visible,
   align-items: center;
 }
 .import-fields {
+  min-width: 0;
+  margin-inline: 0;
   border: 0;
   padding: 16px 0;
   display: grid;
   gap: 20px;
 }
 .import-fields label {
+  min-width: 0;
   display: grid;
   gap: 8px;
   font-weight: 600;
 }
 .import-fields input {
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
   padding: 12px;
   border: 1px solid #c4cad3;
@@ -1113,11 +1118,6 @@ main > .panel {
   }
 }
 
-.dialog-content.new-plan-dialog {
-  width: min(520px, calc(100vw - 32px));
-  padding: 28px;
-  border-radius: 16px;
-}
 .new-plan-icon {
   display: grid;
   place-items: center;
@@ -1128,18 +1128,7 @@ main > .panel {
   background: #edf2fa;
   color: #2659a5;
 }
-.new-plan-dialog h2 {
-  margin: 0 0 12px;
-  padding-right: 40px;
-  text-wrap: balance;
-  font-size: 22px;
-  line-height: 1.35;
-}
-.new-plan-dialog > p {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.65;
-}
+
 .new-plan-consequences {
   display: grid;
   gap: 16px;
@@ -1159,13 +1148,7 @@ main > .panel {
   font-size: 13px;
   line-height: 1.6;
 }
-.new-plan-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
-}
+
 .plan-strategies {
   padding: 0;
   margin: 24px 0;
@@ -1208,21 +1191,6 @@ main > .panel {
 }
 .plan-strategy > span > span {
   color: #555761;
-}
-.new-plan-footer .button {
-  min-height: 44px;
-  min-width: 0;
-  padding: 12px 16px;
-  font-size: 13px;
-  white-space: normal;
-}
-@media (max-width: 480px) {
-  .dialog-content.new-plan-dialog {
-    padding: 24px 20px;
-  }
-  .new-plan-footer {
-    flex-direction: column;
-  }
 }
 
 .agent-step-error {
@@ -1847,10 +1815,3 @@ main > .panel {
   margin-bottom: 0;
 }
 /* The initial focus announces a static heading; controls keep their focus rings. */
-.new-plan-dialog h2:focus {
-  outline: none;
-}
-.new-plan-dialog > .muted {
-  margin-bottom: 16px;
-  font-size: 13px;
-}
