@@ -17,6 +17,10 @@ O MVP usa uma única aplicação Next.js com interface React, Route Handlers e P
 
 Os rótulos operacionais ficam em `domain/labels.ts`. Formatação monetária, datas e composição de classes ficam em `lib/utils.ts`. A Metodologia documenta o comportamento do produto; este arquivo documenta a organização do código.
 
+## Interface
+
+Botões, diálogos, expansíveis e paginação são compartilhados em `src/components/ui`. As análises usam `AgentProgress`. Os estilos são carregados por `src/app/layout.tsx`: base em `globals.css`, composição em `operations.css`, identidade em `brand.css`, modais em `dialog.css` e ajustes dos fluxos em `workspace.css`. A ordem de carregamento faz parte da cascata de estilos.
+
 ## Estado e gravações
 
 `GET /api/workspace` monta os indicadores, pedidos, plano, tarefas e análises a partir do mesmo estado da sessão. `useWorkspace` aplica essa resposta de uma vez e descarta respostas anteriores a uma troca de sessão ou importação. Os filtros permanecem ativos ao navegar entre abas; reiniciar limpa o estado da demonstração.
@@ -29,7 +33,7 @@ As gravações preservam o vínculo entre execução, resultado e etapa do pedid
 
 O servidor calcula prioridades, amostras, valores e alternativas. A IA produz orientações qualitativas e solicita ferramentas; o servidor valida escopo, compatibilidade e evidências antes de persistir seus efeitos. Limites, prazo de execução, repetição controlada e idempotência impedem novas tentativas ilimitadas ou efeitos duplicados.
 
-O modo publicado usa PostgreSQL com sessões isoladas por visitante. O modo local usa arquivos com escrita por substituição e uma fila de exclusão mútua no processo. Ele serve ao desenvolvimento e aos testes; não substitui a concorrência do banco em produção. A refatoração não altera o esquema ou o formato dos registros existentes.
+O modo publicado usa PostgreSQL com sessões isoladas por visitante. O modo local usa arquivos com escrita por substituição e uma fila de exclusão mútua no processo. Ele serve ao desenvolvimento e aos testes; não substitui a concorrência do banco em produção. Os registros de versões anteriores permanecem compatíveis com os fluxos atuais.
 
 ## Verificação
 
