@@ -4,11 +4,11 @@ import { chooseRecurrenceCandidates } from "@/domain/recurrence-coverage";
 import { insights } from "@/domain/analytics";
 import { latestPatternTask } from "@/domain/pattern-lifecycle";
 import { exceptionLabels, type Task } from "@/domain/types";
-import { insightGroupLabel } from "@/lib/utils";
+import { insightGroupLabel } from "@/domain/labels";
 import { AppError, getSession } from "./store";
 import { executeStrategicTool } from "./agent-actions";
 import { requireQualitative } from "./agent-evidence";
-import type { AgentContext } from "./agent";
+import type { AgentContext } from "./agent/contracts";
 
 const text = { type: "string" };
 const qualitative = {

@@ -1,5 +1,5 @@
 import { patternDecision } from "@/domain/pattern-lifecycle";
-import { insightGroupLabel } from "@/lib/utils";
+import { insightGroupLabel } from "@/domain/labels";
 import { z } from "zod";
 import { randomUUID, createHash } from "node:crypto";
 import type { ChatCompletionTool } from "groq-sdk/resources/chat/completions";
@@ -13,7 +13,7 @@ import {
   type DailyPlan,
 } from "@/domain/types";
 import { AppError, upsertDailyPlan, upsertTask, getSession } from "./store";
-import type { AgentContext } from "./agent";
+import type { AgentContext } from "./agent/contracts";
 import { datasetReference, POLICY_VERSION } from "@/domain/planning";
 import { requireQualitative } from "./agent-evidence";
 const text = { type: "string" };

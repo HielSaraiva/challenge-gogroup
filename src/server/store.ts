@@ -1,3 +1,6 @@
+import { AppError } from "./errors";
+import { db } from "./persistence/database";
+import { locked, readLocal, writeLocal } from "./persistence/local-files";
 import { processProgressPatch } from "@/domain/process-progress";
 import { currentCaseTasks, latestReopen } from "@/domain/case-cycle";
 import {
@@ -6,12 +9,8 @@ import {
   statusReviewTaskPatch,
 } from "@/domain/task-results";
 import { prepareTaskResolution } from "@/domain/task-resolution";
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
 import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
-import path from "node:path";
 import * as schema from "./schema";
 import type {
   CaseRecord,
@@ -22,63 +21,9 @@ import type {
   Task,
 } from "@/domain/types";
 
-export class AppError extends Error {
-  constructor(
-    message: string,
-    public status = 400,
-  ) {
-    super(message);
-  }
-}
-function db() {
-  if (!process.env.DATABASE_URL)
-    throw new AppError("Configure DATABASE_URL no servidor.", 503);
-  return drizzle(neon(process.env.DATABASE_URL), { schema });
-}
-function localAllowed() {
-  if (
-    process.env.VERCEL ||
-    (process.env.NODE_ENV === "production" && process.env.LOCAL_DEMO !== "true")
-  )
-    throw new AppError(
-      "Banco de dados não configurado. Configure DATABASE_URL.",
-      503,
-    );
-}
-const localPath = (name: string) =>
-  path.join(
-    process.env.NODE_ENV === "test" && process.env.OPERATIONS_TEST_DIRECTORY
-      ? process.env.OPERATIONS_TEST_DIRECTORY
-      : path.join(process.cwd(), ".local"),
-    name,
-  );
-async function readLocal<T>(name: string, fallback?: T): Promise<T> {
-  localAllowed();
-  try {
-    return JSON.parse(await readFile(localPath(name), "utf8"));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    if (fallback !== undefined) return fallback;
-    throw new AppError(
-      "Base ainda não importada. Execute o comando import:data.",
-      503,
-    );
-  }
-}
-async function writeLocal(name: string, payload: unknown) {
-  localAllowed();
-  await mkdir(localPath(""), { recursive: true });
-  const temp = localPath(`${name}.${randomUUID()}.tmp`);
-  await writeFile(temp, JSON.stringify(payload), "utf8");
-  await rename(temp, localPath(name));
-}
-// Serializa o modo local num processo. Produção usa operações atômicas no Postgres.
-let pending: Promise<unknown> = Promise.resolve();
-function locked<T>(fn: () => Promise<T>): Promise<T> {
-  const next = pending.then(fn, fn);
-  pending = next.catch(() => {});
-  return next;
-}
+export { AppError } from "./errors";
+export { consumeLimit, acquireAgentLease } from "./persistence/limits";
+
 export async function saveDataset(data: Dataset) {
   if (!process.env.DATABASE_URL) return writeLocal("dataset.json", data);
   await db()
@@ -482,31 +427,6 @@ export async function updateTask(
     throw new AppError("A tarefa foi alterada. Atualize a página.", 409);
   return task;
 }
-export async function consumeLimit(key: string, limit: number): Promise<void> {
-  const id = `${new Date().toISOString().slice(0, 10)}:${key}`;
-  if (!process.env.DATABASE_URL)
-    return locked(async () => {
-      const counts = await readLocal<Record<string, number>>("usage.json", {});
-      if ((counts[id] || 0) >= limit)
-        throw new AppError(
-          "Limite diário de investigações atingido. Tente novamente amanhã.",
-          429,
-        );
-      counts[id] = (counts[id] || 0) + 1;
-      await writeLocal("usage.json", counts);
-    });
-  const rows = await db()
-    .insert(schema.counters)
-    .values({ id, used: 1, expiresAt: new Date(Date.now() + 2 * 86400000) })
-    .onConflictDoUpdate({
-      target: schema.counters.id,
-      set: { used: sql`${schema.counters.used} + 1` },
-      setWhere: lt(schema.counters.used, limit),
-    })
-    .returning();
-  if (!rows.length)
-    throw new AppError("Limite diário de investigações atingido.", 429);
-}
 export async function saveCase(sessionId: string, record: CaseRecord) {
   const reviewPatch = statusReviewTaskPatch(record);
   if (!process.env.DATABASE_URL)
@@ -613,55 +533,4 @@ export async function upsertDailyPlan(
       ),
     );
   return row.payload;
-}
-export async function acquireAgentLease(
-  sessionId: string,
-): Promise<() => Promise<void>> {
-  const key = `lease:${sessionId}`;
-  const until = new Date(Date.now() + 60000);
-  if (!process.env.DATABASE_URL) {
-    await locked(async () => {
-      const leases = await readLocal<Record<string, string>>("leases.json", {});
-      if (leases[key] && new Date(leases[key]).getTime() > Date.now())
-        throw new AppError(
-          "Uma investigação já está em andamento nesta sessão. Aguarde sua conclusão.",
-          409,
-        );
-      leases[key] = until.toISOString();
-      await writeLocal("leases.json", leases);
-    });
-    return () =>
-      locked(async () => {
-        const leases = await readLocal<Record<string, string>>(
-          "leases.json",
-          {},
-        );
-        if (leases[key] === until.toISOString()) {
-          delete leases[key];
-          await writeLocal("leases.json", leases);
-        }
-      });
-  }
-  const database = db();
-  const claimed = await database
-    .insert(schema.counters)
-    .values({ id: key, used: 1, expiresAt: until })
-    .onConflictDoUpdate({
-      target: schema.counters.id,
-      set: { expiresAt: until },
-      setWhere: lt(schema.counters.expiresAt, new Date()),
-    })
-    .returning();
-  if (!claimed.length)
-    throw new AppError(
-      "Uma investigação já está em andamento nesta sessão. Aguarde sua conclusão.",
-      409,
-    );
-  return async () => {
-    await database
-      .delete(schema.counters)
-      .where(
-        and(eq(schema.counters.id, key), eq(schema.counters.expiresAt, until)),
-      );
-  };
 }

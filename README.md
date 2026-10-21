@@ -95,5 +95,6 @@ Os testes de navegador usam uma aplicação temporária com dados sintéticos, s
 
 - [Critérios operacionais, limites e roteiro de validação](docs/OPERATIONS_VALIDATION.md)
 - [Identidade visual e interface](docs/INTERFACE.md)
+- [Arquitetura e responsabilidades](docs/ARCHITECTURE.md)
 
 A aba **Metodologia** descreve as regras e o fluxo de uso. A identidade visual utiliza o [logotipo público do Gogroup](https://estagiogogroup.com.br/assets/gogroup-logo.svg) e a fonte Poppins.

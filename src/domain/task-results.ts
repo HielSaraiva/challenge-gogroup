@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { Task, TaskExecution, ProcessConclusion } from "./types";
 import type { CaseRecord } from "./types";
-import { statusLabel } from "@/lib/utils";
+import { statusLabel } from "./labels";
 export function statusReviewTaskPatch(
   record: CaseRecord,
   existingReview = false,

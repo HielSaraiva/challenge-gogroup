@@ -6,7 +6,7 @@ import { queue } from "@/domain/analytics";
 import { workstreams } from "@/domain/operations";
 import { STRATEGIES } from "@/domain/types";
 import { dailyGuidance, strategicTools } from "./agent-actions";
-import type { AgentContext } from "./agent";
+import type { AgentContext } from "./agent/contracts";
 
 /** One bounded request: calculations stay on the server, analysis stays with the model. */
 export function compactDailyRequest(

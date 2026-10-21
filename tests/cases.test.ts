@@ -13,7 +13,7 @@ import {
   getSession,
   saveCase,
 } from "@/server/store";
-import type { CaseRecord, Dataset, Order, Task } from "@/domain/types";
+import type { Dataset, Order, Task } from "@/domain/types";
 
 const order: Order = {
   id: "DEMO-CASE",

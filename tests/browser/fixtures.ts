@@ -129,10 +129,10 @@ export const dailyPlan: DailyPlan = {
   })),
 };
 
-// Additional native-select states, used only by the disposable browser app.
+// Additional form and financial states, used only by the disposable browser app.
 export const selectData: Dataset = {
   ...data,
-  sourceRows: data.sourceRows + 2,
+  sourceRows: data.sourceRows + 3,
   orders: [
     ...data.orders,
     {
@@ -142,6 +142,7 @@ export const selectData: Dataset = {
       sourceStatuses: ["aberta", "em_analise"],
     },
     { ...base, id: "UI-RESEND", exception: "item_faltante" },
+    { ...base, id: "UI-REFUND", exception: "pagamento_pendente" },
   ],
 };
 export const selectTasks: Task[] = [
@@ -163,5 +164,14 @@ export const selectTasks: Task[] = [
     approval: { at: task.createdAt },
     evidenceIds: ["UI-RESEND"],
     idempotencyKey: "browser-resend",
+  },
+  {
+    ...task,
+    id: "99999999-9999-4999-8999-999999999999",
+    orderId: "UI-REFUND",
+    kind: "proposta_reembolso",
+    status: "pendente_aprovacao",
+    evidenceIds: ["UI-REFUND"],
+    idempotencyKey: "browser-refund",
   },
 ];

@@ -1,6 +1,6 @@
 import { currentCaseTasks } from "./case-cycle";
 import { completedTask } from "./task-results";
-import { sessionDataset, transitionCase } from "./cases";
+import { transitionCase } from "./cases";
 import {
   type Dataset,
   type SessionState,

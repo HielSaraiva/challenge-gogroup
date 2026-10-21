@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { DEFAULT_WEIGHTS } from "@/domain/types";
-import { AppError } from "./store";
+import { AppError } from "./errors";
 const weight = z.coerce.number().finite().min(0).max(100);
 export function parseWeights(params: URLSearchParams) {
   const weights = {

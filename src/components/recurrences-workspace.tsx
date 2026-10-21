@@ -18,7 +18,7 @@ import {
   DialogDescription,
 } from "./ui/dialog";
 
-export function ImprovementsWorkspace({
+export function RecurrencesWorkspace({
   patterns,
   tasks,
   runs,

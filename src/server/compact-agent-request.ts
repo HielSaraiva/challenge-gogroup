@@ -2,15 +2,18 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool,
 } from "groq-sdk/resources/chat/completions";
-import type { AgentContext } from "./agent";
+import type { AgentContext } from "./agent/contracts";
 
 export type ConsultedFacts = Record<string, unknown>;
 
 /** Keep facts once, without assistant transcripts or deterministic prose. */
 export function compactConsultation(name: string, value: unknown) {
-  const facts = value as Record<string, any>;
+  const facts = value as Record<string, unknown>;
   if (name === "consultar_pedido") {
-    const { reasons: _reasons, ...indicators } = facts.indicadores;
+    const { reasons: _reasons, ...indicators } = facts.indicadores as Record<
+      string,
+      unknown
+    >;
     const { instrucaoEvidencia: _instruction, ...rest } = facts;
     return { ...rest, indicadores: indicators };
   }
@@ -25,16 +28,20 @@ export function compactConsultation(name: string, value: unknown) {
   }
   if (name === "consultar_recorrencias") {
     const orders: Record<string, unknown> = Object.create(null);
-    const candidates = facts.candidates.map(
-      (candidate: Record<string, any>) => {
-        const { sample, ...rest } = candidate;
-        for (const order of sample) orders[order.id] = { ...order };
-        return {
-          ...rest,
-          sample: sample.map((order: { id: string }) => order.id),
-        };
-      },
-    );
+    const candidates = (
+      facts.candidates as Array<
+        Record<string, unknown> & {
+          sample: Array<Record<string, unknown> & { id: string }>;
+        }
+      >
+    ).map((candidate) => {
+      const { sample, ...rest } = candidate;
+      for (const order of sample) orders[order.id] = { ...order };
+      return {
+        ...rest,
+        sample: sample.map((order: { id: string }) => order.id),
+      };
+    });
     // Lossless factoring: shared attributes are sent once; each order retains
     // its differences. No sample, candidate or historical conclusion is dropped.
     const samples = Object.values(orders) as Record<string, unknown>[];
@@ -75,11 +82,15 @@ export function compactAgentRequest(
   };
   if (action) {
     const properties = (
-      action.function!.parameters as { properties: Record<string, any> }
+      action.function!.parameters as { properties: Record<string, unknown> }
     ).properties;
     if (recurrence) {
       properties.reason = { ...qualitative, minLength: 20 };
-      const proposal = properties.proposals.items.properties;
+      const proposal = (
+        properties.proposals as {
+          items: { properties: Record<string, unknown> };
+        }
+      ).items.properties;
       proposal.insightId = {
         type: "string",
         enum: context.recurrenceCandidates!.map((c) => c.insightId),
