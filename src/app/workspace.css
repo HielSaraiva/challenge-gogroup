@@ -1101,12 +1101,26 @@ main > .panel {
     width: 100%;
     margin: 0;
     padding: 8px 0 0;
-    overflow: visible;
+    max-height: calc(100dvh - 96px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .sidebar .nav-item {
     width: 100%;
+    justify-content: flex-start;
+    gap: 10px;
     text-align: left;
     border-radius: 7px;
+  }
+  .sidebar .nav-item .nav-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    min-height: 22px;
+    margin-left: 0;
+    font-size: 12px;
+    line-height: 1;
   }
   .sidebar .nav-item.active {
     background: #edf2fa;

@@ -258,3 +258,67 @@ test("audits narrow and tablet pages and keyboard navigation in methodology", as
     });
   }
 });
+
+test("keeps the mobile menu aligned with an adjacent count and its own scrolling", async ({
+  page,
+}, info) => {
+  expect(
+    (await page.request.get("/api/browser-fixture?plan=1")).ok(),
+  ).toBeTruthy();
+  for (const [width, height] of [
+    [320, 640],
+    [390, 844],
+    [480, 844],
+    [640, 360],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await visit(page, "agent", "Pendências da equipe");
+    await page.getByRole("button", { name: "Abrir menu", exact: true }).click();
+    const nav = page.getByRole("navigation", {
+      name: "Navegação principal",
+      exact: true,
+    });
+    const geometry = await nav.evaluate((el) => {
+      const items = Array.from(
+        el.querySelectorAll<HTMLButtonElement>("button"),
+      );
+      const labels = items.map((button) => {
+        const range = document.createRange();
+        range.selectNode(button.firstChild!);
+        return range.getBoundingClientRect();
+      });
+      const count = el.querySelector(".nav-count")!.getBoundingClientRect();
+      const pending = labels[2];
+      return {
+        lefts: labels.map((r) => r.left),
+        countGap: count.left - pending.right,
+        heights: items.map((button) => button.getBoundingClientRect().height),
+        bottom: el.getBoundingClientRect().bottom,
+        height: innerHeight,
+        scrollable: el.scrollHeight > el.clientHeight,
+      };
+    });
+    expect(
+      Math.max(...geometry.lefts) - Math.min(...geometry.lefts),
+    ).toBeLessThanOrEqual(1);
+    expect(geometry.countGap).toBeGreaterThanOrEqual(6);
+    expect(geometry.countGap).toBeLessThanOrEqual(12);
+    expect(Math.min(...geometry.heights)).toBeGreaterThanOrEqual(44);
+    expect(geometry.bottom).toBeLessThanOrEqual(geometry.height);
+    if (height === 360) expect(geometry.scrollable).toBeTruthy();
+    await page.screenshot({
+      path: info.outputPath(`mobile-menu-${width}-${height}.png`),
+      animations: "disabled",
+    });
+    await nav.getByRole("button", { name: "Metodologia", exact: true }).click();
+    await expect(
+      page.getByRole("heading", {
+        name: "Metodologia da operação",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Abrir menu", exact: true }),
+    ).toHaveAttribute("aria-expanded", "false");
+  }
+});
