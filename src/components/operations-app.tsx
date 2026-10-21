@@ -1054,11 +1054,11 @@ export function OperationsApp() {
               </Button>
             </div>
           )}
-          <footer>
-            <span>
-              Dados sintéticos · demonstração independente por sessão · nenhuma
-              ação externa automática
-            </span>
+          <footer className="app-footer">
+            <p className="footer-disclaimer">
+              <span>Dados sintéticos · sessão independente</span>
+              <span>Sem ações externas automáticas.</span>
+            </p>
           </footer>
         </main>
       </div>

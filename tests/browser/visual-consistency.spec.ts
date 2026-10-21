@@ -160,12 +160,7 @@ test("audits order forms, recurrence steps and confirmation dialogs", async ({
     })
     .click();
   await capture(page, info, "modal-order", true);
-  await page
-    .getByRole("combobox", {
-      name: "A ação realizada resolveu a pendência deste pedido?",
-      exact: true,
-    })
-    .selectOption("yes");
+  await page.getByRole("radio", { name: /^Sim/ }).check();
   await page
     .getByRole("combobox", {
       name: "Qual resultado foi confirmado?",
@@ -265,6 +260,7 @@ test("centers mobile menu labels independently of the adjacent count and preserv
   expect(
     (await page.request.get("/api/browser-fixture?plan=1")).ok(),
   ).toBeTruthy();
+  await visit(page, "agent", "Pendências da equipe");
   for (const [width, height] of [
     [320, 640],
     [390, 844],
@@ -272,7 +268,21 @@ test("centers mobile menu labels independently of the adjacent count and preserv
     [640, 360],
   ]) {
     await page.setViewportSize({ width, height });
-    await visit(page, "agent", "Pendências da equipe");
+    if (width !== 320) {
+      await page
+        .getByRole("button", { name: "Abrir menu", exact: true })
+        .click();
+      await page
+        .getByRole("navigation", { name: "Navegação principal", exact: true })
+        .getByRole("button", { name: /^Pendências/ })
+        .click();
+      await expect(
+        page.getByRole("heading", {
+          name: "Pendências da equipe",
+          exact: true,
+        }),
+      ).toBeVisible();
+    }
     await page.getByRole("button", { name: "Abrir menu", exact: true }).click();
     const nav = page.getByRole("navigation", {
       name: "Navegação principal",
@@ -323,5 +333,82 @@ test("centers mobile menu labels independently of the adjacent count and preserv
     await expect(
       page.getByRole("button", { name: "Abrir menu", exact: true }),
     ).toHaveAttribute("aria-expanded", "false");
+  }
+});
+
+test("shows readable footer text and inline execution choices on small screens", async ({
+  page,
+}, info) => {
+  expect(
+    (await page.request.get("/api/browser-fixture?plan=1")).ok(),
+  ).toBeTruthy();
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await visit(page, "queue", "Pedidos para acompanhar");
+    const footer = page.locator(".app-footer");
+    await footer.scrollIntoViewIfNeeded();
+    const copy = await footer.locator(".footer-disclaimer").evaluate((el) => {
+      const lines = Array.from(el.children).map((child) =>
+        child.getBoundingClientRect(),
+      );
+      return {
+        fontSize: parseFloat(getComputedStyle(el).fontSize),
+        gap: lines[1].top - lines[0].bottom,
+        fits: el.scrollWidth <= el.clientWidth,
+        height: el.getBoundingClientRect().height,
+      };
+    });
+    expect(copy.fontSize).toBeGreaterThanOrEqual(12);
+    expect(copy.gap).toBeGreaterThanOrEqual(4);
+    expect(copy.fits).toBeTruthy();
+    expect(copy.height).toBeLessThan(65);
+    await footer.screenshot({ path: info.outputPath(`footer-${width}.png`) });
+    await page.getByLabel("Buscar pedidos", { exact: true }).fill("UI-A");
+    await page
+      .getByRole("button", {
+        name: "Abrir pedido UI-A de Marca sintética",
+        exact: true,
+      })
+      .click();
+    const choices = page.getByRole("group", {
+      name: "A ação realizada resolveu a pendência deste pedido?",
+      exact: true,
+    });
+    await choices.scrollIntoViewIfNeeded();
+    await expect(choices.getByRole("radio")).toHaveCount(2);
+    const no = choices.getByRole("radio", { name: /^Ainda não/ });
+    const yes = choices.getByRole("radio", { name: /^Sim/ });
+    await no.focus();
+    await page.keyboard.press("Space");
+    await expect(no).toBeChecked();
+    await page.keyboard.press("ArrowDown");
+    await expect(yes).toBeChecked();
+    await expect(
+      page.getByRole("combobox", {
+        name: "Qual resultado foi confirmado?",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page.keyboard.press("ArrowUp");
+    await expect(no).toBeChecked();
+    await expect(
+      page.getByRole("combobox", {
+        name: "Qual resultado foi confirmado?",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    for (const label of await choices.locator("label").all()) {
+      expect(
+        await label.evaluate((el) => el.scrollWidth <= el.clientWidth),
+      ).toBeTruthy();
+      expect((await label.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+    }
+    await choices.screenshot({
+      path: info.outputPath(`execution-choices-${width}.png`),
+    });
+    await page.keyboard.press("Escape");
+    await page
+      .getByRole("button", { name: "Sair sem salvar alterações", exact: true })
+      .click();
   }
 });

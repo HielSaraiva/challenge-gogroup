@@ -518,7 +518,7 @@ details > .expandable-content {
   gap: 8px;
   font-weight: 500;
 }
-.guided-form input:not([type="checkbox"]),
+.guided-form input:not([type="checkbox"]):not([type="radio"]),
 .guided-form textarea,
 .guided-form select {
   width: 100%;
@@ -538,6 +538,83 @@ details > .expandable-content {
   padding: 18px;
   border: 1px solid var(--line);
 }
+.guided-form .execution-outcome {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.execution-outcome legend {
+  padding: 0;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+.execution-outcome label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 48px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.execution-outcome input[type="radio"] {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  margin: 3px 0 0;
+  accent-color: var(--brand-blue);
+}
+.execution-outcome label > span {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.execution-outcome label strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.execution-outcome label > span > span {
+  color: #555761;
+  font-weight: 400;
+}
+.execution-outcome label:has(input:checked) {
+  border-color: var(--brand-blue);
+  background: #edf2fa;
+}
+.execution-outcome label:focus-within {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+}
+.execution-outcome label:has(input:disabled) {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.app-footer {
+  margin-top: 32px;
+  padding: 20px 0 24px;
+  border-top: 1px solid var(--line);
+}
+.app-footer .footer-disclaimer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #62636b;
+}
+@media (max-width: 640px) {
+  .app-footer .footer-disclaimer {
+    flex-direction: column;
+  }
+}
+
 .check-label,
 .guided-form .check-label {
   display: flex;

@@ -63,12 +63,7 @@ test("confirms a saved execution even when the workspace refresh fails", async (
       exact: true,
     })
     .fill("Protocolo sintético de verificação cadastral.");
-  await page
-    .getByRole("combobox", {
-      name: "A ação realizada resolveu a pendência deste pedido?",
-      exact: true,
-    })
-    .selectOption("no");
+  await page.getByRole("radio", { name: /^Ainda não/ }).check();
   let patches = 0;
   await page.route("**/api/tasks", async (route) => {
     if (route.request().method() === "PATCH") patches++;
@@ -241,12 +236,7 @@ test("advances the daily suggestion after closure and restores progress after re
       exact: true,
     })
     .fill("Protocolo sintético de confirmação cadastral.");
-  await page
-    .getByRole("combobox", {
-      name: "A ação realizada resolveu a pendência deste pedido?",
-      exact: true,
-    })
-    .selectOption("yes");
+  await page.getByRole("radio", { name: /^Sim/ }).check();
   await page
     .getByRole("combobox", {
       name: "Qual resultado foi confirmado?",
