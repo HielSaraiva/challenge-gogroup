@@ -175,16 +175,28 @@ export function OperationsApp() {
       if (requests.current.isCurrent(ticket)) throw error;
     }
   }, []);
-  const refreshAfterSave = useCallback(async () => {
-    try {
-      await refresh();
-      setRefreshWarning("");
-    } catch {
-      setRefreshWarning(
-        "Registro salvo. A tela ainda precisa ser atualizada; não repita a operação.",
-      );
-    }
-  }, [refresh]);
+  const clearWorkspace = useCallback(() => {
+    setSummary(undefined);
+    setDay(undefined);
+    setOrders([]);
+    setTasks([]);
+    setRuns([]);
+    setPatterns([]);
+    setFinancial(undefined);
+  }, []);
+  const refreshAfterSave = useCallback(
+    async (
+      message = "Registro salvo. A tela ainda precisa ser atualizada; não repita a operação.",
+    ) => {
+      try {
+        await refresh();
+        setRefreshWarning("");
+      } catch {
+        setRefreshWarning(message);
+      }
+    },
+    [refresh],
+  );
   useEffect(() => {
     if (!orderSafety.dirty && !processDirty) return;
     const prevent = (event: BeforeUnloadEvent) => {
@@ -200,19 +212,13 @@ export function OperationsApp() {
     try {
       await refresh();
     } catch (e) {
-      setSummary(undefined);
-      setDay(undefined);
-      setOrders([]);
-      setTasks([]);
-      setRuns([]);
-      setPatterns([]);
-      setFinancial(undefined);
+      clearWorkspace();
       const m = (e as Error).message;
       if (!m.startsWith("Base ainda não importada")) setError(m);
     } finally {
       setLoading(false);
     }
-  }, [refresh]);
+  }, [refresh, clearWorkspace]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -300,8 +306,20 @@ export function OperationsApp() {
           if (done) break;
         }
       }
-      await refresh();
-      if (processToOpen && type === "pattern") setProcessId(processToOpen);
+      let updated = false;
+      try {
+        await refresh();
+        updated = true;
+        setRefreshWarning("");
+      } catch {
+        setRefreshWarning(
+          completed
+            ? "Análise salva. Não foi possível atualizar a tela."
+            : "Não foi possível atualizar a tela. Confira os registros antes de tentar novamente.",
+        );
+      }
+      if (updated && processToOpen && type === "pattern")
+        setProcessId(processToOpen);
       if (completed && type === "recurrences")
         setNotice(
           "Análise concluída. Confira a seleção do agente e as investigações abaixo.",
@@ -312,15 +330,21 @@ export function OperationsApp() {
         );
     } catch (e) {
       const message = (e as Error).message;
-      setError(message);
-      setActiveRun((previous) =>
-        previous
-          ? { ...previous, status: "failed", summary: message }
-          : previous,
-      );
+      if (completed) {
+        await refreshAfterSave(
+          "Análise salva. Não foi possível atualizar a tela.",
+        );
+      } else {
+        setError(message);
+        setActiveRun((previous) =>
+          previous
+            ? { ...previous, status: "failed", summary: message }
+            : previous,
+        );
+        await refresh().catch(() => {});
+      }
     } finally {
       setBusy(false);
-      await refresh().catch(() => {});
     }
   }
   async function reset() {
@@ -532,7 +556,15 @@ export function OperationsApp() {
                 key={sessionRevision}
                 onImported={async () => {
                   requests.current.invalidate();
-                  await load();
+                  clearWorkspace();
+                  setActiveRun(undefined);
+                  setEvents([]);
+                  setSelectedId(undefined);
+                  setProcessId(undefined);
+                  setError("");
+                  setNotice("");
+                  setRefreshWarning("");
+                  await refresh();
                   navigate("overview");
                   setNotice(
                     "Base importada. Consulte Pedidos ou prepare um plano em Hoje.",
@@ -1010,7 +1042,12 @@ export function OperationsApp() {
           {refreshWarning && (
             <div className="alert alert-info" role="status">
               {refreshWarning}{" "}
-              <Button variant="outline" onClick={() => void refreshAfterSave()}>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  void refreshAfterSave(refreshWarning || undefined)
+                }
+              >
                 Atualizar tela
               </Button>
             </div>
@@ -1039,7 +1076,9 @@ export function OperationsApp() {
                 {refreshWarning}{" "}
                 <Button
                   variant="outline"
-                  onClick={() => void refreshAfterSave()}
+                  onClick={() =>
+                    void refreshAfterSave(refreshWarning || undefined)
+                  }
                 >
                   Atualizar tela
                 </Button>
@@ -1374,7 +1413,12 @@ export function OperationsApp() {
           {refreshWarning && (
             <div className="alert alert-info" role="status">
               {refreshWarning}{" "}
-              <Button variant="outline" onClick={() => void refreshAfterSave()}>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  void refreshAfterSave(refreshWarning || undefined)
+                }
+              >
                 Atualizar tela
               </Button>
             </div>

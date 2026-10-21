@@ -32,7 +32,18 @@ export function DataImport({
   const [preview, setPreview] = useState<Preview>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [refreshPending, setRefreshPending] = useState(false);
+  async function loadImported() {
+    setBusy(true);
+    try {
+      await onImported();
+      setRefreshPending(false);
+    } catch {
+      setRefreshPending(true);
+    } finally {
+      setBusy(false);
+    }
+  }
   useEffect(() => {
     const controller = new AbortController();
     void fetch("/api/data", { cache: "no-store", signal: controller.signal })
@@ -50,7 +61,6 @@ export function DataImport({
   async function select(key: keyof Files, file?: File) {
     setPreview(undefined);
     setError("");
-    setNotice("");
     setFiles((previous) => ({ ...previous, [key]: undefined }));
     if (!file) return;
     if (
@@ -70,7 +80,6 @@ export function DataImport({
   async function submit(mode: "preview" | "commit") {
     setBusy(true);
     setError("");
-    setNotice("");
     try {
       const r = await fetch("/api/data", {
         method: "POST",
@@ -82,9 +91,6 @@ export function DataImport({
       if (mode === "preview") setPreview(b);
       else {
         setPreview(undefined);
-        setNotice(
-          "Base importada. Consulte Pedidos ou prepare um plano em Hoje.",
-        );
         setStatus({
           available: true,
           source: "session",
@@ -92,7 +98,7 @@ export function DataImport({
           canImport: true,
           importedAt: new Date().toISOString(),
         });
-        await onImported();
+        await loadImported();
       }
     } catch (e) {
       setError((e as Error).message);
@@ -142,12 +148,19 @@ export function DataImport({
             {error}
           </p>
         )}
-        {notice && (
-          <p className="alert alert-info" role="status">
-            {notice}
-          </p>
+        {refreshPending && (
+          <div className="alert alert-info" role="status">
+            Base importada. Não foi possível carregar os novos dados.{" "}
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={() => void loadImported()}
+            >
+              {busy ? "Carregando…" : "Tentar carregar novamente"}
+            </Button>
+          </div>
         )}
-        {!status ? (
+        {refreshPending ? null : !status ? (
           !error && (
             <p className="alert alert-info" role="status" aria-live="polite">
               Conferindo a base e a disponibilidade de importação…
