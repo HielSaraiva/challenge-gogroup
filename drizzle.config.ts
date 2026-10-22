@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { loadEnvFile } from "node:process";
 if (existsSync(".env.local")) loadEnvFile(".env.local");
 export default defineConfig({
-  schema: "./src/server/schema.ts",
+  schema: "./src/infrastructure/persistence/schema.ts",
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: { url: process.env.DATABASE_URL! },

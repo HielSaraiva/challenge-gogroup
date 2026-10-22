@@ -36,7 +36,7 @@ async function main() {
   await writeFile(
     path.join(copy, "src/app/api/browser-fixture/route.ts"),
     `import { session, json } from "@/server/http";
-    import { upsertTask, saveSessionDataset, upsertDailyPlan, createSession } from "@/server/store";
+    import { upsertTask, saveSessionDataset, upsertDailyPlan, createSession } from "@/infrastructure/persistence/operations-store";
     export async function GET(request: Request) {
       const {id} = await session();
       if (new URL(request.url).searchParams.has("selects")) {

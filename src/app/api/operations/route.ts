@@ -1,7 +1,7 @@
 import { operationalReport } from "@/domain/operations";
 import { sessionDataset } from "@/domain/cases";
 import { failure, json, session } from "@/server/http";
-import { getDataset } from "@/server/store";
+import { getDataset } from "@/server/container";
 import { parseWeights } from "@/server/weights";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {

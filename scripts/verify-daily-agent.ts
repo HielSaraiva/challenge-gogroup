@@ -5,7 +5,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { data as fixture } from "../tests/browser/fixtures";
 import { investigate } from "../src/server/agent";
-import { createSession, getSession } from "../src/server/store";
+import {
+  createSession,
+  getSession,
+} from "../src/infrastructure/persistence/operations-store";
 import { queue } from "../src/domain/analytics";
 import { STRATEGIES } from "../src/domain/types";
 

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { importDataset } from "../src/domain/import";
-import { saveDataset } from "../src/server/store";
+import { saveDataset } from "../src/infrastructure/persistence/operations-store";
 import { dashboard, queue } from "../src/domain/analytics";
 async function main() {
   const directory = process.argv[2];

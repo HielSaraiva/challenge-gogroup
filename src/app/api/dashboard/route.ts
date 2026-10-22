@@ -1,6 +1,6 @@
 import { dashboard } from "@/domain/analytics";
 import { failure, json, session } from "@/server/http";
-import { getDataset } from "@/server/store";
+import { getDataset } from "@/server/container";
 import { sessionDataset } from "@/domain/cases";
 export const dynamic = "force-dynamic";
 export async function GET() {

@@ -1,14 +1,14 @@
+import { AppError } from "@/application/errors";
 import { patternDecision } from "@/domain/pattern-lifecycle";
 import { investigate, investigationInput } from "@/server/agent";
 import { failure, json, session, verifyOrigin } from "@/server/http";
 import {
-  AppError,
   acquireAgentLease,
   consumeLimit,
   getDataset,
   getSession,
   saveInvestigation,
-} from "@/server/store";
+} from "@/server/container";
 import { sessionDataset } from "@/domain/cases";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;

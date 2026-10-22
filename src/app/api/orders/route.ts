@@ -1,20 +1,9 @@
-import { z } from "zod";
 import { rankOrders } from "@/domain/analytics";
+import { sessionDataset } from "@/domain/cases";
+import { changeOrder, getDataset } from "@/server/container";
 import { failure, json, session, verifyOrigin } from "@/server/http";
-import {
-  AppError,
-  acquireAgentLease,
-  getDataset,
-  getSession,
-  saveCase,
-} from "@/server/store";
-import {
-  caseActionSchema,
-  sessionDataset,
-  transitionCase,
-} from "@/domain/cases";
 import { parseWeights } from "@/server/weights";
-import { randomUUID } from "node:crypto";
+import { z } from "zod";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
@@ -59,35 +48,11 @@ export async function GET(request: Request) {
   }
 }
 export async function PATCH(request: Request) {
-  let release: (() => Promise<void>) | undefined;
   try {
     verifyOrigin(request);
     const { id } = await session();
-    const input = caseActionSchema.parse(await request.json());
-    release = await acquireAgentLease(id);
-    const state = await getSession(id);
-    if (!state) throw new AppError("Sessão expirada.", 401);
-    const data = await getDataset(state);
-    const order = data.orders.find((o) => o.id === input.orderId);
-    if (!order) throw new AppError("Pedido não encontrado.", 404);
-    let record;
-    try {
-      record = transitionCase(
-        order,
-        state.cases?.[order.id],
-        state.tasks,
-        input,
-        randomUUID(),
-        new Date().toISOString(),
-      );
-    } catch (error) {
-      throw new AppError((error as Error).message, 409);
-    }
-    await saveCase(id, record);
-    return json(record);
+    return json(await changeOrder(id, await request.json()));
   } catch (error) {
     return failure(error);
-  } finally {
-    await release?.();
   }
 }

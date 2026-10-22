@@ -98,13 +98,15 @@ describe("architecture boundaries", () => {
       );
     expect(violations).toEqual([]);
   });
-  it("keeps server modules independent of React pages and components", () => {
+  it("keeps backend layers independent of React pages and views", () => {
     const violations = files
-      .filter((file) => relative(file).startsWith("server/"))
+      .filter((file) =>
+        /^(server|application|infrastructure)\//.test(relative(file)),
+      )
       .flatMap((file) =>
         imports.get(file)!.flatMap((specifier) => {
           const target = resolve(file, specifier);
-          return target && /^(app|components)\//.test(relative(target))
+          return target && /^(app|presentation)\//.test(relative(target))
             ? [`${relative(file)} -> ${relative(target)}`]
             : [];
         }),
@@ -120,7 +122,8 @@ describe("architecture boundaries", () => {
       for (const specifier of imports.get(file)!) {
         const target = resolve(file, specifier);
         if (
-          (target && relative(target).startsWith("server/")) ||
+          (target &&
+            /^(server|application|infrastructure)\//.test(relative(target))) ||
           /^(node:|groq-sdk|drizzle-orm|@neondatabase)/.test(specifier)
         )
           violations.add(`${relative(file)} -> ${specifier}`);
@@ -138,6 +141,72 @@ describe("architecture boundaries", () => {
       )
         visit(file);
     expect([...violations]).toEqual([]);
+  });
+  it("keeps application use cases independent of concrete adapters and frameworks", () => {
+    const violations = files
+      .filter((file) => relative(file).startsWith("application/"))
+      .flatMap((file) =>
+        imports.get(file)!.flatMap((specifier) => {
+          const target = resolve(file, specifier);
+          const forbidden = target
+            ? !/^(application|domain|shared)\//.test(relative(target))
+            : /^(react|next|groq-sdk|drizzle-orm|@neondatabase)(\/|$)/.test(
+                specifier,
+              );
+          return forbidden ? [`${relative(file)} -> ${specifier}`] : [];
+        }),
+      );
+    expect(violations).toEqual([]);
+  });
+  it("keeps HTTP adapters on the server composition boundary", () => {
+    const violations = files
+      .filter((file) => relative(file).startsWith("app/api/"))
+      .flatMap((file) =>
+        imports.get(file)!.flatMap((specifier) => {
+          const target = resolve(file, specifier);
+          return target &&
+            /^(infrastructure|presentation)\//.test(relative(target))
+            ? [`${relative(file)} -> ${specifier}`]
+            : [];
+        }),
+      );
+    expect(violations).toEqual([]);
+  });
+  it("keeps network operations out of feature and shell views", () => {
+    const violations: string[] = [];
+    for (const [file, source] of sources) {
+      if (
+        !file.endsWith(".tsx") ||
+        !/^presentation\/(features|shell)\//.test(relative(file))
+      )
+        continue;
+      function visit(node: ts.Node) {
+        if (
+          ts.isCallExpression(node) &&
+          ts.isIdentifier(node.expression) &&
+          node.expression.text === "fetch"
+        )
+          violations.push(relative(file));
+        ts.forEachChild(node, visit);
+      }
+      visit(source);
+    }
+    expect(violations).toEqual([]);
+  });
+  it("keeps view models independent of feature view components", () => {
+    const violations = files
+      .filter((file) => file.endsWith("-view-model.ts"))
+      .flatMap((file) =>
+        imports.get(file)!.flatMap((specifier) => {
+          const target = resolve(file, specifier);
+          return target &&
+            target.endsWith(".tsx") &&
+            /^presentation\/(features|shell)\//.test(relative(target))
+            ? [`${relative(file)} -> ${specifier}`]
+            : [];
+        }),
+      );
+    expect(violations).toEqual([]);
   });
   it("does not introduce circular runtime imports", () => {
     const visited = new Set<string>();

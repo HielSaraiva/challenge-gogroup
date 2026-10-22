@@ -27,7 +27,7 @@ O piloto usa a referência operacional de **30/09/2026** e capacidade de **150 t
 - **IA e persistência:** Groq SDK, Neon PostgreSQL e Drizzle ORM.
 - **Testes e hospedagem:** Vitest, Playwright e Vercel.
 
-As regras ficam em `src/domain`, a orquestração e persistência em `src/server`, e a interface em `src/components` e `src/app`.
+A arquitetura separa domínio (`src/domain`), casos de uso (`src/application`), infraestrutura (`src/infrastructure`) e apresentação (`src/presentation`). A interface é organizada por funcionalidade, com view models nos principais fluxos. `src/server` conecta as dependências e `src/app` expõe as rotas do Next.js.
 
 ## Executar localmente
 

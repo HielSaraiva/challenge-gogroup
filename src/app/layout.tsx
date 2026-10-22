@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import "@/presentation/styles/base.css";
 import "@fontsource/poppins/latin-400.css";
 import "@fontsource/poppins/latin-500.css";
 import "@fontsource/poppins/latin-600.css";
 import "@fontsource/poppins/latin-700.css";
 
-import "./operations.css";
-import "./brand.css";
-import "./dialog.css";
-import "./workspace.css";
+import "@/presentation/styles/components.css";
+import "@/presentation/styles/brand.css";
+import "@/presentation/styles/dialogs.css";
+import "@/presentation/styles/workspace.css";
 export const metadata: Metadata = {
   title: "Gogroup | Central de Operações",
   description:

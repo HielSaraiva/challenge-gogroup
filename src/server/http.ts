@@ -1,8 +1,9 @@
+import { AppError } from "@/application/errors";
 import { cookies } from "next/headers";
 import { createHash, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { AppError, createSession, getSession } from "./store";
+import { createSession, getSession } from "@/server/container";
 const cookieName = "operations_demo";
 export const hashToken = (token: string) =>
   createHash("sha256").update(token).digest("hex");

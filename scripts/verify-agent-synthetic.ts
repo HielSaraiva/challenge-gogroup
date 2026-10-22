@@ -4,7 +4,10 @@ import path from "node:path";
 import { rm } from "node:fs/promises";
 import type { Dataset, Order } from "../src/domain/types";
 import { investigate } from "../src/server/agent";
-import { createSession, getSession } from "../src/server/store";
+import {
+  createSession,
+  getSession,
+} from "../src/infrastructure/persistence/operations-store";
 import { data as addressFixture } from "../tests/browser/fixtures";
 import { recurrenceWorkload } from "../tests/fixtures/recurrences";
 import { insights, queue } from "../src/domain/analytics";
